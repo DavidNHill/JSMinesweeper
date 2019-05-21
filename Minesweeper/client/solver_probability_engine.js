@@ -91,7 +91,7 @@ class ProbabilityLine {
 
 
 // holds a witness and all the Boxes adjacent to it
-class BoxWitness() {
+class BoxWitness {
 	constructor(tile, boxes) {
 		
 		this.tile = tile;
