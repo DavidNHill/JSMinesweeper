@@ -1,0 +1,90 @@
+@charset "ISO-8859-1";
+
+body {
+	background: #ccc;
+  	padding: 10px;
+  	border-style: inset;
+  	border-width: 5px;
+  	overflow: auto;
+}
+
+h1 {
+	margin-top: 0px;
+	float: top;
+	background: #ccc;
+  	padding: 5px;
+  	border-style: outset;
+  	border-width: 5px;
+}
+
+/* Create two columns/boxes that floats next to each other */
+nav {
+  float: left;
+  margin-right: 20px;
+  width: 160px; 
+  background: #ccc;
+  padding: 10px;
+  border-style: outset;
+  border-width: 5px;
+}
+
+/* Style the list inside the menu */
+nav ul {
+  list-style-type: none;
+  padding: 0;
+  
+}
+
+/* the section holding the board and display canvas */
+section {
+  float: left;
+  padding: 0px;
+  background-color: #ccc;;
+}
+
+/* the section holding the canvas */
+div#board {
+  padding: 0px;
+  background-color: #ccc;
+  border-style: inset;
+  border-top-width: 5px;
+  border-left-width: 5px;
+  border-bottom-width: 1px;
+  border-right-width: 5px;
+  /* border-width: 5px; */
+}
+
+
+/* the section holding the canvas */
+div#display {
+  padding: 0px;
+  background-color: #ccc;
+  border-style: inset;
+  border-top-width: 5px;
+  border-left-width: 5px;
+  border-bottom-width: 1px;
+  border-right-width: 5px;
+  /* border-width: 5px; */
+}
+
+/* the section holding the canvas */
+canvas#myMinesLeft {
+  padding: 0px;
+  background-color: #ccc;
+  border-style: inset;
+  border-top-width: 5px;
+  border-left-width: 5px;
+  border-bottom-width: 1px;
+  border-right-width: 5px;
+  margin: 5px; 
+  margin-bottom: 2px; 
+}
+
+button {
+	margin: 5px;
+	width: 150px;
+	height: 40px;
+	padding: 5px;
+  	border-style: outset;
+  	border-width: 5px;
+}
