@@ -10,7 +10,7 @@ body {
 
 h1 {
 	margin-top: 0px;
-	float: top;
+	/* float: top; */
 	background: #ccc;
   	padding: 5px;
   	border-style: outset;
@@ -39,7 +39,7 @@ nav ul {
 section {
   float: left;
   padding: 0px;
-  background-color: #ccc;;
+  background-color: #ccc;
 }
 
 /* the section holding the canvas */
@@ -87,4 +87,33 @@ button {
 	padding: 5px;
   	border-style: outset;
   	border-width: 5px;
+}
+
+/* Tooltip container */
+.tooltip {
+    position: relative;
+    display: inline-block;
+    border-bottom: 1px dotted black; /* If you want dots under the hoverable text */
+}
+
+/* Tooltip text */
+    .tooltip .tooltiptext {
+        visibility: hidden;
+        /* width: 150px; */
+        background-color: transparent; 
+        /* background-color: #ccc; */
+        color: black;
+        text-align: left;
+        font-size: 24px;
+        font-weight: bold;
+        padding: 5px 0;
+        border-radius: 6px;
+        /* Position the tooltip text - see examples below! */
+        position: absolute;
+        z-index: 1;
+    }
+
+/* Show the tooltip text when you mouse over the tooltip container */
+.tooltip:hover .tooltiptext {
+    visibility: visible;
 }

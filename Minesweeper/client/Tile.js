@@ -11,7 +11,11 @@ class Tile {
 		this.value = 0;
 		this.is_flagged = false;
 		this.is_bomb = false;   // this gets set when the game is lost
-		this.index = index;
+        this.index = index;
+
+        this.hint = false;
+        this.probability;
+        this.hintText = "";
 	}
 
 	//reveal() {
@@ -42,11 +46,38 @@ class Tile {
 	}
 	
 	asText() {
-		
 		return "(" + this.x + "," + this.y + ")";
-		
 	}
-	
+
+    getHintText() {
+
+        if (!this.hasHint) {
+            return "";
+        } else {
+            return this.hintText;
+        }
+
+    }
+
+    setProbability(prob) {
+        this.probability = prob;
+        this.hasHint = true;
+
+        if (prob == 1) {
+            this.hintText = "Clear";
+        } else if (prob == 0) {
+            this.hintText = "Mine";
+        } else {
+            this.hintText = (prob * 100).toFixed(2) + "% safe";
+        }
+
+    }
+
+    clearHint() {
+        this.hasHint = false;
+        this.hintText = "";
+    }
+
 	isCovered() {
 		return this.is_covered;
 	}

@@ -10,14 +10,23 @@ function solver(board) {
 	
 	var witnesses = [];
 	var witnessed = [];
-	
+
+    var minesLeft = board.num_bombs;
+    var squaresLeft = 0; 
+
 	var work = new Set();  // use a map to deduplicate the witnessed tiles
 	
 	for (var i=0; i < board.tiles.length; i++) {
-		
+
 		var tile = board.getTile(i);
 
-		if (tile.isCovered() || tile.isFlagged()) {
+        tile.clearHint();  // clear any previous hints
+
+        if (tile.isFlagged()) {
+            minesLeft--;
+            continue;  // if the tile is a flag then nothing to consider
+        } else if (tile.isCovered()) {
+            squaresLeft++;
 			continue;  // if the tile hasn't been revealed yet then nothing to consider
 		}
 		
@@ -45,14 +54,22 @@ function solver(board) {
 	for (var index of work) {
 		witnessed.push(board.getTile(index));
 	}
-	
-	console.log("Witnesses = " + witnesses.length);
-	console.log("Witnessed = " + witnessed.length);
+
+    console.log("tiles left = " + squaresLeft);
+    console.log("mines left = " + minesLeft);
+	console.log("Witnesses  = " + witnesses.length);
+	console.log("Witnessed  = " + witnessed.length);
 	
 	var result = trivial_actions(board, witnesses);
-	
-	var pe = new ProbabilityEngine(witnesses, witnessed);
-	
+
+    
+ 
+
+	var pe = new ProbabilityEngine(witnesses, witnessed, squaresLeft, minesLeft);
+
+    pe.process();
+
+
 	/*
 	var iterator = new Iterator(6,2);
 	
@@ -104,7 +121,8 @@ function trivial_actions(board, witnesses) {
 		if (flags == tile.getValue() && covered > 0) {
 			for (var j=0; j < adjTiles.length; j++) {
 				var adjTile = adjTiles[j];
-				if (adjTile.isCovered() && !adjTile.isFlagged()) {
+                if (adjTile.isCovered() && !adjTile.isFlagged()) {
+                    adjTile.setProbability(1);  // definite clear
 					result.set(adjTile.index, new Action(adjTile.getX(), adjTile.getY(), 0));
 				}
 			}			
@@ -114,7 +132,8 @@ function trivial_actions(board, witnesses) {
 		if (tile.getValue() == flags + covered && covered > 0) {
 			for (var j=0; j < adjTiles.length; j++) {
 				var adjTile = adjTiles[j];
-				if (adjTile.isCovered() && !adjTile.isFlagged()) {
+                if (adjTile.isCovered() && !adjTile.isFlagged()) {
+                    adjTile.setProbability(0);  // definite mine
 					result.set(adjTile.index, new Action(adjTile.getX(), adjTile.getY(), 1));
 				}
 			}			
@@ -189,3 +208,22 @@ class Action {
 	}
 	
 }
+
+function combination(mines, squares) {
+
+    var top = 1;
+    var bot = 1;
+
+    var range = Math.min(mines, squares - mines);
+
+    // calculate the combination. 
+    for (var i = 0; i < range; i++) {
+        top = top * (squares - i);
+        bot = bot * (i + 1);
+    }
+
+    var result = top / bot;
+
+    return result;
+
+}    

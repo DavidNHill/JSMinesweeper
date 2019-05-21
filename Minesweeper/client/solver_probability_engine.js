@@ -5,27 +5,45 @@
 "use strict";
 
 class ProbabilityEngine {
-	constructor(allWitnesses, allWitnessed) {
-		
+	constructor(allWitnesses, allWitnessed, squaresLeft, minesLeft) {
+
+       	this.SMALL_COMBINATIONS = [ [ 1 ], [ 1, 1 ], [ 1, 2, 1 ], [ 1, 3, 3, 1 ], [ 1, 4, 6, 4,1 ], [ 1, 5, 10, 10, 5, 1 ], [ 1, 6, 15, 20, 15, 6, 1 ], [ 1, 7, 21, 35, 35, 21, 7, 1 ], [ 1, 8, 28, 56, 70, 56, 28, 8, 1 ] ];
+
+
 		this.witnesses = allWitnesses;
 		this.witnessed = allWitnessed;
-		
-		this.boxes = [];
-		
+
+        // constraints in the game
+        this.minesLeft = minesLeft;
+        this.squaresLeft = squaresLeft;
+        this.minTotalMines = minesLeft - squaresLeft;
+        this.maxTotalMines = minesLeft;
+
+        this.boxes = [];
+        this.boxWitnesses = [];
+        this.mask = [];
+
+        this.boxProb = [];  // the probabilities end up here
 		this.workingProbs = []; 
 		this.heldProbs = [];
-		
+
+        // generate a BoxWitness for each witness tile
+        for (var i = 0; i < this.witnesses.length; i++) {
+            var boxWit = this.witnesses[i];
+            this.boxWitnesses.push(new BoxWitness(boxWit));
+        }
+
 		// allocate each of the witnessed squares to a box
 		var uid = 0;
 		for (var i=0; i < this.witnessed.length; i++) {
 			
-			var tile = this.witnessed[i];
+			var boxWit = this.witnessed[i];
 			
 			var count = 0;
 			
 			// count how many adjacent witnesses the tile has
 			for (var j=0; j < this.witnesses.length; j++) {
-				if (tile.isAdjacent(this.witnesses[j])) {
+				if (boxWit.isAdjacent(this.witnesses[j])) {
 					count++;
 				}
 			}
@@ -34,8 +52,8 @@ class ProbabilityEngine {
 			
 			for (var j=0; j < this.boxes.length; j++) {
 				
-				if (this.boxes[j].fits(tile, count)) {
-					this.boxes[j].add(tile);
+				if (this.boxes[j].fits(boxWit, count)) {
+					this.boxes[j].add(boxWit);
 					found = true;
 					break;
 				}
@@ -44,44 +62,654 @@ class ProbabilityEngine {
 			
 			// if not found create a new box and store it
 			if (!found) {
-				this.boxes.push(new Box(this.witnesses, tile, uid++));
+                this.boxes.push(new Box(this.boxWitnesses, boxWit, uid++));
 			}
 
-		}
+        }
 
-	}
-	
+        // calculate the min and max mines for each box 
+        for (var i = 0; i < this.boxes.length; i++) {
+            var box = this.boxes[i];
+            box.calculate(this.minesLeft);
+            console.log("Box " + box.tiles[0].asText() + " has min mines = " + box.minMines + " and max mines = " + box.maxMines);
+        }
+
+        // Report how many boxes each witness is adjacent to 
+        for (var i = 0; i < this.boxWitnesses.length; i++) {
+            var boxWit = this.boxWitnesses[i];
+            console.log("Witness " + boxWit.tile.asText() + " is adjacent to " + boxWit.boxes.length + " boxes and has " + boxWit.minesToFind + " mines to find");
+        }
+
+ 	}
+
+
+    // calculate a probability for each un-revealed tile on the board
 	process() {
-		
+
+        // create an array showing which boxes have been procesed this iteration - none have to start with
+        for (var i = 0; i < this.boxes.length; i++) {
+            this.mask.push(false);
+        }
+ 
 		// create an initial solution of no mines anywhere 
-		var held = new ProbabilityLine();
+		var held = new ProbabilityLine(this.boxes.length);
 		held.solutionCount = 1;
 		this.heldProbs.push(held);
 		
 		// add an empty probability line to get us started
-		this.workingProbs.push(new ProbabilityLine());
+        this.workingProbs.push(new ProbabilityLine(this.boxes.length));
 		
-		
-		
-		
+        var nextWitness = this.findFirstWitness();
+
+        while (nextWitness != null) {
+
+            console.log("Probability engine processing witness " + nextWitness.boxWitness.tile.asText());
+
+            // mark the new boxes as processed - which they will be soon
+            for (var i = 0; i < nextWitness.newBoxes.length; i++) {
+                this.mask[nextWitness.newBoxes[i].uid] = true;
+            }
+
+            this.workingProbs = this.mergeProbabilities(nextWitness);
+
+            nextWitness = this.findNextWitness(nextWitness);
+
+        }
+
+        this.calculateBoxProbabilities();
 		
 	}
-	
-	
-	
+
+
+    // take the next witness details and merge them into the currently held details
+    mergeProbabilities(nw) {
+
+        var newProbs = [];
+
+        for (var i = 0; i < this.workingProbs.length; i++) {
+
+            var pl = this.workingProbs[i];
+
+            var missingMines = nw.boxWitness.minesToFind - this.countPlacedMines(pl, nw);
+
+            if (missingMines < 0) {
+                console.log("Missing mines < 0 ==> ignoring line");
+                // too many mines placed around this witness previously, so this probability can't be valid
+            } else if (missingMines == 0) {
+                console.log("Missing mines = 0 ==> keeping line as is");
+                newProbs.push(pl);   // witness already exactly satisfied, so nothing to do
+            } else if (nw.newBoxes.length == 0) {
+                console.log("new boxes = 0 ==> ignoring line since nowhere for mines to go");
+                // nowhere to put the new mines, so this probability can't be valid
+            } else {
+                
+                //newProbs.addAll(distributeMissingMines(pl, nw, missingMines, 0));
+
+                var result = this.distributeMissingMines(pl, nw, missingMines, 0);
+
+                for (var j = 0; j < result.length; j++) {
+                    newProbs.push(result[j]);
+                }
+
+            }
+
+        }
+
+        if (newProbs.length == 0) {
+            console.log("Returning no lines from merge probability !!");
+        }
+
+        return newProbs;
+
+    }
+
+    // counts the number of mines already placed
+    countPlacedMines(pl, nw) {
+
+        var result = 0;
+
+        for (var i = 0; i < nw.oldBoxes.length; i++) {
+
+            var b = nw.oldBoxes[i];
+
+            result = result + pl.mineBoxCount[b.uid];
+        }
+
+        return result;
+    }
+
+    // this is used to recursively place the missing Mines into the available boxes for the probability line
+    distributeMissingMines(pl, nw,  missingMines, index) {
+
+        console.log("Distributing " + missingMines + " missing mines to box " + nw.newBoxes[index].uid);
+
+        this.recursions++;
+        if (this.recursions % 100 == 0) {
+            console.log("Probability Engine recursision = " + recursions);
+        }
+
+        var result = [];
+
+        // if there is only one box left to put the missing mines we have reach this end of this branch of recursion
+        if (nw.newBoxes.length - index == 1) {
+            // if there are too many for this box then the probability can't be valid
+            if (nw.newBoxes[index].maxMines < missingMines) {
+                console.log("Abandon (1)");
+                return result;
+            }
+            // if there are too few for this box then the probability can't be valid
+            if (nw.newBoxes[index].minMines > missingMines) {
+                console.log("Abandon (2)");
+                return result;
+            }
+            // if there are too many for this game then the probability can't be valid
+            if (pl.mineCount + missingMines > this.maxTotalMines) {
+                console.log("Abandon (3)");
+                return result;
+            }
+
+            // otherwise place the mines in the probability line
+            pl.mineBoxCount[nw.newBoxes[index].uid] = missingMines;
+            pl.mineCount = pl.mineCount + missingMines;
+            result.push(pl);
+            console.log("Distribute missing mines line after " + pl.mineBoxCount);
+            return result;
+        }
+
+
+        // this is the recursion
+        var maxToPlace = Math.min(nw.newBoxes[index].maxMines, missingMines);
+
+        for (var i = nw.newBoxes[index].minMines; i <= maxToPlace; i++) {
+            var npl = this.extendProbabilityLine(pl, nw.newBoxes[index], i);
+
+            var r1 = this.distributeMissingMines(npl, nw, missingMines - i, index + 1);
+
+            for (var j = 0; j < r1.length; j++) {
+                result.push(r1[j]);
+            }
+
+            //result.push(distributeMissingMines(npl, nw, missingMines - i, index + 1));
+        }
+
+        return result;
+
+    }
+
+    // create a new probability line by taking the old and adding the mines to the new Box
+    extendProbabilityLine(pl, newBox, mines) {
+
+        console.log("Extended probability line: Adding " + mines + " mines to box " + newBox.uid);
+        console.log("Extended probability line before" + pl.mineBoxCount);
+
+        var result = new ProbabilityLine(this.boxes.length);
+
+        result.mineCount = pl.mineCount + mines;
+        //result.solutionCount = pl.solutionCount;
+
+        // copy the probability array
+        //System.arraycopy(pl.mineBoxCount, 0, result.mineBoxCount, 0, pl.mineBoxCount.length);
+
+        for (var i = 0; i < pl.mineBoxCount.length; i++) {
+            result.mineBoxCount[i] = pl.mineBoxCount[i];
+        }
+
+        //result.mineBoxCount = pl.mineBoxCount.slice();
+
+        result.mineBoxCount[newBox.uid] = mines;
+
+        console.log("Extended probability line after " + result.mineBoxCount);
+
+        return result;
+    }
+
+
+    // this combines newly generated probabilities with ones we have already stored from other independent sets of witnesses
+    storeProbabilities() {
+
+        var result = [];
+
+        if (this.workingProbs.length == 0) {
+        	console.log("working probabilites list is empty!!");
+        	return;
+        } 
+
+        //if (CHECK_FOR_DEAD_LOCATIONS) {
+        //    checkCandidateDeadLocations();
+        //}
+
+        // crunch the new ones down to one line per mine count
+        var crunched = this.crunchByMineCount(this.workingProbs);
+
+        //solver.display("New data has " + crunched.size() + " entries");
+
+        for (var i = 0; i < crunched.length; i++) {
+
+            pl = crunched[i];
+
+            for (var j = 0; j < this.heldProbs.length; j++) {
+
+                var epl = this.heldProbs[j];
+
+                var npl = new ProbabilityLine(this.boxes.length);
+
+                npl.mineCount = pl.mineCount + epl.mineCount;
+
+                if (npl.mineCount <= this.maxTotalMines) {
+
+                    npl.solutionCount = pl.solutionCount * epl.solutionCount;
+
+                    for (var k = 0; k < npl.mineBoxCount.length; k++) {
+
+                        var w1 = pl.mineBoxCount[k] * epl.solutionCount;
+                        var w2 = epl.mineBoxCount[k] * pl.solutionCount;
+                        npl.mineBoxCount[k] = w1 + w2;
+
+                        //npl.hashCount[i] = epl.hashCount[i].add(pl.hashCount[i]);
+
+                    }
+                    result.push(npl);
+
+                }
+            }
+        }
+
+        // sort into mine order 
+        result.sort(function (a, b) { return a.mineCount - b.mineCount });
+
+        this.heldProbs = [];
+
+        // if result is empty this is an impossible position
+        if (result.length == 0) {
+            return;
+        }
+
+        // and combine them into a single probability line for each mine count
+        var mc = result[0].mineCount;
+        var npl = new ProbabilityLine(this.boxes.length);
+        npl.mineCount = mc;
+
+        for (var i = 0; i < result.length; i++) {
+
+            var pl = result[i];
+
+            if (pl.mineCount != mc) {
+                this.heldProbs.push(npl);
+                mc = pl.mineCount;
+                npl = new ProbabilityLine(this.boxes.length);
+                npl.mineCount = mc;
+            }
+            npl.solutionCount = npl.solutionCount + pl.solutionCount;
+
+            for (var j = 0; j < pl.mineBoxCount.length; j++) {
+                npl.mineBoxCount[j] = npl.mineBoxCount[j] + pl.mineBoxCount[j];
+
+                //npl.hashCount[i] = npl.hashCount[i].add(pl.hashCount[i]);
+            }
+        }
+
+        this.heldProbs.push(npl);
+
+		/*
+		for (Box b: boxes) {
+			System.out.print(b.getSquares().size() + " ");
+		}
+		System.out.println("");
+		for (ProbabilityLine pl: heldProbs) {
+			System.out.print("Mines = " + pl.mineCount + " solutions = " + pl.solutionCount + " boxes: ");
+			for (int i=0; i < pl.mineBoxCount.length; i++) {
+				System.out.print(" " + pl.mineBoxCount[i]);
+			}
+			System.out.println("");
+		}
+		*/
+
+
+    }
+
+    crunchByMineCount(target) {
+
+        if (target.length == 0) {
+            return target;
+         }
+
+        // sort the solutions by number of mines
+        target.sort(function (a, b) { return a.mineCount - b.mineCount });
+
+        var result = [];
+
+        var mc = target[0].mineCount;
+        var npl = new ProbabilityLine(this.boxes.length);
+        npl.mineCount = mc;
+
+        for (var i = 0; i < target.length; i++) {
+
+            var pl = target[i];
+
+            if (pl.mineCount != mc) {
+                result.push(npl);
+                mc = pl.mineCount;
+                npl = new ProbabilityLine(this.boxes.length);
+                npl.mineCount = mc;
+            }
+            this.mergeLineProbabilities(npl, pl);
+        }
+
+        //if (npl.mineCount >= minTotalMines) {
+        result.push(npl);
+        //}	
+
+        //solver.display(target.size() + " Probability Lines compressed to " + result.size()); 
+
+        return result;
+
+    }
+
+    // calculate how many ways this solution can be generated and roll them into one
+    mergeLineProbabilities(npl, pl) {
+
+        var solutions = 1;
+        for (var i = 0; i < pl.mineBoxCount.length; i++) {
+            solutions = solutions * this.SMALL_COMBINATIONS[this.boxes[i].tiles.length][pl.mineBoxCount[i]];
+        }
+
+        npl.solutionCount = npl.solutionCount + solutions;
+
+        for (var i = 0; i < pl.mineBoxCount.length; i++) {
+            if (this.mask[i]) {  // if this box has been involved in this solution - if we don't do this the hash gets corrupted by boxes = 0 mines because they weren't part of this edge
+                npl.mineBoxCount[i] = npl.mineBoxCount[i] + pl.mineBoxCount[i] * solutions;
+
+                //if (pl.mineBoxCount[i].signum() == 0) {
+                //    npl.hashCount[i] = npl.hashCount[i].subtract(pl.hash.multiply(BigInteger.valueOf(boxes.get(i).getSquares().size())));   // treat no mines as -1 rather than zero
+                //} else {
+                //    npl.hashCount[i] = npl.hashCount[i].add(pl.mineBoxCount[i].multiply(pl.hash));
+                //}
+            }
+
+        }
+
+    }
+
+    // return any witness which hasn't been processed
+    findFirstWitness() {
+
+        for (var i = 0; i < this.boxWitnesses.length; i++) {
+            var boxWit = this.boxWitnesses[i];
+            if (!boxWit.processed) {
+                return new NextWitness(boxWit);
+            }
+        }
+
+        return null;
+    }
+
+    // look for the next witness to process
+    findNextWitness(prevWitness) {
+
+        // flag the last set of details as processed
+        prevWitness.boxWitness.processed = true;
+
+        for (var i = 0; i < prevWitness.newBoxes.length; i++) {
+            prevWitness.newBoxes[i].processed = true;
+        }
+
+        var bestTodo = 99999;
+        var bestWitness = null;
+
+        // and find a witness which is on the boundary of what has already been processed
+        for (var i = 0; i < this.boxes.length; i++) {
+            var b = this.boxes[i];
+            if (b.processed) {
+                for (var j = 0; j < this.boxWitnesses.length; j++) {
+                    var w = this.boxWitnesses[j];
+                    if (!w.processed) {
+                        var todo = 0;
+                        for (var k = 0; k < w.boxes.length; k++) {
+                            var b1 = w.boxes[k];
+
+                            if (!b1.proccessed) {
+                                todo++;
+                            }
+                        }
+                        if (todo == 0) {    // prioritise the witnesses which have the least boxes left to process
+                            return new NextWitness(w);
+                        } else if (todo < bestTodo) {
+                            bestTodo = todo;
+                            bestWitness = w;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (bestWitness != null) {
+            return new NextWitness(bestWitness);
+        } else {
+            console.log("Starting a new independent edge");
+        }
+
+        // if we are down here then there is no witness which is on the boundary, so we have processed a complete set of independent witnesses 
+
+        //independentGroups++;
+
+        // since we have calculated all the mines in an independent set of witnesses we can crunch them down and store them for later
+
+        // get an unprocessed witness
+        var nw = this.findFirstWitness();
+
+        // only crunch it down for non-trivial probability lines unless it is the last set - this is an efficiency decision
+        if (this.workingProbslength > 1 || nw == null) {
+            this.storeProbabilities();
+
+            // reset the working array so we can start building up one for the new set of witnesses
+            this.workingProbs = [];
+            this.workingProbs.push(new ProbabilityLine(this.boxes.length));
+
+            // reset the mask indicating that no boxes have been processed 
+            for (var i = 0; i < this.mask.length; i++) {
+                this.mask[i] = false;
+            }
+        }
+
+        // return the next witness to process
+        return nw;
+
+    }
+
+    // here we expand the localised solution to one across the whole board and
+    // sum them together to create a definitive probability for each box
+    calculateBoxProbabilities() {
+
+        var tally = [];
+        for (var i = 0; i < this.boxes.length; i++) {
+            tally[i] = 0;
+            //hashTally[i] = BigInteger.ZERO;
+        }
+
+        // total game tally
+        var totalTally = 0;
+
+        // outside a box tally
+        var outsideTally = 0;
+
+        console.log("There are " + this.heldProbs.length + " different mine counts on the edge");
+
+        // calculate how many mines 
+        for (var i = 0; i < this.heldProbs.length; i++) {
+
+            var pl = this.heldProbs[i];
+
+            console.log("Mine count is " + pl.mineCount + " with solution count " + pl.solutionCount + " mineBoxCount = " + pl.mineBoxCount);
+
+            if (pl.mineCount >= this.minTotalMines) {    // if the mine count for this solution is less than the minimum it can't be valid
+
+                //if (mineCounts.put(pl.mineCount, pl.solutionCount) != null) {
+                //   System.out.println("Duplicate mines in probability Engine");
+                //}
+
+                var mult = combination(this.minesLeft - pl.mineCount, this.squaresLeft);  //# of ways the rest of the board can be formed
+
+                outsideTally = outsideTally + mult * (this.minesLeft - pl.mineCount) * (pl.solutionCount);
+
+                // this is all the possible ways the mines can be placed across the whole game
+                totalTally = totalTally + mult * (pl.solutionCount);
+
+                for (var j = 0; j < tally.length; j++) {
+                    console.log("mineBoxCount " + j + " is " + pl.mineBoxCount[j]);
+                    tally[j] = tally[j] + (mult * (pl.mineBoxCount[j]) / (this.boxes[j].tiles.length));
+                    //hashTally[i] = hashTally[i].add(pl.hashCount[i]);
+                }
+            }
+
+        }
+
+        // for each box calcaulate a probability
+        for (var i = 0; i < this.boxes.length; i++) {
+
+            if (totalTally != 0) {
+                if (tally[i] == totalTally) {  // a mine
+                    console.log("Box " + i + " contains mines");
+                    this.boxProb[i] = 0;
+                    //for (Square squ: boxes.get(i).getSquares()) {  // add the squares in the box to the list of mines
+                    //   mines.add(squ);
+                    //}
+                } else {
+                    this.boxProb[i] = 1 - (tally[i] / totalTally);
+                }
+
+            } else {
+                this.boxProb[i] = 0;
+            }
+
+            console.log("Box " + i + " has probabality " + this.boxProb[i]);
+
+            // for each tile in the box allocate a probability to it
+            for (var j = 0; j < this.boxes[i].tiles.length; j++) {
+                this.boxes[i].tiles[j].setProbability(this.boxProb[i]);
+            }
+
+        }
+
+
+        // add the dead locations we found
+        /*
+        if (CHECK_FOR_DEAD_LOCATIONS) {
+            Set < Location > newDead = new HashSet<>();
+            for (DeadCandidate dc: deadCandidates) {
+                if (!dc.isAlive && boxProb[dc.myBox.getUID()].signum() != 0) {
+                    newDead.add(dc.candidate);
+                }
+            }
+            deadLocations = deadLocations.merge(new Area(newDead));
+
+        }
+        */
+
+        /*
+        for (int i = 0; i < hashTally.length; i++) {
+            //solver.display(boxes.get(i).getSquares().size() + " " + boxes.get(i).getSquares().get(0).display() + " " + hashTally[i].toString());
+            for (int j = i + 1; j < hashTally.length; j++) {
+
+                //BigInteger hash1 = hashTally[i].divide(BigInteger.valueOf(boxes.get(i).getSquares().size()));
+                //BigInteger hash2 = hashTally[j].divide(BigInteger.valueOf(boxes.get(j).getSquares().size()));
+
+                if (hashTally[i].compareTo(hashTally[j]) == 0 && boxes.get(i).getSquares().size() == 1 && boxes.get(j).getSquares().size() == 1) {
+                    //if (hash1.compareTo(hash2) == 0) {
+                    addLinkedLocation(linkedLocations, boxes.get(i), boxes.get(j));
+                    addLinkedLocation(linkedLocations, boxes.get(j), boxes.get(i));
+                    //solver.display("Box " + boxes.get(i).getSquares().get(0).display() + " is linked to Box " + boxes.get(j).getSquares().get(0).display() + " prob " + boxProb[i]);
+                }
+
+                // if one hasTally is the negative of the other then   i flag <=> j clear
+                if (hashTally[i].compareTo(hashTally[j].negate()) == 0 && boxes.get(i).getSquares().size() == 1 && boxes.get(j).getSquares().size() == 1) {
+                    //if (hash1.compareTo(hash2.negate()) == 0) {
+                    //solver.display("Box " + boxes.get(i).getSquares().get(0).display() + " is contra linked to Box " + boxes.get(j).getSquares().get(0).display() + " prob " + boxProb[i] + " " + boxProb[j]);
+                    addLinkedLocation(contraLinkedLocations, boxes.get(i), boxes.get(j));
+                    addLinkedLocation(contraLinkedLocations, boxes.get(j), boxes.get(i));
+                }
+            }
+        }
+        */
+
+        // sort so that the locations with the most links are at the top
+        //Collections.sort(linkedLocations, LinkedLocation.SORT_BY_LINKS_DESC);
+
+        var offEdgeProbability;
+
+        // avoid divide by zero
+        if (this.squaresLeft != 0 && totalTally != 0) {
+            offEdgeProbability = 1 - (outsideTally /(totalTally * this.squaresLeft));
+        } else {
+            offEdgeProbability = 0;
+        }
+
+        var finalSolutionsCount = totalTally;
+
+        // see if we can find a guess which is better than outside the boxes
+        var hwm = offEdgeProbability;
+
+        //offEdgeBest = true;
+
+        for (var i = 0; i < this.boxes.length; i++) {
+
+            var b = this.boxes[i];
+
+            var living = true;
+            //for (Square squ: b.getSquares()) {
+            //    if (!deadLocations.contains(squ)) {
+            //        living = true;
+            //        break;
+            //    }
+            //}
+
+            var prob = this.boxProb[b.uid];
+            if (living || prob == 1) {   // if living or 100% safe then consider this probability
+
+                if (hwm <= prob) {
+                    //offEdgeBest = false;
+                    hwm = prob;
+                }
+            }
+        }
+
+        //for (BigDecimal bd: boxProb) {
+        //	if (hwm.compareTo(bd) <= 0) {
+        //		offEdgeBest = false;
+        //		hwm = bd;
+        //	}
+        //	hwm = hwm.max(bd);
+        //}
+
+        var bestProbability = hwm;
+
+        //if (bestProbability.compareTo(BigDecimal.ONE) == 0) {
+        //    cutoffProbability = BigDecimal.ONE;
+        //} else {
+        //    cutoffProbability = bestProbability.multiply(Solver.PROB_ENGINE_TOLERENCE);
+        //}
+
+        console.log("Best probability is " + bestProbability);
+        console.log("Game has  " + finalSolutionsCount + " candidate solutions" );
+
+
+        //solver.display("probability off web is " + outsideProb);
+
+
+    }
+
 }
 
 /*
  * Used to hold a solution
  */
 class ProbabilityLine {
-	constructor() {
+	constructor(boxCount) {
 		
 		this.mineCount = 0;
 		this.solutionCount = 0;
 		this.mineBoxCount = [];
 		
-		for (var i=0; i < mineBoxCount.length; i++) {
+		for (var i=0; i < boxCount; i++) {
 			this.mineBoxCount.push(0);
 		}		
 		
@@ -89,15 +717,50 @@ class ProbabilityLine {
 	
 }
 
+// used to hold what we need to analyse next
+class NextWitness {
+    constructor(boxWitness) {
+
+        this.boxWitness = boxWitness;
+
+        this.oldBoxes = [];
+        this.newBoxes = [];
+
+        for (var i = 0; i < this.boxWitness.boxes.length; i++) {
+
+            var box = this.boxWitness.boxes[i];
+            if (box.processed) {
+                this.oldBoxes.push(box);
+            } else {
+                this.newBoxes.push(box);
+            }
+        }
+    }
+
+}
+
+
 
 // holds a witness and all the Boxes adjacent to it
 class BoxWitness {
-	constructor(tile, boxes) {
-		
+	constructor(tile) {
+
+        this.processed = false;
+        this.minesToFind = tile.getValue();   
+
+        var adjTile = board.getAdjacent(tile);
+
+        for (var i = 0; i < adjTile.length; i++) {
+            if (adjTile[i].isFlagged()) {
+                this.minesToFind--;
+            }
+        }		
+
 		this.tile = tile;
 		
 		this.boxes = [];
-		
+
+        /*
 		for (var i=0; i < boxes.length; i++) {
 			
 			var box = boxes[i];
@@ -112,10 +775,14 @@ class BoxWitness {
 		}
 		
 		console.log("Witness " + this.tile.asText() + " has " + this.boxes.length + " boxes adjacent to it");
-		
+		*/
 		
 	}
-	
+
+    // add an adjacdent box 
+    addBox(box) {
+        this.boxes.push(box);
+    }
 	
 	
 	
@@ -123,25 +790,29 @@ class BoxWitness {
 
 // a box is a group of tiles which share the same witnesses
 class Box {
-	constructor(witnesses, tile, uid) {
-		
+	constructor(boxWitnesses, tile, uid) {
+
+        this.processed = false;
+
 		this.uid = uid;
-		
+        this.minMines;
+        this.maxMines;
+
 		this.tiles = [];
 		this.tiles.push(tile);
 		
 		this.boxWitnesses = [];
 		
-		for (var i=0; i < witnesses.length; i++) {
-			if (tile.isAdjacent(witnesses[i])) {
-				this.boxWitnesses.push(witnesses[i]);
+		for (var i=0; i < boxWitnesses.length; i++) {
+			if (tile.isAdjacent(boxWitnesses[i].tile)) {
+                this.boxWitnesses.push(boxWitnesses[i]);
+                boxWitnesses[i].addBox(this);
+
 			}
 		}
 		
 		console.log("Box created for tile " + tile.asText() + " with " + this.boxWitnesses.length + " witnesses");
-		
-		this.processed = false;
-		
+
 	}
 	
 	// if the tiles surrounding witnesses equal the boxes then it fits
@@ -153,7 +824,7 @@ class Box {
 		}
 		
 		for (var i=0; i < this.boxWitnesses.length; i++) {
-			if (!this.boxWitnesses[i].isAdjacent(tile)) {
+			if (!this.boxWitnesses[i].tile.isAdjacent(tile)) {
 				return false;
 			}
 		}		
@@ -163,7 +834,23 @@ class Box {
 		return true;
 		
 	}
-	
+
+    /*
+    * Once all the squares have been added we can do some calculations
+    */
+    calculate(minesLeft) {
+
+        this.maxMines = Math.min(this.tiles.length, minesLeft);  // can't have more mines then there are tiles to put them in or mines left to discover
+        this.minMines = 0;
+
+        for (var i = 0; i < this.boxWitnesses.length; i++) {
+            if (this.boxWitnesses[i].minesToFind < this.maxMines) {  // can't have more mines than the lowest constraint
+                this.maxMines = this.boxWitnesses[i].minesToFind;
+            }
+        }		
+
+    }
+
 	// add a new tile to the box
 	add(tile) {
 		this.tiles.push(tile);

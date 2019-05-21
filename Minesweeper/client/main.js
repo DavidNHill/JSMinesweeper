@@ -33,9 +33,12 @@
 	
 	myMinesLeft.width = DIGIT_WIDTH * 4;
 	myMinesLeft.height = DIGIT_HEIGHT;
-	
+
+var tooltip = document.getElementById('tooltip');
+
 	// add a listener for mouse clicks on the canvas
-	canvas.addEventListener("mousedown", (event) => on_click(event));
+    canvas.addEventListener("mousedown", (event) => on_click(event));
+    canvas.addEventListener('mousemove', followCursor, false);
 	
 	/*
 	// add a listener for when the client exists the page
@@ -183,7 +186,28 @@
 		ctx.drawImage(images[tileType], x*TILE_SIZE, y*TILE_SIZE, TILE_SIZE, TILE_SIZE);
 		
 	}
-	
+
+    // have the tooltip follow the mouse
+    function followCursor(e) {
+
+        //console.log("Following cursor at X=" + e.offsetX + ", Y=" + e.offsetY);
+
+        tooltip.style.left = e.offsetX + 'px';
+        tooltip.style.top = (e.offsetY - TILE_SIZE) + 'px';
+
+        var row = Math.floor(event.offsetY / TILE_SIZE);
+        var col = Math.floor(event.offsetX / TILE_SIZE);
+
+        if (row >= board.height || row < 0 || col >= board.width || col < 0) {
+            console.log("outside of game boundaries!!");
+            return;
+        } else {
+            var tile = board.getTileXY(col, row);
+            tooltip.innerText = tile.asText() + " " + tile.getHintText();
+        }
+
+    }
+
 	// stuff to do when we click on the board
 	function on_click(event) {
 		

@@ -61,7 +61,7 @@ class Board {
 		
 		var index = this.xy_to_index(x,y);
 		
-		console.log("X=" + x + ", Y=" + y + " gives index=" + index);
+		//console.log("X=" + x + ", Y=" + y + " gives index=" + index);
 		
 		return this.tiles[index];
 		
