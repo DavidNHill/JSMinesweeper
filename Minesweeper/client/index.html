@@ -9,7 +9,6 @@
 <body>
 
     <h1>MineSweeper</h1>
-
     <div style="overflow: auto;">
         <nav id="controls">
             <button onclick="newGame(8, 8, 10)">Beginner</button>
@@ -26,6 +25,16 @@
             </div>
 
             <button onclick="apply()">Custom</button>
+
+ 
+            <div class="checkboxes">
+                <label><input type="checkbox" class="checkbox" id="showhints" /> <span>Show hints</span></label>
+                <label><input type="checkbox" class="checkbox" id="autoplay" /> <span>Auto play</span></label>
+                <label><input type="checkbox" class="checkbox" id="acceptguesses" /> <span>Accept guesses</span></label>
+
+            </div>
+
+
         </nav>
 
         <section id="canvas">
@@ -33,7 +42,7 @@
                 <canvas id="myMinesLeft" width="96" height="40" oncontextmenu="return false"></canvas>
             </div>
             <div class="tooltip" id="board" style="position:relative; width: 512px; height: 512px">
-                <span id ="tooltip" class="tooltiptext" style="pointer-events: none;">Tooltip text</span>
+                <span id="tooltip" class="tooltiptext" style="pointer-events: none;">Tooltip text</span>
                 <canvas id="myCanvas" width="500" height="500" oncontextmenu="return false" style="position: absolute; top: 0; left: 0;"></canvas>
                 <canvas id="myHints" width="500" height="500" oncontextmenu="return false" style="position: absolute; top: 0; left: 0; pointer-events: none;"></canvas>
             </div>

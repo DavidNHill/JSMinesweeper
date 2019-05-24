@@ -89,6 +89,28 @@ button {
   	border-width: 5px;
 }
 
+/* make the tick box bigger*/
+.checkbox {
+    height: 20px;
+    width: 20px;
+}
+
+.checkboxes label {
+    display: block;
+    float: left;
+    padding-right: 10px;
+    white-space: nowrap;
+}
+
+.checkboxes input {
+    vertical-align: middle;
+}
+
+.checkboxes label span {
+    vertical-align: middle;
+}
+
+
 /* Tooltip container */
 .tooltip {
     position: relative;
@@ -99,9 +121,10 @@ button {
 /* Tooltip text */
     .tooltip .tooltiptext {
         visibility: hidden;
-        /* width: 150px; */
-        background-color: transparent; 
-        /* background-color: #ccc; */
+        white-space: nowrap;
+        /* width: 200px; */
+        /* background-color: transparent; */
+        background-color: rgba(204, 204, 204, 0.5);
         color: black;
         text-align: left;
         font-size: 24px;

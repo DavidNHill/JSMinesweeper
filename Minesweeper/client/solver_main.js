@@ -62,13 +62,19 @@ function solver(board) {
 	
 	var result = trivial_actions(board, witnesses);
 
+    if (result.length > 0) {
+        return result;
+    }
     
+    var peStart = Date.now();
  
-
 	var pe = new ProbabilityEngine(witnesses, witnessed, squaresLeft, minesLeft);
 
     pe.process();
 
+    result = pe.getBestCandidates(1);  // get best options within this ratio of the best value
+
+    console.log("probability Engine took " + (Date.now() - peStart) + " milliseconds to complete");
 
 	/*
 	var iterator = new Iterator(6,2);
@@ -123,7 +129,7 @@ function trivial_actions(board, witnesses) {
 				var adjTile = adjTiles[j];
                 if (adjTile.isCovered() && !adjTile.isFlagged()) {
                     adjTile.setProbability(1);  // definite clear
-					result.set(adjTile.index, new Action(adjTile.getX(), adjTile.getY(), 0));
+					result.set(adjTile.index, new Action(adjTile.getX(), adjTile.getY(), 1));
 				}
 			}			
 		}
@@ -134,16 +140,18 @@ function trivial_actions(board, witnesses) {
 				var adjTile = adjTiles[j];
                 if (adjTile.isCovered() && !adjTile.isFlagged()) {
                     adjTile.setProbability(0);  // definite mine
-					result.set(adjTile.index, new Action(adjTile.getX(), adjTile.getY(), 1));
+					result.set(adjTile.index, new Action(adjTile.getX(), adjTile.getY(), 0));
 				}
 			}			
 		}
 		
 	}
 	
-	console.log("Found " + result.size + " moves");
-	
-	return result;
+	console.log("Found " + result.size + " moves trivially");
+
+
+    // send it back as an array
+    return Array.from(result.values());
 	
 }
 
@@ -200,6 +208,7 @@ class Iterator {
 	
 }
 
+// location with probability of being safe
 class Action {
 	constructor(x, y, prob) {
 		this.x = x;
@@ -209,20 +218,37 @@ class Action {
 	
 }
 
+const power10n = [1n, 10n, 100n, 1000n, 10000n, 100000n, 1000000n];
+const power10 = [1, 10, 100, 1000, 10000, 100000, 1000000];
+
+function divideBigInt(numerator, denominator, dp) {
+
+    var work = numerator * power10n[dp] / denominator;
+
+    var result = Number(work) / power10[dp];
+
+    return result;
+}
+
+
 function combination(mines, squares) {
 
-    var top = 1;
-    var bot = 1;
+    var start = Date.now();
+
+    var top = BigInt(1);
+    var bot = BigInt(1);
 
     var range = Math.min(mines, squares - mines);
 
     // calculate the combination. 
     for (var i = 0; i < range; i++) {
-        top = top * (squares - i);
-        bot = bot * (i + 1);
+        top = top * BigInt(squares - i);
+        bot = bot * BigInt(i + 1);
     }
 
     var result = top / bot;
+
+    console.log("Combination duration " + (Date.now() - start) + " milliseconds");
 
     return result;
 

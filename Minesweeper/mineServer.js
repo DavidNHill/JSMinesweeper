@@ -100,7 +100,15 @@ http.createServer(server).listen(5000, function(){
 function heartbeat() {
 	
 	console.log("heartbeat starting...");
-	
+
+    for (var i = 0; i < games.length; i++) {
+
+        var game = games[i];
+
+        console.log("Game " + game.id + " created " + game.created + " last action " + game.lastAction + "Tiles left " + game.tiles_left);
+
+    }
+
 	
 	console.log("...heartbeat ending");
 }
@@ -126,12 +134,14 @@ function handleActions(message) {
 
 
 	var reply = {"header" : {}, "tiles" : []};
+
+    reply.header.id = header.id;   // reply with the same game id
 	
 	var actions = message.actions;
 
 	if (actions == null) {
-		reply.header.status = "in-play";
-		return reply;
+        reply.header.status = "in-play";
+ 		return reply;
 	}
 	
 	var game = getGame(header.id);
@@ -150,8 +160,8 @@ function handleActions(message) {
 			var revealedTiles = game.clickTile(tile);
 
 			// get all the tiles revealed by this click
-			for (var i=0; i < revealedTiles.tiles.length; i++) {
-				reply.tiles.push(revealedTiles.tiles[i]);   // add each of the results of clicking to the reply
+			for (var j=0; j < revealedTiles.tiles.length; j++) {
+				reply.tiles.push(revealedTiles.tiles[j]);   // add each of the results of clicking to the reply
 			}
 
 			reply.header.status = revealedTiles.header.status;
@@ -165,8 +175,8 @@ function handleActions(message) {
 			var revealedTiles = game.chordTile(tile);
 
 			// get all the tiles revealed by this chording
-			for (var i=0; i < revealedTiles.tiles.length; i++) {
-				reply.tiles.push(revealedTiles.tiles[i]);   // add each of the results of chording to the reply
+			for (var j=0; j < revealedTiles.tiles.length; j++) {
+				reply.tiles.push(revealedTiles.tiles[j]);   // add each of the results of chording to the reply
 			}
 			
 			reply.header.status = revealedTiles.header.status;
@@ -180,6 +190,24 @@ function handleActions(message) {
 			break;
 		}
 	}
+
+    // if we have lost then return the location of all unflagged mines
+    if (reply.header.status == "lost") {
+
+        for (var i = 0; i < game.tiles.length; i++) {
+
+            var tile = game.tiles[i];
+
+            if (!tile.isFlagged() && tile.isBomb()) {
+                reply.tiles.push({ "action": 3, "index": tile.getIndex() });    // mine
+            }
+
+
+        }
+
+
+    }
+
 
 	return reply;
 }
@@ -217,7 +245,10 @@ class Game {
 	constructor(id, width, height, num_bombs, index) {
 		
 		console.log("Creating a new game with id=" + id + " ...");
-		
+
+        this.created = new Date();
+        this.lastAction = this.created;
+
 		this.id = id;
 		this.width = width;
 		this.height = height;
@@ -264,13 +295,14 @@ class Game {
 		if (tile.isBomb()) {
 			
 			reply.header.status = "lost";
-			reply.tiles.push({"action" : 3, "index" : tile.getIndex()});    // mine
+			//reply.tiles.push({"action" : 3, "index" : tile.getIndex()});    // mine
 
-		} else {
-			var tilesToReveal = [];
-			tilesToReveal.push(tile);
-			return this.reveal(tilesToReveal);
-
+        } else {
+            if (tile.isCovered()) {    // make sure the tile is clickable
+                var tilesToReveal = [];
+                tilesToReveal.push(tile);
+                return this.reveal(tilesToReveal);
+            }
 		}
 		
 		return reply;
@@ -304,7 +336,7 @@ class Game {
 		for (var adjTile of this.getAdjacent(tile)) {
 			if (adjTile.isBomb() && !adjTile.isFlagged()) {
 				bombCount++;
-				reply.tiles.push({"action" : 3, "index" : adjTile.getIndex()});    // mine
+				//reply.tiles.push({"action" : 3, "index" : adjTile.getIndex()});    // mine
 			}
 		}
 		
