@@ -132,7 +132,6 @@ function handleActions(message) {
 		return;
 	}
 
-
 	var reply = {"header" : {}, "tiles" : []};
 
     reply.header.id = header.id;   // reply with the same game id
@@ -201,13 +200,8 @@ function handleActions(message) {
             if (!tile.isFlagged() && tile.isBomb()) {
                 reply.tiles.push({ "action": 3, "index": tile.getIndex() });    // mine
             }
-
-
         }
-
-
     }
-
 
 	return reply;
 }

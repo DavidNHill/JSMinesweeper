@@ -9,9 +9,10 @@ class ProbabilityEngine {
 
        	this.SMALL_COMBINATIONS = [ [ 1 ], [ 1, 1 ], [ 1, 2, 1 ], [ 1, 3, 3, 1 ], [ 1, 4, 6, 4, 1 ], [ 1, 5, 10, 10, 5, 1 ], [ 1, 6, 15, 20, 15, 6, 1 ], [ 1, 7, 21, 35, 35, 21, 7, 1 ], [ 1, 8, 28, 56, 70, 56, 28, 8, 1 ] ];
 
-
-		this.witnesses = allWitnesses;
+		//this.witnesses = allWitnesses;
 		this.witnessed = allWitnessed;
+
+        this.prunedWitnesses = [];  // a subset of allWitnesses with equivalent witnesses removed
 
         // constraints in the game
         this.minesLeft = minesLeft;
@@ -23,39 +24,68 @@ class ProbabilityEngine {
         this.boxWitnesses = [];
         this.mask = [];
 
+        // list of locations which are potentially dead
+	    this.deadCandidates = [];
+
         this.boxProb = [];  // the probabilities end up here
 		this.workingProbs = []; 
         this.heldProbs = [];
         this.bestProbability = 0;  // best probability of being safe
 
 
-        // generate a BoxWitness for each witness tile
-        for (var i = 0; i < this.witnesses.length; i++) {
-            var boxWit = this.witnesses[i];
-            this.boxWitnesses.push(new BoxWitness(boxWit));
+        // generate a BoxWitness for each witness tile and also create a list of pruned witnesses for the brute force search
+        var pruned = 0;
+        for (var i = 0; i < allWitnesses.length; i++) {
+            var wit = allWitnesses[i];
+
+            var boxWit = new BoxWitness(wit);
+
+            // if the witness is a duplicate then don't store it
+            var duplicate = false;
+            for (var j = 0; j < this.boxWitnesses.length; j++) {
+
+                var w = this.boxWitnesses[j];
+
+                if (w.equivalent(boxWit)) {
+                    //if (boardState.getWitnessValue(w) - boardState.countAdjacentConfirmedFlags(w) != boardState.getWitnessValue(wit) - boardState.countAdjacentConfirmedFlags(wit)) {
+                    //    boardState.display(w.display() + " and " + wit.display() + " share unrevealed squares but have different mine totals!");
+                    //    validWeb = false;
+                    //}
+                    duplicate = true;
+                    break;
+                }
+            }
+            if (!duplicate) {
+                this.prunedWitnesses.push(wit);
+             } else {
+                pruned++;
+            }
+            this.boxWitnesses.push(boxWit);  // a witnesses are needed for the probability engine
         }
+        console.log("Pruned " + pruned + " witnesses as duplicates");
+        console.log("There are " + this.boxWitnesses.length + " Box witnesses");
 
 		// allocate each of the witnessed squares to a box
 		var uid = 0;
 		for (var i=0; i < this.witnessed.length; i++) {
 			
-			var boxWit = this.witnessed[i];
+			var tile = this.witnessed[i];
 			
 			var count = 0;
 			
 			// count how many adjacent witnesses the tile has
-			for (var j=0; j < this.witnesses.length; j++) {
-				if (boxWit.isAdjacent(this.witnesses[j])) {
+			for (var j=0; j < allWitnesses.length; j++) {
+				if (tile.isAdjacent(allWitnesses[j])) {
 					count++;
 				}
 			}
 			
-			var found = false;
-			
+            // see if the witnessed tile fits any existing boxes
+            var found = false;
 			for (var j=0; j < this.boxes.length; j++) {
 				
-				if (this.boxes[j].fits(boxWit, count)) {
-					this.boxes[j].add(boxWit);
+				if (this.boxes[j].fits(tile, count)) {
+					this.boxes[j].add(tile);
 					found = true;
 					break;
 				}
@@ -64,7 +94,7 @@ class ProbabilityEngine {
 			
 			// if not found create a new box and store it
 			if (!found) {
-                this.boxes.push(new Box(this.boxWitnesses, boxWit, uid++));
+                this.boxes.push(new Box(this.boxWitnesses, tile, uid++));
 			}
 
         }
@@ -92,7 +122,10 @@ class ProbabilityEngine {
         for (var i = 0; i < this.boxes.length; i++) {
             this.mask.push(false);
         }
- 
+
+        // look for places which could be dead
+        this.getCandidateDeadLocations();
+
 		// create an initial solution of no mines anywhere 
 		var held = new ProbabilityLine(this.boxes.length);
 		held.solutionCount = BigInt(1);
@@ -105,7 +138,7 @@ class ProbabilityEngine {
 
         while (nextWitness != null) {
 
-            console.log("Probability engine processing witness " + nextWitness.boxWitness.tile.asText());
+            //console.log("Probability engine processing witness " + nextWitness.boxWitness.tile.asText());
 
             // mark the new boxes as processed - which they will be soon
             for (var i = 0; i < nextWitness.newBoxes.length; i++) {
@@ -115,7 +148,7 @@ class ProbabilityEngine {
             this.workingProbs = this.mergeProbabilities(nextWitness);
 
             //if (this.workingProbs.length > 10) {
-                console.log("Items in the working array = " + this.workingProbs.length);
+            //    console.log("Items in the working array = " + this.workingProbs.length);
             //}
 
             nextWitness = this.findNextWitness(nextWitness);
@@ -274,9 +307,11 @@ class ProbabilityEngine {
     // this combines newly generated probabilities with ones we have already stored from other independent sets of witnesses
     storeProbabilities() {
 
-        console.log("At store probabilities");
+        //console.log("At store probabilities");
 
         var result = [];
+
+        this.checkCandidateDeadLocations();
 
         if (this.workingProbs.length == 0) {
         	console.log("working probabilites list is empty!!");
@@ -360,7 +395,7 @@ class ProbabilityEngine {
         this.heldProbs.push(npl);
 
         //if (this.heldProbs.length > 10) {
-            console.log("Items in the held array = " + this.heldProbs.length);
+        //    console.log("Items in the held array = " + this.heldProbs.length);
         //}
 
 		/*
@@ -529,6 +564,235 @@ class ProbabilityEngine {
 
         // return the next witness to process
         return nw;
+
+    }
+
+
+    // check the candidate dead locations with the information we have
+    checkCandidateDeadLocations() {
+
+        var completeScan;
+        if (this.squaresLeft == 0) {
+            completeScan = true;   // this indicates that every box has been considered in one sweep (only 1 independent edge)
+            for (var i = 0; i < this.mask.length; i++) {
+                if (!this.mask[i]) {
+                    completeScan = false;
+                    break;
+                }
+            }
+            if (completeScan) {
+                console.log("This is a complete scan");
+            } else {
+                console.log("This is not a complete scan");
+            }
+        } else {
+            completeScan = false;
+            console.log("This is not a complete scan because there are squares off the edge");
+        }
+
+
+        for (var i = 0; i < this.deadCandidates.length; i++) {
+
+            var dc = this.deadCandidates[i];
+
+            if (dc.isAlive) {  // if this location isn't dead then no need to check any more
+                continue;
+            }
+
+            // only do the check if all the boxes have been analysed in this probability iteration
+            var boxesInScope = 0;
+            for (var j = 0; j < dc.goodBoxes.length; j++) {
+                var b = dc.goodBoxes[j];
+                if (this.mask[b.uid]) {
+                    boxesInScope++;
+                }
+            }
+            for (var j = 0; j < dc.badBoxes.length; j++) {
+                var b = dc.badBoxes[j];
+                if (this.mask[b.uid]) {
+                    boxesInScope++;
+                }
+            }
+            if (boxesInScope == 0) {
+                continue;
+            } else if (boxesInScope != dc.goodBoxes.length + dc.badBoxes.length) {
+                console.log("Location " + dc.candidate.asText() + " has some boxes in scope and some out of scope so assumed alive");
+                dc.isAlive = true;
+                continue;
+            }
+
+
+            var okay = true;
+            var mineCount = 0;
+            line: for (var j = 0; j < this.workingProbs.length; j++) {
+
+                var pl = this.workingProbs[j];
+
+                if (completeScan && pl.mineCount != this.minesLeft) {
+                    continue;
+                }
+
+                // ignore probability lines where the candidate is a mine
+                if (pl.mineBoxCount[dc.myBox.uid] == dc.myBox.tiles.length) {
+                    mineCount++;
+                    continue line;
+                }
+
+                // all the bad boxes must be zero
+                for (var k = 0; k < dc.badBoxes.length; k++) {
+
+                    var b = dc.badBoxes[k];
+
+                    if (pl.mineBoxCount[b.uid] != 0) {
+                        console.log("Location " + dc.candidate.asText() + " is not dead because a bad box is non-zero");
+                        okay = false;
+                        break line;
+                    }
+                }
+
+                var tally = BigInt(0);
+                // the number of mines in the good boxes must always be the same
+                for (var k = 0; k < dc.goodBoxes.length; k++) {
+                    var b = dc.goodBoxes[k];
+                    tally = tally + pl.mineBoxCount[b.uid];
+                }
+                //boardState.display("Location " + dc.candidate.display() + " has mine tally " + tally);
+                if (dc.firstCheck) {
+                    dc.total = tally;
+                    dc.firstCheck = false;
+                } else {
+                    if (dc.total != tally) {
+                        console.log("Location " + dc.candidate.asText() + " is not dead because the sum of mines in good boxes is not constant. Was "
+                            + dc.total + " now " + tally + ". Mines in probability line " + pl.mineCount);
+                        okay = false;
+                        break;
+                    }
+                }
+            }
+
+            // if a check failed or every this tile is a mine for every solution then it is alive
+            if (!okay || mineCount == this.workingProbs.length) {
+                dc.isAlive = true;
+            }
+
+        }
+
+    }
+
+
+    // find a list of locations which could be dead
+    getCandidateDeadLocations() {
+
+        // for each square on the edge
+        for (var i = 0; i < this.witnessed.length; i++) {
+
+            var tile = this.witnessed[i];
+
+            var adjBoxes = this.getAdjacentBoxes(tile);
+
+            if (adjBoxes == null) {  // this happens when the square isn't fully surrounded by boxes
+                continue;
+            }
+
+            var dc = new DeadCandidate();
+            dc.candidate = tile;
+            dc.myBox = this.getBox(tile);
+
+            for (var j = 0; j < adjBoxes.length; j++) {
+
+                var box = adjBoxes[j];
+
+                var good = true;
+                for (var k = 0; k < box.tiles.length; k++) {
+
+                    var square = box.tiles[k];
+
+                    if (!square.isAdjacent(tile) && !(square.index == tile.index)) {
+                        good = false;
+                        break;
+                    }
+                }
+                if (good) {
+                    dc.goodBoxes.push(box);
+                } else {
+                    dc.badBoxes.push(box);
+                }
+
+            }
+
+            this.deadCandidates.push(dc);
+
+        }
+
+        for (var i = 0; i < this.deadCandidates.length; i++) {
+            var dc = this.deadCandidates[i];
+            console.log(dc.candidate.asText() + " is candidate dead with " + dc.goodBoxes.length + " good boxes and " + dc.badBoxes.length + " bad boxes");
+        }
+
+    }
+
+    // get the box containing this tile
+    getBox(tile) {
+
+        for (var i = 0; i < this.boxes.length; i++) {
+            if (this.boxes[i].contains(tile)) {
+                return this.boxes[i];
+            }
+        }
+
+        return null;
+    }
+
+    // return all the boxes adjacent to this tile
+    getAdjacentBoxes(loc) {
+
+        var result = [];
+
+        var adjLocs = board.getAdjacent(loc);
+
+         // get each adjacent location
+        for (var i = 0; i < adjLocs.length; i++) {
+
+            var adjLoc = adjLocs[i];
+
+            // we only want adjacent tile which are un-revealed
+            if (!adjLoc.isCovered() || adjLoc.isFlagged()) {
+                continue;
+            }
+
+            // find the box it is in
+            var boxFound = false;
+            for (var j = 0; j < this.boxes.length; j++) {
+
+                var box = this.boxes[j];
+
+                if (box.contains(adjLoc)) {
+                    boxFound = true;
+                    // is the box already included?
+                    var found = false;
+                    for (var k = 0; k < result.length; k++) {
+
+                        if (box.uid == result[k].uid) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    // if not add it
+                    if (!found) {
+                        result.push(box);
+                        //sizeOfBoxes = box.getSquares().size();
+                    }
+                }
+            }
+
+            // if a box can't be found for the adjacent square then the location can't be dead
+            if (!boxFound) {
+                return null;
+            }
+
+        }
+
+        return result;
 
     }
 
@@ -807,47 +1071,80 @@ class NextWitness {
 class BoxWitness {
 	constructor(tile) {
 
+        this.tile = tile;
+
+        this.boxes = [];  // adjacent boxes 
+        this.tiles = [];  // adjacent tiles
+
         this.processed = false;
         this.minesToFind = tile.getValue();   
 
         var adjTile = board.getAdjacent(tile);
 
+        // determine how many mines are left to find and store adjacent tiles
         for (var i = 0; i < adjTile.length; i++) {
             if (adjTile[i].isFlagged()) {
                 this.minesToFind--;
+            } else if (adjTile[i].isCovered()) {
+                this.tiles.push(adjTile[i]);
             }
         }		
+ 	}
 
-		this.tile = tile;
-		
-		this.boxes = [];
+    // if two witnesses have the same Squares around them they are equivalent
+    equivalent(boxWitness) {
 
-        /*
-		for (var i=0; i < boxes.length; i++) {
-			
-			var box = boxes[i];
-			
-			for (var j=0; j < box.boxWitnesses.length; j++) {
-				if (box.boxWitnesses[j].x == this.tile.x && box.boxWitnesses[j].y == this.tile.y) {
-					this.boxes.push(box);
-					break;
-				}
-			}
-			
-		}
-		
-		console.log("Witness " + this.tile.asText() + " has " + this.boxes.length + " boxes adjacent to it");
-		*/
-		
-	}
+        // if the number of squares is different then they can't be equivalent
+        if (this.tiles.length != boxWitness.tiles.length) {
+            return false;
+        }
+
+        // if the locations are too far apart they can't share the same squares
+        if (Math.abs(boxWitness.tile.x - this.tile.x) > 2 || Math.abs(boxWitness.y - this.tile.y) > 2) {
+            return false;
+        }
+
+        for (var i = 0; i < this.tiles.length; i++) {
+
+            var l1 = this.tiles[i];
+
+            var found = false;
+            for (var j = 0; i < this.tiles.length; j++) {
+                if (this.tiles[j].index == l1.index) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 
     // add an adjacdent box 
     addBox(box) {
         this.boxes.push(box);
     }
-	
-	
-	
+}
+
+// information about the boxes surrounding a dead candidate
+class DeadCandidate {
+
+    constructor() {
+
+        this.candidate;
+        this.myBox;
+        this.isAlive = false;
+        this.goodBoxes = [];
+        this.badBoxes = [];
+
+        this.firstCheck = true;
+        this.total = BigInt(0);
+
+    }
+
 }
 
 // a box is a group of tiles which share the same witnesses
@@ -917,5 +1214,18 @@ class Box {
 	add(tile) {
 		this.tiles.push(tile);
 	}
-	
+
+    contains(tile) {
+
+        // return true if the given tile is in this box
+        for (var i = 0; i < this.tiles.length; i++) {
+            if (this.tiles[i].index == tile.index) {
+                return true;
+            }
+        }
+
+        return false;
+
+    }
+
 }

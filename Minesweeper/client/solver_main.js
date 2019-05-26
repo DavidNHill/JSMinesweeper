@@ -74,6 +74,26 @@ function solver(board) {
 
     result = pe.getBestCandidates(1);  // get best options within this ratio of the best value
 
+    for (var i = 0; i < pe.deadCandidates.length; i++) {
+        if (!pe.deadCandidates[i].isAlive) {
+            var tile = pe.deadCandidates[i].candidate;
+
+            console.log("Tile " + tile.asText() + " is dead with value " + pe.deadCandidates[i].total);
+            var found = false;
+            for (var j = 0; j < result.length; j++) {
+                if (result[j].x == tile.x && result[j].y == tile.y) {
+                    result[j].dead = true;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                console.log("Need to create a dead square to place in the actions");
+            }
+
+        }
+    }
+
     console.log("probability Engine took " + (Date.now() - peStart) + " milliseconds to complete");
 
 	/*
@@ -213,7 +233,8 @@ class Action {
 	constructor(x, y, prob) {
 		this.x = x;
 		this.y = y;
-		this.prob = prob;
+        this.prob = prob;
+        this.dead = false;
 	}
 	
 }

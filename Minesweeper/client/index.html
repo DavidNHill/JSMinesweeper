@@ -59,6 +59,9 @@
     <script type="text/javascript">
         function apply() {
 
+            const MAX_WIDTH = 100;
+            const MAX_HEIGHT = 100;
+
             var widthX = document.getElementById("width").value;
             var heightX = document.getElementById("height").value;
             var minesX = document.getElementById("mines").value;
@@ -82,9 +85,9 @@
                 width = 5;
             }
 
-            if (width > 50) {
-                document.getElementById("width").value = 50
-                width = 50;
+            if (width > MAX_WIDTH) {
+                document.getElementById("width").value = MAX_WIDTH;
+                width = MAX_WIDTH;
             }
 
             if (height < 5) {
@@ -92,13 +95,13 @@
                 height = 5;
             }
 
-            if (height > 50) {
-                document.getElementById("height").value = 50
-                height = 50;
+            if (height > MAX_HEIGHT) {
+                document.getElementById("height").value = MAX_HEIGHT;
+                height = MAX_HEIGHT;
             }
 
             if (mines < 1) {
-                document.getElementById("mines").value = 1
+                document.getElementById("mines").value = 1;
                 mines = 1;
             }
 

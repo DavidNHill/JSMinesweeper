@@ -74,13 +74,16 @@ function renderHints(hints) {
 
         var hint = hints[i];
 
-        if (hint.prob == 0) {
+        if (hint.prob == 0) {   // mine
             ctxHints.fillStyle = "#FF0000";
-        } else if (hint.prob == 1) {
+        } else if (hint.prob == 1) {  // safe
             ctxHints.fillStyle = "#00FF00";
-        } else {
+        } else if (hint.dead) {  // uncertain but dead
+            ctxHints.fillStyle = "black";
+        } else {  //uncertain
             ctxHints.fillStyle = "orange";
         }
+
         ctxHints.globalAlpha = 0.5;
 
         //console.log("Hint X=" + hint.x + " Y=" + hint.y);
