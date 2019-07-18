@@ -7,7 +7,7 @@
 function solver(board) {
 	
 	// find all the tiles which are revealed and have un-revealed / un-flagged adjacent squares
-	
+    var allCoveredTiles = [];
 	var witnesses = [];
 	var witnessed = [];
 
@@ -27,6 +27,7 @@ function solver(board) {
             continue;  // if the tile is a flag then nothing to consider
         } else if (tile.isCovered()) {
             squaresLeft++;
+            allCoveredTiles.push(tile);
 			continue;  // if the tile hasn't been revealed yet then nothing to consider
 		}
 		
@@ -95,6 +96,24 @@ function solver(board) {
     }
 
     console.log("probability Engine took " + (Date.now() - peStart) + " milliseconds to complete");
+
+    if (pe.finalSolutionsCount < 100n) {
+        pe.generateIndependentWitnesses();
+
+        var Iterator = new WitnessWebIterator(pe, allCoveredTiles, -1);
+
+        var sample = Iterator.getSample();
+        while (sample != null) {
+
+            console.log("getting Sample");
+
+            sample = Iterator.getSample();
+
+        }
+    }
+ 
+
+
 
 	/*
 	var iterator = new Iterator(6,2);
@@ -235,7 +254,7 @@ class Action {
 		this.y = y;
         this.prob = prob;
         this.dead = false;
-	}
+ 	}
 	
 }
 

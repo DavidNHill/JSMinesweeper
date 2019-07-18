@@ -44,7 +44,17 @@ class Tile {
 		}
 		
 	}
-	
+
+    isEqual(tile) {
+
+        if (this.x == tile.x && this.y == tile.y) {
+            return true;
+        } else {
+            return false;
+        }
+
+    }
+
 	asText() {
 		return "(" + this.x + "," + this.y + ")";
 	}

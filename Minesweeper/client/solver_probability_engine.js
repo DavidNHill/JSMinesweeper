@@ -16,8 +16,9 @@ class ProbabilityEngine {
 
         // constraints in the game
         this.minesLeft = minesLeft;
-        this.squaresLeft = squaresLeft - allWitnessed.length;   // squares left off the edge and unrevealed
-        this.minTotalMines = minesLeft - this.squaresLeft;   // //we can't use so few mines that we can't fit the remainder elsewhere on the board
+        this.tilesLeft = squaresLeft;
+        this.TilesOffEdge = squaresLeft - allWitnessed.length;   // squares left off the edge and unrevealed
+        this.minTotalMines = minesLeft - this.TilesOffEdge;   // //we can't use so few mines that we can't fit the remainder elsewhere on the board
         this.maxTotalMines = minesLeft;
 
         this.boxes = [];
@@ -31,6 +32,13 @@ class ProbabilityEngine {
 		this.workingProbs = []; 
         this.heldProbs = [];
         this.bestProbability = 0;  // best probability of being safe
+        this.finalSolutionsCount = 0n;
+
+        // details about independent witnesses
+        this.independentWitness = [];
+        this.independentMines = 0;
+        this.independentIterations = 1n;
+        this.remainingSquares = 0;
 
 
         // generate a BoxWitness for each witness tile and also create a list of pruned witnesses for the brute force search
@@ -56,11 +64,11 @@ class ProbabilityEngine {
                 }
             }
             if (!duplicate) {
-                this.prunedWitnesses.push(wit);
+                this.prunedWitnesses.push(boxWit);
              } else {
                 pruned++;
             }
-            this.boxWitnesses.push(boxWit);  // a witnesses are needed for the probability engine
+            this.boxWitnesses.push(boxWit);  // all witnesses are needed for the probability engine
         }
         console.log("Pruned " + pruned + " witnesses as duplicates");
         console.log("There are " + this.boxWitnesses.length + " Box witnesses");
@@ -572,7 +580,7 @@ class ProbabilityEngine {
     checkCandidateDeadLocations() {
 
         var completeScan;
-        if (this.squaresLeft == 0) {
+        if (this.TilesOffEdge == 0) {
             completeScan = true;   // this indicates that every box has been considered in one sweep (only 1 independent edge)
             for (var i = 0; i < this.mask.length; i++) {
                 if (!this.mask[i]) {
@@ -796,6 +804,42 @@ class ProbabilityEngine {
 
     }
 
+    // determine a set of independent witnesses which can be used to brute force the solution space more efficiently then a basic 'pick r from n' 
+    generateIndependentWitnesses() {
+
+        this.remainingSquares = this.witnessed.length;
+
+        // find a set of witnesses which don't share any squares (there can be many of these, but we just want one to use with the brute force iterator)
+        for (var i = 0; i < this.prunedWitnesses.length; i++) {
+
+            var w = this.prunedWitnesses[i];
+
+            //console.log("Checking witness " + w.tile.asText() + " for independence");
+
+            var okay = true;
+            for (var j = 0; j < this.independentWitness.length; j++) {
+
+                var iw = this.independentWitness[j];
+
+                if (w.overlap(iw)) {
+                    okay = false;
+                    //console.log("false");
+                    break;
+                }
+            }
+            if (okay) {
+                //console.log("true");
+                this.remainingSquares = this.remainingSquares - w.tiles.length;
+                this.independentIterations = this.independentIterations * combination(w.minesToFind, w.tiles.length);
+                this.independentMines = this.independentMines + w.minesToFind;
+                this.independentWitness.push(w);
+            }
+        }
+
+        console.log("Calculated " + this.independentWitness.length + " independent witnesses");
+
+    }
+
     // here we expand the localised solution to one across the whole board and
     // sum them together to create a definitive probability for each box
     calculateBoxProbabilities() {
@@ -828,7 +872,7 @@ class ProbabilityEngine {
                 //}
 
                 //console.log("Mines left " + this.minesLeft + " mines on PL " + pl.mineCount + " squares left = " + this.squaresLeft);
-                var mult = combination(this.minesLeft - pl.mineCount, this.squaresLeft);  //# of ways the rest of the board can be formed
+                var mult = combination(this.minesLeft - pl.mineCount, this.TilesOffEdge);  //# of ways the rest of the board can be formed
 
                 outsideTally = outsideTally + mult * BigInt(this.minesLeft - pl.mineCount) * (pl.solutionCount);
 
@@ -919,14 +963,14 @@ class ProbabilityEngine {
         var offEdgeProbability;
 
         // avoid divide by zero
-        if (this.squaresLeft != 0 && totalTally != BigInt(0)) {
+        if (this.TilesOffEdge != 0 && totalTally != BigInt(0)) {
             //offEdgeProbability = 1 - outsideTally / (totalTally * BigInt(this.squaresLeft));
-            offEdgeProbability = 1 - divideBigInt(outsideTally, totalTally * BigInt(this.squaresLeft), 6);
+            offEdgeProbability = 1 - divideBigInt(outsideTally, totalTally * BigInt(this.TilesOffEdge), 6);
         } else {
             offEdgeProbability = 0;
         }
 
-        var finalSolutionsCount = totalTally;
+        this.finalSolutionsCount = totalTally;
 
         // see if we can find a guess which is better than outside the boxes
         var hwm = offEdgeProbability;
@@ -973,7 +1017,7 @@ class ProbabilityEngine {
 
         console.log("Off edge probability is " + offEdgeProbability);
         console.log("Best probability is " + this.bestProbability);
-        console.log("Game has  " + finalSolutionsCount + " candidate solutions" );
+        console.log("Game has  " + this.finalSolutionsCount + " candidate solutions" );
 
 
         //solver.display("probability off web is " + outsideProb);
@@ -1091,6 +1135,33 @@ class BoxWitness {
         }		
  	}
 
+    overlap(boxWitness) {
+
+        // if the locations are too far apart they can't share any of the same squares
+        if (Math.abs(boxWitness.tile.x - this.tile.x) > 2 || Math.abs(boxWitness.tile.y - this.tile.y) > 2) {
+            return false;
+        }
+
+        top: for (var i = 0; i < boxWitness.tiles.length; i++) {
+
+            var tile1 = boxWitness.tiles[i];
+
+            for (var j = 0; j < this.tiles.length; j++) {
+
+                var tile2 = this.tiles[j];
+
+                if (tile1.isEqual(tile2)) {  // if they share a tile then return true
+                    return true;
+                }
+            }
+        }
+
+        // no shared tile found
+        return false;
+
+    }
+
+
     // if two witnesses have the same Squares around them they are equivalent
     equivalent(boxWitness) {
 
@@ -1109,8 +1180,8 @@ class BoxWitness {
             var l1 = this.tiles[i];
 
             var found = false;
-            for (var j = 0; i < this.tiles.length; j++) {
-                if (this.tiles[j].index == l1.index) {
+            for (var j = 0; j < boxWitness.tiles.length; j++) {
+                if (boxWitness.tiles[j].index == l1.index) {
                     found = true;
                     break;
                 }
