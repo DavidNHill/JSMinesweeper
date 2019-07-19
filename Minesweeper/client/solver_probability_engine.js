@@ -35,7 +35,8 @@ class ProbabilityEngine {
         this.finalSolutionsCount = 0n;
 
         // details about independent witnesses
-        this.independentWitness = [];
+        this.independentWitnesses = [];
+        this.dependentWitnesses = [];
         this.independentMines = 0;
         this.independentIterations = 1n;
         this.remainingSquares = 0;
@@ -817,9 +818,9 @@ class ProbabilityEngine {
             //console.log("Checking witness " + w.tile.asText() + " for independence");
 
             var okay = true;
-            for (var j = 0; j < this.independentWitness.length; j++) {
+            for (var j = 0; j < this.independentWitnesses.length; j++) {
 
-                var iw = this.independentWitness[j];
+                var iw = this.independentWitnesses[j];
 
                 if (w.overlap(iw)) {
                     okay = false;
@@ -827,16 +828,20 @@ class ProbabilityEngine {
                     break;
                 }
             }
+
+            // split the witnesses into dependent ones and independent ones 
             if (okay) {
                 //console.log("true");
                 this.remainingSquares = this.remainingSquares - w.tiles.length;
                 this.independentIterations = this.independentIterations * combination(w.minesToFind, w.tiles.length);
                 this.independentMines = this.independentMines + w.minesToFind;
-                this.independentWitness.push(w);
+                this.independentWitnesses.push(w);  
+            } else {
+                this.dependentWitnesses.push(w);
             }
         }
 
-        console.log("Calculated " + this.independentWitness.length + " independent witnesses");
+        console.log("Calculated " + this.independentWitnesses.length + " independent witnesses");
 
     }
 

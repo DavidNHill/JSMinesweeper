@@ -91,7 +91,22 @@ class Board {
 		return (flagCount == tile.getValue()) && (coveredCount > 0);
 		
 	}
-	
+
+    // return number of flags adjacent to this tile
+    adjacentFlagsCount(tile) {
+
+        var flagCount = 0;
+        for (var adjTile of this.getAdjacent(tile)) {
+            if (adjTile.isFlagged()) {
+                flagCount++;
+            }
+        }
+
+        return flagCount;
+
+    }
+
+
 	// header for messages sent to the server
 	getMessageHeader() {
 		return {"id" : this.id, "width" : this.width, "height" : this.height, "mines" : this.num_bombs, "gametype" : 2};

@@ -100,16 +100,14 @@ function solver(board) {
     if (pe.finalSolutionsCount < 100n) {
         pe.generateIndependentWitnesses();
 
-        var Iterator = new WitnessWebIterator(pe, allCoveredTiles, -1);
+        var iterator = new WitnessWebIterator(pe, allCoveredTiles, -1);
 
-        var sample = Iterator.getSample();
-        while (sample != null) {
+        var bruteForce = new Cruncher(board, iterator);
 
-            console.log("getting Sample");
+        var solutionCount = bruteForce.crunch();
 
-            sample = Iterator.getSample();
+        console.log("Solutions found by brute force " + solutionCount);
 
-        }
     }
  
 

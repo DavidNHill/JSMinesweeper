@@ -1,5 +1,133 @@
 "use strict";
 
+/**
+ *  Performs a brute force search on the provided squares using the iterator 
+ * 
+ */
+class Cruncher {
+
+    constructor(board, iterator) {
+
+        this.board = board;
+        this.iterator = iterator;   // the iterator
+        this.tiles = iterator.tiles;  // the tiles the iterator is iterating over
+        this.witnesses = iterator.probabilityEngine.dependentWitnesses;  // the dependent witnesses (class BoxWitness) which need to be checked to see if they are satisfied
+
+        this.allSolutions = [];
+
+        // determine how many flags are currently next to each tile
+        this.currentFlagsTiles = [];
+        for (var i = 0; i < this.tiles.length; i++) {
+            this.currentFlagsTiles.push(board.adjacentFlagsCount(this.tiles[i]));
+        }
+
+        // determine how many flags are currently next to each witness
+        this.currentFlagsWitnesses = [];
+        for (var i = 0; i < this.witnesses.length; i++) {
+            this.currentFlagsWitnesses.push(board.adjacentFlagsCount(this.witnesses[i].tile));
+        }
+
+    }
+
+
+    
+    crunch() {
+
+        var sample = this.iterator.getSample();
+
+        var candidates = 0;  // number of samples which satisfy the current board state
+
+        while (sample != null) {
+
+            if (this.checkSample(sample)) {
+                candidates++;
+            }
+
+            sample = this.iterator.getSample();
+
+        }
+
+        return candidates;
+
+    }
+
+    // this checks whether the positions of the mines are a valid candidate solution
+    checkSample(sample) {
+
+        // get the tiles which are mines in this sample
+        var mine = [];
+        for (var i = 0; i < sample.length; i++) {
+            mine.push(this.tiles[sample[i]]);
+        }
+
+        for (var i = 0; i < this.witnesses.length; i++) {
+
+            var flags1 = this.currentFlagsWitnesses[i];
+            var flags2 = 0;
+
+            // count how many candidate mines are next to this witness
+            for (var j = 0; j < mine.length; j++) {
+                if (mine[j].isAdjacent(this.witnesses[i].tile)) {
+                    flags2++;
+                }
+            }
+
+            var flags3 = this.witnesses[i].tile.getValue();  // number of flags indicated on the tile
+
+            if (flags3 != flags1 + flags2) {
+                return false;
+            }
+
+
+
+        }
+
+        //if it is a good solution then calculate the distribution if required
+
+        var solution = new Array(this.tiles.length);
+
+        for (var i = 0; i < this.tiles.length; i++) {
+
+            var isMine = false;
+            for (var j = 0; j < sample.length; j++) {
+                if (i == sample[j]) {
+                    isMine = true;
+                    break;
+                }
+            }
+
+            // if we are a mine then it doesn't matter how many mines surround us
+            if (!isMine) {
+                var flags2 = this.currentFlagsTiles[i];
+                // count how many candidate mines are next to this square
+                for (var j = 0; j < mine.length; j++) {
+                    if (mine[j].isAdjacent(this.tiles[i])) {
+                        flags2++;
+                    }
+                }
+                solution[i] = flags2;
+            } else {
+                solution[i] = BOMB;
+            }
+
+        }
+ 
+        this.allSolutions.push(solution);
+
+        var output = "";
+        for (var i = 0; i < mine.length; i++) {
+            output = output + mine[i].asText();
+        }
+        console.log(output);
+
+        return true;
+
+    }
+    
+}
+
+
+
 class WitnessWebIterator {
 
     // create an iterator which is like a set of rotating wheels
@@ -11,7 +139,7 @@ class WitnessWebIterator {
 
         this.sample = [];  // int array
 
-        this.location = [];  // list of locations
+        this.tiles = [];  // list of tiles being iterated over
 
         this.cogs = []; // array of cogs
         this.squareOffset = [];  // int array
@@ -39,7 +167,7 @@ class WitnessWebIterator {
  
         var loc = [];  // array of locations
 
-        var indWitnesses = this.probabilityEngine.independentWitness;
+        var indWitnesses = this.probabilityEngine.independentWitnesses;
 
         var cogi = 0;
         var indSquares = 0;
@@ -86,7 +214,7 @@ class WitnessWebIterator {
             }
         }
 
-        this.location = loc;
+        this.tiles = loc;
 
         console.log("Mines left " + this.probabilityEngine.minesLeft);
         console.log("Independent Mines " + indMines);
@@ -130,13 +258,7 @@ class WitnessWebIterator {
             }
         }
 
-
-
-
-        //for (var i=0; i < this.sample.length; i++) {
-        //   Console.log(sample[i] + " ");
-        //}
-
+ 
     }
 
 
@@ -174,23 +296,12 @@ class WitnessWebIterator {
             index++;
         }
 
-        /*
-        for (int i: sample) {
-            System.out.print(i + " ");
-        }
-        System.out.println();
-        */
-
-        console.log(...this.sample);
+         //console.log(...this.sample);
 
         this.iterationsDone++;
 
         return this.sample;
-
-        //return Arrays.copyOf(sample, sample.length);
-
-        //}
-
+ 
     }
 
     getLocations() {
@@ -242,7 +353,7 @@ class SequentialIterator {
         // by 1 again
         this.sample[this.index]--;
 
-        console.log("Sequential Iterator has " + this.numberBalls + " mines and " + this.numberHoles + " squares");
+        //console.log("Sequential Iterator has " + this.numberBalls + " mines and " + this.numberHoles + " squares");
 
     }
 
