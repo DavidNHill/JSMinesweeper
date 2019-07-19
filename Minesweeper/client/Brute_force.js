@@ -13,7 +13,7 @@ class Cruncher {
         this.tiles = iterator.tiles;  // the tiles the iterator is iterating over
         this.witnesses = iterator.probabilityEngine.dependentWitnesses;  // the dependent witnesses (class BoxWitness) which need to be checked to see if they are satisfied
 
-        this.allSolutions = [];
+        this.allSolutions = [];  // this is where the solutions needed by the Brute Force Analysis class are held
 
         // determine how many flags are currently next to each tile
         this.currentFlagsTiles = [];

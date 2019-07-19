@@ -3,7 +3,6 @@
  */
 "use strict";
 
-
 function solver(board) {
 	
 	// find all the tiles which are revealed and have un-revealed / un-flagged adjacent squares
@@ -60,7 +59,22 @@ function solver(board) {
     console.log("mines left = " + minesLeft);
 	console.log("Witnesses  = " + witnesses.length);
 	console.log("Witnessed  = " + witnessed.length);
-	
+
+    var result;
+
+    // if there are no mines left to find the everything else is to be cleared
+    if (minesLeft == 0) {
+        result = [];
+        for (var i = 0; i < allCoveredTiles.length; i++) {
+            var tile = allCoveredTiles[i];
+            result.push(new Action(tile.getX(), tile.getY(), 1))
+        }
+
+        return result;
+    }
+
+
+
 	var result = trivial_actions(board, witnesses);
 
     if (result.length > 0) {
@@ -97,7 +111,7 @@ function solver(board) {
 
     console.log("probability Engine took " + (Date.now() - peStart) + " milliseconds to complete");
 
-    if (pe.finalSolutionsCount < 100n) {
+    if (pe.bestProbability < 1 && pe.finalSolutionsCount < 100n) {
         pe.generateIndependentWitnesses();
 
         var iterator = new WitnessWebIterator(pe, allCoveredTiles, -1);
@@ -108,27 +122,12 @@ function solver(board) {
 
         console.log("Solutions found by brute force " + solutionCount);
 
+        var bfda = new BruteForceAnalysis(bruteForce.allSolutions, iterator.tiles, 1000);  // the tiles and the solutions need to be in sync
+
+        bfda.process();
+
     }
  
-
-
-
-	/*
-	var iterator = new Iterator(6,2);
-	
-	var sample = iterator.getSample();
-	while (sample != null) {
-		
-		console.log("Iterator = " + sample);
-		
-		
-		 sample = iterator.getSample();
-	}
-	*/
-	
-	
-	
-	
 	return result;
 	
 }
@@ -192,6 +191,7 @@ function trivial_actions(board, witnesses) {
 	
 }
 
+/*
 class Iterator {
 	constructor(size, mines) {
 		this.size = size;
@@ -241,9 +241,8 @@ class Iterator {
 		
 	}
 	
-	
-	
 }
+*/
 
 // location with probability of being safe
 class Action {
