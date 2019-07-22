@@ -11,9 +11,18 @@
     <h1>MineSweeper</h1>
     <div style="overflow: auto;">
         <nav id="controls">
-            <button onclick="newGame(8, 8, 10)">Beginner</button>
-            <button onclick="newGame(16, 16, 40)">Intermediate</button>
-            <button onclick="newGame(30, 16, 99)">Expert</button>
+
+            <div class="checkboxes">
+                <label><input type="checkbox" class="checkbox" id="useSeed" /> <span>Use seed</span></label>
+            </div>
+
+            <div>
+                <input id="seed" type="text" style="width: 150px" />
+            </div>
+
+            <button onclick="doNewGame(8, 8, 10)">Beginner</button>
+            <button onclick="doNewGame(16, 16, 40)">Intermediate</button>
+            <button onclick="doNewGame(30, 16, 99)">Expert</button>
 
             <div>
                 <label style="width: 90px">Width:</label>
@@ -26,14 +35,11 @@
 
             <button onclick="apply()">Custom</button>
 
-
             <div class="checkboxes">
                 <label><input type="checkbox" class="checkbox" id="showhints" /> <span>Show hints</span></label>
                 <label><input type="checkbox" class="checkbox" id="autoplay" /> <span>Auto play</span></label>
                 <label><input type="checkbox" class="checkbox" id="acceptguesses" /> <span>Accept guesses</span></label>
-
             </div>
-
 
         </nav>
 
@@ -112,9 +118,21 @@
                 mines = width * height - 1;
             }
 
-            newGame(width, height, mines);
+            doNewGame(width, height, mines);
 
         }
+
+        function doNewGame(width, height, mines) {
+
+            if (document.getElementById("useSeed").checked) {
+                newGame(width, height, mines, document.getElementById("seed").value);
+            } else {
+                newGame(width, height, mines, 0);
+            }
+
+
+        }
+
     </script>
 
 </body>

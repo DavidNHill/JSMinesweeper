@@ -83,6 +83,10 @@ class Tile {
 
     }
 
+    getProbability() {
+        return this.probability;
+    }
+
     clearHint() {
         this.hasHint = false;
         this.hintText = "";

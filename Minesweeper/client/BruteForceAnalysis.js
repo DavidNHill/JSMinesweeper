@@ -1,9 +1,9 @@
 "use strict";
 
 // constants used in this processing
-const BRUTE_FORCE_ANALYSIS_MAX_NODES = 50000;
+const BRUTE_FORCE_ANALYSIS_MAX_NODES = 100000;
 const PRUNE_BF_ANALYSIS = true;
-const BRUTE_FORCE_ANALYSIS_TREE_DEPTH = 10;
+const BRUTE_FORCE_ANALYSIS_TREE_DEPTH = 5;
 
 const INDENT = "................................................................................";
 
@@ -11,7 +11,11 @@ const INDENT = "................................................................
 var processCount = 0;   // how much work has been done
 var allSolutions;       // this is class 'SolutionTable'
 var allTiles;           // this is an array of the tiles being analysed 
+
+// cache details
 var cache = new Map();  
+var cacheHit = 0;
+var cacheWinningLines = 0;
 
 class BruteForceAnalysis {
 
@@ -19,22 +23,24 @@ class BruteForceAnalysis {
 
         allTiles = tiles;
 
-        this.cacheHit = 0;
-        this.cacheSize = 0;
-        this.cacheWinningLines = 0;
         this.allDead = false;   // this is true if all the locations are dead
 
         this.currentNode;
         this.expectedMove;
 
         this.maxSolutionSize = size;
-        allSolutions = new SolutionTable(solutions);
 
+        // reset the globals
+        allSolutions = new SolutionTable(solutions);
+        cache.clear();  //clear the cache
+        cacheHit = 0;
+        cacheWinningLines = 0;
+        processCount = 0;
     }
 
     process() {
 
-        var start = Date.now();
+        var start = performance.now();
 
         console.log("----- Brute Force Deep Analysis starting ----");
         console.log(allSolutions.size() + " solutions in BruteForceAnalysis");
@@ -84,13 +90,15 @@ class BruteForceAnalysis {
         }
 
 
+ 
+        var end = performance.now();;
+        console.log("Total nodes in cache = " + cache.size + ", total cache hits = " + cacheHit + ", total winning lines saved = " + cacheWinningLines);
+        console.log("process took " + (end - start) + " milliseconds and explored " + processCount + " nodes");
+        console.log("----- Brute Force Deep Analysis finished ----");
+
         // clear down the cache
         cache.clear();
 
-        var end = Date.now();;
-        console.log("Total nodes in cache = " + this.cacheSize + ", total cache hits = " + this.cacheHit + ", total winning lines saved = " + this.cacheWinningLines);
-        console.log("process took " + (end - start) + " milliseconds and explored " + processCount + " nodes");
-        console.log("----- Brute Force Deep Analysis finished ----");
     }
 
 	/**
@@ -168,7 +176,7 @@ class BruteForceAnalysis {
             return null;
         }
 
-        loc = allTiles[bestLiving.index];  // loc is class 'Tile'
+        var loc = allTiles[bestLiving.index];  // loc is class 'Tile'
 
         //solver.display("first best move is " + loc.display());
         var prob = 1 - (bestLiving.mineCount / this.currentNode.getSolutionSize());
@@ -204,10 +212,10 @@ class BruteForceAnalysis {
                 probText = bestLiving.children[i].getProbability();
                 //probText = Action.FORMAT_2DP.format(bestLiving.children[i].getProbability().multiply(ONE_HUNDRED)) + "%";
             }
-            solver.display("Value of " + i + " leaves " + bestLiving.children[i].getSolutionSize() + " solutions and winning probability " + probText + " (work size " + bestLiving.children[i].work + ")");
+            console.log("Value of " + i + " leaves " + bestLiving.children[i].getSolutionSize() + " solutions and winning probability " + probText + " (work size " + bestLiving.children[i].work + ")");
         }
 
-        action = new Action(loc.getX(), loc.getY(), prob);
+        var action = new Action(loc.getX(), loc.getY(), prob);
 
         this.expectedMove = loc;
 
@@ -264,7 +272,7 @@ class BruteForceAnalysis {
         return prob * 100;
     }
 
-    allDead() {
+    allTilesDead() {
         return this.allDead;
     }
 
@@ -281,6 +289,8 @@ class Position {
 
         this.position;
         this.hash = 0;
+        this.mod = BigInt(Number.MAX_SAFE_INTEGER);
+
 
         if (p == null) {
             this.position = new Array(allTiles.length).fill(15);
@@ -299,18 +309,18 @@ class Position {
  
     // copied from String hash
     hashCode() {
-        var h = this.hash;
-        if (h == 0 && position.length > 0) {
-            for (var i = 0; i < position.length; i++) {
-                h = 31 * h + position[i];
+        var h = BigInt(this.hash);
+        if (h == 0 && this.position.length > 0) {
+            for (var i = 0; i < this.position.length; i++) {
+                h = (31n * h + BigInt(this.position[i])) % this.mod;
             }
-            this.hash = h;
+            this.hash = Number(h);  // convert back to a number
         }
-        return h;
+        return this.hash;
     }
 
-
-   equals(o) {
+    /*
+    equals(o) {
         if (o instanceof Position) {
             for (var i = 0; i < position.length; i++) {
                 if (this.position[i] != o.position[i]) {
@@ -322,7 +332,7 @@ class Position {
             return false;
         }
     }
-
+    */
 }
 
 /**
@@ -354,11 +364,6 @@ class LivingLocation {
         allSolutions.sortSolutions(parent.startLocation, parent.endLocation, this.index);
         var index = parent.startLocation;
 
-        // skip over the mines
-        //while (index < parent.endLocation && allSolutions.get(index)[this.index] == BOMB) {
-        //    index++;
-        //}
-
         var work = Array(9);  // work is an array of class 'Node' with size 9
 
         for (var i = this.minValue; i < this.maxValue + 1; i++) {
@@ -366,9 +371,7 @@ class LivingLocation {
              // if the node is in the cache then use it
             var pos = new Position(parent.position, this.index, i);
 
-            //TODO cache not implemented
-            //var temp1 = cache.get(pos);  // temp1 is class 'Node'
-            var temp1 = null;
+            var temp1 = cache.get(pos.hashCode());  // temp1 is class 'Node'
 
             if (temp1 == null) {
 
@@ -384,7 +387,7 @@ class LivingLocation {
                 work[i] = temp;
 
             } else {
-                //System.out.println("In cache " + temp.position.key + " " + temp1.position.key);
+                //console.log("In cache " + temp.position.key + " " + temp1.position.key);
                 //if (!temp.equals(temp1)) {
                 //	System.out.println("Cache not equal!!");
                 //}
@@ -468,10 +471,9 @@ class Node {
         if (position == null) {
             this.position = new Position();
         } else {
-            this.postion = position;
+            this.position = position;
         }
 
- 
         this.livingLocations;       // these are the locations which need to be analysed
 
         this.winningLines = 0;      // this is the number of winning lines below this position in the tree
@@ -600,21 +602,15 @@ class Node {
                     // no need to hold onto the living location once we have determined the best of them
                     child.livingLocations = null;
 
-                    //TODO not using cache to start with
-
-                    //if (depth > solver.preferences.BRUTE_FORCE_ANALYSIS_TREE_DEPTH) {  // stop holding the tree beyond this depth
-                    //	child.bestLiving = null;
-                    //}
-
-                    // add the child to the cache if it didn't come from there and it is carrying sufficient winning lines
-                    //if (child.work > 30) {
-                    //    child.work = 0;
-                    //    child.fromCache = true;
-                    //    cacheSize++;
-                    //    cache.put(child.position, child);
-                    //} else {
-                    //    this.work = this.work + child.work;
-                    //}
+                    //add the child to the cache if it didn't come from there and it is carrying sufficient winning lines
+                    if (child.work > 30) {
+                        //console.log("Entry placed in cache with key " + child.position.hashCode());
+                        child.work = 0;
+                        child.fromCache = true;
+                        cache.set(child.position.hashCode(), child);
+                    } else {
+                        this.work = this.work + child.work;
+                    }
 
 
                 }

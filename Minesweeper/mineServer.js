@@ -148,7 +148,10 @@ function handleActions(message) {
 	if (game == null) {
 		game = createGame(header, actions[0].index);
 	}
-	
+
+    // send the seed to the client
+    reply.header.seed = game.seed;
+
 	// process each action sent
 	for (var i = 0; i < actions.length; i++) {
 		var action = actions[i];
@@ -219,8 +222,15 @@ function getGame(id) {
 }
 
 function createGame(header, index) {
-	
-	var game = new Game(header.id, header.width, header.height, header.mines, index);
+
+    var seed;
+    if (header.seed != null && header.seed != 0) {
+        seed = header.seed;
+    } else {
+        seed = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+    }
+
+	var game = new Game(header.id, header.width, header.height, header.mines, index, seed);
 	
 	games.push(game);
 	
@@ -236,7 +246,7 @@ function createGame(header, index) {
  */
 class Game {
 	
-	constructor(id, width, height, num_bombs, index) {
+	constructor(id, width, height, num_bombs, index, seed) {
 		
 		console.log("Creating a new game with id=" + id + " ...");
 
@@ -246,7 +256,11 @@ class Game {
 		this.id = id;
 		this.width = width;
 		this.height = height;
-		this.num_bombs = num_bombs;
+        this.num_bombs = num_bombs;
+        this.seed = seed;
+ 
+        console.log("Using seed " + this.seed);
+
 		this.tiles = [];
 		this.started = false;
 
@@ -266,7 +280,7 @@ class Game {
 		// hold the tiles to exclude from being a mine 
 		var exclude = {};
 		exclude[index] = true;
-		
+
 		this.init_tiles(exclude);
 
 		console.log("... game created");
@@ -284,8 +298,8 @@ class Game {
 	// clicks the assigned tile and returns an object containing a list of tiles cleared
 	clickTile(tile) {
 		
-		var reply = {"header" : {}, "tiles" : []};
-		
+        var reply = { "header": {}, "tiles": [] };
+ 		
 		if (tile.isBomb()) {
 			
 			reply.header.status = "lost";
@@ -307,9 +321,9 @@ class Game {
 	// clicks the assigned tile and returns an object containing a list of tiles cleared
 	chordTile(tile) {
 		
-		var reply = {"header" : {}, "tiles" : []};
-		
-		var adjTiles = this.getAdjacent(tile);
+        var reply = { "header": {}, "tiles": [] };
+ 		
+		//var adjTiles = this.getAdjacent(tile);
 		
 		var flagCount = 0;
 		for (var adjTile of this.getAdjacent(tile)) {
@@ -359,7 +373,7 @@ class Game {
 		var toReveal = [];
 		var soFar = 0;
 		
-		var result = {"header" : {}, "tiles" : []};
+        var reply = { "header": {}, "tiles": [] };
 		
 		for (var firstTile of firstTiles) {
 			firstTile.setNotCovered(); 
@@ -372,7 +386,7 @@ class Game {
 			
 			var tile = toReveal[soFar];
 
-			result.tiles.push({"action" : 1, "index" : tile.getIndex(), "value" : tile.getValue()});   		
+			reply.tiles.push({"action" : 1, "index" : tile.getIndex(), "value" : tile.getValue()});   		
 			this.tiles_left--;
 			
 			// if the value is zero then for each adjacent tile not yet revealed add it to the list
@@ -401,17 +415,17 @@ class Game {
 				var tile = this.tiles[i];
 				if (tile.isBomb() && !tile.isFlagged()) {
 					tile.toggleFlag();
-					result.tiles.push({"action" : 2, "index" : i, "flag" : tile.isFlagged()});    // auto set remaining flags
+					reply.tiles.push({"action" : 2, "index" : i, "flag" : tile.isFlagged()});    // auto set remaining flags
 				}
 			}
 			
-			result.header.status = "won";
+			reply.header.status = "won";
 		} else {
-			result.header.status = "in-play";
+			reply.header.status = "in-play";
 		}
 		
 		
-		return result;
+		return reply;
 	}
 	
 	// builds all the tiles and assigns bombs to them
@@ -426,8 +440,11 @@ class Game {
 			if (!to_exclude[i]) {
 				indices.push(i);
 			}
-		}
-		shuffle(indices);
+        }
+
+        var rng = JSF(this.seed);  // create an RNG based on the seed
+
+		shuffle(indices,rng);
 		
 		// allocate the bombs and calculate the values
 		for (var i = 0; i < this.num_bombs; i++) {
@@ -536,13 +553,29 @@ class Tile {
 
 
 // used to shuffle an array
-function shuffle(a) {
+function shuffle(a, rng) {
     var j, x, i;
     for (i = a.length - 1; i > 0; i--) {
-        j = Math.floor(Math.random() * (i + 1));
+        j = Math.floor(rng() * (i + 1));
+        //j = Math.floor(Math.random() * (i + 1));
         x = a[i];
         a[i] = a[j];
         a[j] = x;
     }
     return a;
+}
+
+// a RNG which allows a seed
+function JSF(seed) {
+    function jsf() {
+        var e = s[0] - (s[1] << 27 | s[1] >>> 5);
+        s[0] = s[1] ^ (s[2] << 17 | s[2] >>> 15),
+            s[1] = s[2] + s[3],
+            s[2] = s[3] + e, s[3] = s[0] + e;
+        return (s[3] >>> 0) / 4294967296; // 2^32
+    }
+    seed >>>= 0;
+    var s = [0xf1ea5eed, seed, seed, seed];
+    for (var i = 0; i < 20; i++) jsf();
+    return jsf;
 }

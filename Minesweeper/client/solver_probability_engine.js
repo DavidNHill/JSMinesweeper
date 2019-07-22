@@ -25,7 +25,7 @@ class ProbabilityEngine {
         this.boxWitnesses = [];
         this.mask = [];
 
-        // list of locations which are potentially dead
+        // list of 'DeadCandidate' which are potentially dead
 	    this.deadCandidates = [];
 
         this.boxProb = [];  // the probabilities end up here
@@ -1074,6 +1074,20 @@ class ProbabilityEngine {
 
         return best;
 
+    }
+
+    // returns an array of 'Tile' which are dead
+    getDeadTiles() {
+
+        var result = [];
+
+        for (var i = 0; i < this.deadCandidates.length; i++) {
+            if (!this.deadCandidates[i].isAlive) {
+                result.push(this.deadCandidates[i].candidate);
+            }
+        }
+
+        return result;
     }
 
 }

@@ -5,14 +5,16 @@
 
 class Board {
 	
-	constructor(id, width, height, num_bombs) {
+	constructor(id, width, height, num_bombs, seed) {
 		
 		console.log("Creating a new board with id=" + id + " ...");
 		
 		this.id = id;
 		this.width = width;
 		this.height = height;
-		this.num_bombs = num_bombs;
+        this.num_bombs = num_bombs;
+        this.seed = seed;
+
 		this.tiles = [];
 		this.started = false;
 		this.bombs_left = this.num_bombs;
@@ -109,7 +111,7 @@ class Board {
 
 	// header for messages sent to the server
 	getMessageHeader() {
-		return {"id" : this.id, "width" : this.width, "height" : this.height, "mines" : this.num_bombs, "gametype" : 2};
+        return { "id": this.id, "width": this.width, "height": this.height, "mines": this.num_bombs, "seed": this.seed, "gametype" : 2};
 	}
 	
 	// returns all the tiles adjacent to this tile

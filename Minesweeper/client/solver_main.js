@@ -3,6 +3,8 @@
  */
 "use strict";
 
+const BFDA_FRESHOLD = 400n;
+
 function solver(board) {
 	
 	// find all the tiles which are revealed and have un-revealed / un-flagged adjacent squares
@@ -12,6 +14,8 @@ function solver(board) {
 
     var minesLeft = board.num_bombs;
     var squaresLeft = 0; 
+
+    var deadTiles = [];  // used to hold the tiles which have been determined to be dead by either the probability engine or deep analysis
 
 	var work = new Set();  // use a map to deduplicate the witnessed tiles
 	
@@ -87,31 +91,10 @@ function solver(board) {
 
     pe.process();
 
-    result = pe.getBestCandidates(1);  // get best options within this ratio of the best value
-
-    for (var i = 0; i < pe.deadCandidates.length; i++) {
-        if (!pe.deadCandidates[i].isAlive) {
-            var tile = pe.deadCandidates[i].candidate;
-
-            console.log("Tile " + tile.asText() + " is dead with value " + pe.deadCandidates[i].total);
-            var found = false;
-            for (var j = 0; j < result.length; j++) {
-                if (result[j].x == tile.x && result[j].y == tile.y) {
-                    result[j].dead = true;
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                console.log("Need to create a dead square to place in the actions");
-            }
-
-        }
-    }
-
     console.log("probability Engine took " + (Date.now() - peStart) + " milliseconds to complete");
 
-    if (pe.bestProbability < 1 && pe.finalSolutionsCount < 100n) {
+    // if we are having to guess and there are less then 200 solutions use the brute force deep analysis...
+    if (pe.bestProbability < 1 && pe.finalSolutionsCount < BFDA_FRESHOLD) {
         pe.generateIndependentWitnesses();
 
         var iterator = new WitnessWebIterator(pe, allCoveredTiles, -1);
@@ -126,8 +109,42 @@ function solver(board) {
 
         bfda.process();
 
+        // if they aren't all dead then send the best guess
+        if (!bfda.allTilesDead()) {
+            var nextmove = bfda.getNextMove();
+            result.push(nextmove);
+            return result;
+        } else {
+            deadTiles = allCoveredTiles;   // all the tiles are dead
+        }
+
+    } else {
+        deadTiles = pe.getDeadTiles();  // use the dead tiles from the probability engine
     }
- 
+
+    // ... otherwise we will use the probability engines results
+
+    result = pe.getBestCandidates(1);  // get best options within this ratio of the best value
+
+    for (var i = 0; i < deadTiles.length; i++) {
+        var tile = deadTiles[i];
+
+        //console.log("Tile " + tile.asText() + " is dead with value " + pe.deadCandidates[i].total);
+        console.log("Tile " + tile.asText() + " is dead");
+        var found = false;
+        for (var j = 0; j < result.length; j++) {
+            if (result[j].x == tile.x && result[j].y == tile.y) {
+                result[j].dead = true;
+                found = true;
+                break;
+            }
+        }
+        //if (!found) {
+        //    console.log("Need to create a dead square to place in the actions");
+        //}
+
+     }
+
 	return result;
 	
 }

@@ -39,7 +39,7 @@ var tooltip = document.getElementById('tooltip');
 var autoPlayCheckBox = document.getElementById("autoplay");
 var showHintsCheckBox = document.getElementById("showhints");
 var acceptGuessesCheckBox = document.getElementById("acceptguesses");
-
+var seedText = document.getElementById("seed");
 
 // add a listener for mouse clicks on the canvas
 canvas.addEventListener("mousedown", (event) => on_click(event));
@@ -142,7 +142,7 @@ function updateMineCount(minesLeft) {
 
 }
 
-async function newGame(width, height, mines) {
+async function newGame(width, height, mines, seed) {
 
     console.log("Width=" + width + " Height=" + height + " mines=" + mines);
 
@@ -151,15 +151,13 @@ async function newGame(width, height, mines) {
         killGame(board.getID());
     }
 
-
     var json_data = await fetch("/requestID");
 
     var reply = await json_data.json();
 
     console.log("<== " + JSON.stringify(reply));
 
-
-    board = new Board(reply["id"], width, height, mines);
+    board = new Board(reply["id"], width, height, mines, seed);
 
     document.getElementById('board').style.width = width * TILE_SIZE + "px";
     document.getElementById('board').style.height = height * TILE_SIZE + "px";
@@ -180,6 +178,8 @@ async function newGame(width, height, mines) {
     }
 
     updateMineCount(mines);
+
+    canvasLocked = false;  // just in case it was still locked (after an error for example)
 
 }
 
@@ -364,6 +364,12 @@ async function sendMessage(message) {
         return;
     }
 
+    if (board.seed == 0) {
+        board.seed = reply.header.seed;
+        console.log("Setting game seed to " + reply.header.seed);
+        seedText.value = board.seed;
+    }
+
     if (reply.header.status == "lost" || reply.header.status == "won") {
         board.setGameover();
     }
@@ -492,7 +498,7 @@ function load_image(image_path) {
         console.log("An image has loaded: " + image_path);
         imagesLoaded++;
         if (imagesLoaded == images.length + led_images.length) {
-            newGame(16, 16, 40);
+            newGame(16, 16, 40, 0);
         }
 
     }, false);
