@@ -8,7 +8,13 @@ const http = require('http'); // Import Node.js core module
 const path = require('path');
 const express = require('express');
 
+// storing these here in case I need to remember how to call an external module
 //var tools = require('./MineSweeperLogic');
+//module.exports = {
+//    getString: function () {
+//        return getString();
+//    }
+//};
 
 const server = express();
 server.use(express.static(path.join(__dirname, 'client')));
@@ -27,10 +33,12 @@ var gamesAbandoned = 0;
 
 // a main site then send the html home page
 server.get('/', function (req, res) {
+
+    console.log("New client attaching");
+
+    console.log('Sending web page from ' + path.join(__dirname, 'index.html'));
 	
-	console.log('Sending web page');
-	
-    res.sendFile(path.join(__dirname, 'minesweeper.html'));
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // used to request a new game id. It may or may not be used.

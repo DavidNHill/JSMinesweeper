@@ -156,11 +156,11 @@ async function newGame(width, height, mines, seed) {
         killGame(board.getID());
     }
 
+    // this is a message to the server
     var json_data = await fetch("/requestID");
-
     var reply = await json_data.json();
-
     console.log("<== " + JSON.stringify(reply));
+    var id = reply.id;
 
     if (gameTypeSafe.checked) {
         var gameType = "safe";
@@ -168,7 +168,7 @@ async function newGame(width, height, mines, seed) {
         var gameType = "zero";
     }
 
-    board = new Board(reply["id"], width, height, mines, seed, gameType);
+    board = new Board(id, width, height, mines, seed, gameType);
 
     document.getElementById('board').style.width = width * TILE_SIZE + "px";
     document.getElementById('board').style.height = height * TILE_SIZE + "px";
