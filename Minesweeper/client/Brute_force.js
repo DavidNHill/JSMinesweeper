@@ -77,9 +77,6 @@ class Cruncher {
             if (flags3 != flags1 + flags2) {
                 return false;
             }
-
-
-
         }
 
         //if it is a good solution then calculate the distribution if required
@@ -114,11 +111,13 @@ class Cruncher {
  
         this.allSolutions.push(solution);
 
+        /*
         var output = "";
         for (var i = 0; i < mine.length; i++) {
             output = output + mine[i].asText();
         }
         console.log(output);
+        */
 
         return true;
 

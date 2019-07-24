@@ -26,12 +26,14 @@ class ProbabilityEngine {
         this.mask = [];
 
         // list of 'DeadCandidate' which are potentially dead
-	    this.deadCandidates = [];
+        this.deadCandidates = [];
+        this.deadTiles = [];
 
         this.boxProb = [];  // the probabilities end up here
 		this.workingProbs = []; 
         this.heldProbs = [];
         this.bestProbability = 0;  // best probability of being safe
+        this.offEdgeProbability = 0;
         this.finalSolutionsCount = 0n;
 
         // details about independent witnesses
@@ -191,8 +193,6 @@ class ProbabilityEngine {
                 // nowhere to put the new mines, so this probability can't be valid
             } else {
                 
-                //newProbs.addAll(distributeMissingMines(pl, nw, missingMines, 0));
-
                 var result = this.distributeMissingMines(pl, nw, missingMines, 0);
                 newProbs.push(...result);
 
@@ -239,7 +239,7 @@ class ProbabilityEngine {
 
         var result = [];
 
-        // if there is only one box left to put the missing mines we have reach this end of this branch of recursion
+        // if there is only one box left to put the missing mines we have reach the end of this branch of recursion
         if (nw.newBoxes.length - index == 1) {
             // if there are too many for this box then the probability can't be valid
             if (nw.newBoxes[index].maxMines < missingMines) {
@@ -923,18 +923,12 @@ class ProbabilityEngine {
 
 
         // add the dead locations we found
-        /*
-        if (CHECK_FOR_DEAD_LOCATIONS) {
-            Set < Location > newDead = new HashSet<>();
-            for (DeadCandidate dc: deadCandidates) {
-                if (!dc.isAlive && boxProb[dc.myBox.getUID()].signum() != 0) {
-                    newDead.add(dc.candidate);
-                }
+        for (var i = 0; i < this.deadCandidates.length; i++) {
+            var dc = this.deadCandidates[i];
+            if (!dc.isAlive && this.boxProb[dc.myBox.uid] != 0) {   // if it is dead an not a definite flag 
+                this.deadTiles.push(dc.candidate);
             }
-            deadLocations = deadLocations.merge(new Area(newDead));
-
         }
-        */
 
         /*
         for (int i = 0; i < hashTally.length; i++) {
@@ -965,20 +959,18 @@ class ProbabilityEngine {
         // sort so that the locations with the most links are at the top
         //Collections.sort(linkedLocations, LinkedLocation.SORT_BY_LINKS_DESC);
 
-        var offEdgeProbability;
-
         // avoid divide by zero
         if (this.TilesOffEdge != 0 && totalTally != BigInt(0)) {
             //offEdgeProbability = 1 - outsideTally / (totalTally * BigInt(this.squaresLeft));
-            offEdgeProbability = 1 - divideBigInt(outsideTally, totalTally * BigInt(this.TilesOffEdge), 6);
+            this.offEdgeProbability = 1 - divideBigInt(outsideTally, totalTally * BigInt(this.TilesOffEdge), 6);
         } else {
-            offEdgeProbability = 0;
+            this.offEdgeProbability = 0;
         }
 
         this.finalSolutionsCount = totalTally;
 
         // see if we can find a guess which is better than outside the boxes
-        var hwm = offEdgeProbability;
+        var hwm = this.offEdgeProbability;
 
         //offEdgeBest = true;
 
@@ -986,16 +978,31 @@ class ProbabilityEngine {
 
             var b = this.boxes[i];
 
-            var living = true;
-            //for (Square squ: b.getSquares()) {
-            //    if (!deadLocations.contains(squ)) {
-            //        living = true;
-            //        break;
-            //    }
-            //}
+            // a box is dead if all its tiles are dead
+            if (this.deadTiles.length > 0) {
+                var boxLiving = false;
+                for (var j = 0; j < this.boxes[i].tiles.length; j++) {
+                    var tile = this.boxes[i].tiles[j];
+
+                    var tileLiving = true;
+                    for (var k = 0; k < this.deadTiles.length; k++) {
+                        if (this.deadTiles[k].isEqual(tile)) {
+                            tileLiving = false;
+                            break;
+                        }
+                    }
+                    if (tileLiving) {
+                        boxLiving = true;
+                        break;
+                    }
+                }
+            } else {  // if there are no dead tiles then there is nothing to check
+                var boxLiving = true;
+            }
+
 
             var prob = this.boxProb[b.uid];
-            if (living || prob == 1) {   // if living or 100% safe then consider this probability
+            if (boxLiving || prob == 1) {   // if living or 100% safe then consider this probability
 
                 if (hwm <= prob) {
                     //offEdgeBest = false;
@@ -1020,7 +1027,7 @@ class ProbabilityEngine {
         //    cutoffProbability = bestProbability.multiply(Solver.PROB_ENGINE_TOLERENCE);
         //}
 
-        console.log("Off edge probability is " + offEdgeProbability);
+        console.log("Off edge probability is " + this.offEdgeProbability);
         console.log("Best probability is " + this.bestProbability);
         console.log("Game has  " + this.finalSolutionsCount + " candidate solutions" );
 
@@ -1057,14 +1064,24 @@ class ProbabilityEngine {
                 for (var j = 0; j < this.boxes[i].tiles.length; j++) {
                     var squ = this.boxes[i].tiles[j];
 
-                    //best.set(squ.index, new Action(squ.x, squ.y, this.boxProb[i]));
                     best.push(new Action(squ.x, squ.y, this.boxProb[i]));
 
-                    //if (!deadLocations.contains(squ) || boxProb[i].compareTo(BigDecimal.ONE) == 0) {  // if not a dead location or 100% safe then use it
-                    //    best.add(new CandidateLocation(squ.x, squ.y, boxProb[i], boardState.countAdjacentUnrevealed(squ), boardState.countAdjacentConfirmedFlags(squ)));
-                    //} else {
-                    //    boardState.display("Location " + squ.display() + " is ignored because it is dead");
-                    //}
+                    // no longer exclude dead tiles because we want to show them on the display
+                    /*
+                    var dead = false;
+                    for (var k = 0; k < deadTiles.length; k++) {
+                        if (deadTiles[k].isEqual(squ)) {
+                            dead = true;
+                            break;
+                        }
+                    }
+                    if (!dead || boxProb[i].prob == 1) {   // if not dead or 100% safe then use the tile
+                        best.push(new Action(squ.x, squ.y, this.boxProb[i]));
+                    } else {
+                        console.log("Tile " + squ.asText() + " is ignored because it is dead");
+                    }
+                    */
+
                 }
             }
         }
@@ -1079,15 +1096,7 @@ class ProbabilityEngine {
     // returns an array of 'Tile' which are dead
     getDeadTiles() {
 
-        var result = [];
-
-        for (var i = 0; i < this.deadCandidates.length; i++) {
-            if (!this.deadCandidates[i].isAlive) {
-                result.push(this.deadCandidates[i].candidate);
-            }
-        }
-
-        return result;
+         return this.deadTiles;
     }
 
 }

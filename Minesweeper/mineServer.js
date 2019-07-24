@@ -8,7 +8,7 @@ const http = require('http'); // Import Node.js core module
 const path = require('path');
 const express = require('express');
 
-var tools = require('./MineSweeperLogic');
+//var tools = require('./MineSweeperLogic');
 
 const server = express();
 server.use(express.static(path.join(__dirname, 'client')));
@@ -16,15 +16,21 @@ server.use(express.json());
 
 setInterval(heartbeat, 60000);
 
+const WON = "won";
+const LOST = "lost";
+const IN_PLAY = "in-play";
 
 var gameID = 123;
+var gamesWon = 0;
+var gamesLost = 0;
+var gamesAbandoned = 0;
 
 // a main site then send the html home page
 server.get('/', function (req, res) {
 	
 	console.log('Sending web page');
 	
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(__dirname, 'minesweeper.html'));
 });
 
 // used to request a new game id. It may or may not be used.
@@ -54,6 +60,14 @@ server.post('/kill', function (req, res) {
 	console.log("<== " + JSON.stringify(message));
 	
 	var id = message.id;
+
+    var game = getGame(id);
+
+    // if we found the game then mark for clean-up
+    if (game != null) {
+        console.log("Game " + id + " marked for housekeeping");
+        game.cleanUp = true;
+    }
 
 	var reply = {"result" : 0 };
 	
@@ -92,7 +106,6 @@ server.post('/data', function (req, res) {
 // start up the server
 http.createServer(server).listen(5000, function(){
     console.log('HTTP server listening on port 5000');
-    console.log(tools.getString());
 });
 
 
@@ -101,16 +114,23 @@ function heartbeat() {
 	
 	console.log("heartbeat starting...");
 
-    for (var i = 0; i < games.length; i++) {
+    for (var game of serverGames.values()) {
 
-        var game = games[i];
+        //var game = games[i];
 
-        console.log("Game " + game.id + " created " + game.created + " last action " + game.lastAction + "Tiles left " + game.tiles_left);
-
+        var action;
+        if (game.cleanUp) {
+            action = "Being removed due to cleanUp flag";
+            serverGames.delete(game.getID());
+        } else {
+            action = "No action";
+        }
+        
+        console.log("Game " + game.id + " created " + game.created + " last action " + game.lastAction + "Tiles left " + game.tiles_left + " ==> " + action);
     }
 
-	
-	console.log("...heartbeat ending");
+
+    console.log("...heartbeat ending, " + serverGames.size + " games in memory");
 }
 
 
@@ -119,7 +139,7 @@ function heartbeat() {
  */
 
 // this holds the games being played
-var games = [];
+var serverGames = new Map();
 
 
 // read the data message and perform the actions
@@ -139,7 +159,7 @@ function handleActions(message) {
 	var actions = message.actions;
 
 	if (actions == null) {
-        reply.header.status = "in-play";
+        reply.header.status = IN_PLAY;
  		return reply;
 	}
 	
@@ -170,7 +190,7 @@ function handleActions(message) {
 			
 		} else if (action.action == 2) {  // toggle flag
 			tile.toggleFlag();
-			reply.header.status = "in-play";
+			reply.header.status = IN_PLAY;
 			reply.tiles.push({"action" : 2, "index" : action.index, "flag" : tile.isFlagged()});    // set or remove flag
 			
 		} else if (action.action == 3) {  // chord
@@ -187,14 +207,14 @@ function handleActions(message) {
 			console.log("Invalid action received: " + action.action);
 		}		  
 		  
-		if (reply.header.status != "in-play") {
+		if (reply.header.status != IN_PLAY) {
 			console.log("status is now: " + reply.header.status);
 			break;
 		}
 	}
 
     // if we have lost then return the location of all unflagged mines
-    if (reply.header.status == "lost") {
+    if (reply.header.status == LOST) {
 
         for (var i = 0; i < game.tiles.length; i++) {
 
@@ -203,21 +223,19 @@ function handleActions(message) {
             if (!tile.isFlagged() && tile.isBomb()) {
                 reply.tiles.push({ "action": 3, "index": tile.getIndex() });    // mine
             }
+
+            game.cleanUp = true;  // mark for housekeeping
         }
+    } else if (reply.header.status == WON) {
+        game.cleanUp = true;  // mark for housekeeping
     }
 
 	return reply;
 }
 
 function getGame(id) {
-	
-	for (var i=0; i < games.length; i++) {
-		if (games[i].getID() == id ) {
-			return games[i];
-		}
-	}
-	
-	return;
+
+	return serverGames.get(id);
 	
 }
 
@@ -230,11 +248,11 @@ function createGame(header, index) {
         seed = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
     }
 
-	var game = new Game(header.id, header.width, header.height, header.mines, index, seed);
+	var game = new ServerGame(header.id, header.width, header.height, header.mines, index, seed, header.gametype);
 	
-	games.push(game);
+	serverGames.set(header.id, game);
 	
-	console.log("Holding " + games.length + " games in memory");
+	console.log("Holding " + serverGames.size + " games in memory");
 	
 	return game;
 	
@@ -244,21 +262,23 @@ function createGame(header, index) {
 /**
  * This describes a game of minesweeper
  */
-class Game {
+class ServerGame {
 	
-	constructor(id, width, height, num_bombs, index, seed) {
+	constructor(id, width, height, num_bombs, index, seed, gameType) {
 		
 		console.log("Creating a new game with id=" + id + " ...");
 
         this.created = new Date();
         this.lastAction = this.created;
 
-		this.id = id;
+        this.id = id;
+        this.gameType = gameType;
 		this.width = width;
 		this.height = height;
         this.num_bombs = num_bombs;
         this.seed = seed;
- 
+        this.cleanUp = false;
+
         console.log("Using seed " + this.seed);
 
 		this.tiles = [];
@@ -281,6 +301,12 @@ class Game {
 		var exclude = {};
 		exclude[index] = true;
 
+        if (this.gameType == "zero") {
+            for (var adjIndex of this.getAdjacentIndex(index)) {
+                exclude[adjIndex] = true;
+            }
+        }
+
 		this.init_tiles(exclude);
 
 		console.log("... game created");
@@ -302,7 +328,7 @@ class Game {
  		
 		if (tile.isBomb()) {
 			
-			reply.header.status = "lost";
+			reply.header.status = LOST;
 			//reply.tiles.push({"action" : 3, "index" : tile.getIndex()});    // mine
 
         } else {
@@ -335,7 +361,7 @@ class Game {
 		// nothing to do if the tile is not yet surrounded by the correct number of flags
 		if (tile.getValue() != flagCount) {
 			console.log("Unable to Chord:  value=" + tile.getValue() + " flags=" + flagCount);
-			reply.header.status = "in-play";
+			reply.header.status = IN_PLAY;
 			return reply;
 		}
 		
@@ -350,7 +376,7 @@ class Game {
 		
 		// if we have triggered a bomb then return
 		if (bombCount != 0) {
-			reply.header.status = "lost";
+			reply.header.status = LOST;
 			return reply;
 		}
 		
@@ -419,9 +445,9 @@ class Game {
 				}
 			}
 			
-			reply.header.status = "won";
+			reply.header.status = WON;
 		} else {
-			reply.header.status = "in-play";
+			reply.header.status = IN_PLAY;
 		}
 		
 		
@@ -435,7 +461,7 @@ class Game {
 		var indices = [];
 		for (var i = 0; i < this.width * this.height; i++) {
 			
-			this.tiles.push(new Tile(i));
+			this.tiles.push(new ServerTile(i));
 			
 			if (!to_exclude[i]) {
 				indices.push(i);
@@ -488,14 +514,40 @@ class Game {
 
 		return result;
 	}
-	
+
+    // returns all the tiles adjacent to this tile
+    getAdjacentIndex(index) {
+
+        var col = index % this.width;
+        var row = Math.floor(index / this.width);
+
+        var first_row = Math.max(0, row - 1);
+        var last_row = Math.min(this.height - 1, row + 1);
+
+        var first_col = Math.max(0, col - 1);
+        var last_col = Math.min(this.width - 1, col + 1);
+
+        var result = []
+
+        for (var r = first_row; r <= last_row; r++) {
+            for (var c = first_col; c <= last_col; c++) {
+                var i = this.width * r + c;
+                if (i != index) {
+                    result.push(i);
+                }
+            }
+        }
+
+        return result;
+    }
+
 } 
 
 /**
  * Describes a single tile on a minesweeper board
  */
 
-class Tile {
+class ServerTile {
 	constructor(index) {
 		this.index = index
 		this.is_covered = true;

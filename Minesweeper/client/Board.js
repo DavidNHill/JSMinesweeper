@@ -5,11 +5,12 @@
 
 class Board {
 	
-	constructor(id, width, height, num_bombs, seed) {
+	constructor(id, width, height, num_bombs, seed, gameType) {
 		
 		console.log("Creating a new board with id=" + id + " ...");
 		
-		this.id = id;
+        this.id = id;
+        this.gameType = gameType;
 		this.width = width;
 		this.height = height;
         this.num_bombs = num_bombs;
@@ -108,10 +109,23 @@ class Board {
 
     }
 
+    // return number of covered tiles adjacent to this tile
+    adjacentCoveredCount(tile) {
+
+        var coveredCount = 0;
+        for (var adjTile of this.getAdjacent(tile)) {
+            if (adjTile.isCovered() && !adjTile.isFlagged()) {
+                coveredCount++;
+            }
+        }
+
+        return coveredCount;
+
+    }
 
 	// header for messages sent to the server
 	getMessageHeader() {
-        return { "id": this.id, "width": this.width, "height": this.height, "mines": this.num_bombs, "seed": this.seed, "gametype" : 2};
+        return { "id": this.id, "width": this.width, "height": this.height, "mines": this.num_bombs, "seed": this.seed, "gametype" : this.gameType};
 	}
 	
 	// returns all the tiles adjacent to this tile

@@ -10,6 +10,8 @@ const TILE_SIZE = 32;
 const DIGIT_HEIGHT = 30;
 const DIGIT_WIDTH = 18;
 
+const CYCLE_DELAY = 100;  // minimum delay in milliseconds between processing cycles
+
 // offset 0 - 8 are the numbers and the bomb, hidden and flagged images are defined below
 const BOMB = 9;
 const HIDDEN = 10;
@@ -40,6 +42,9 @@ var autoPlayCheckBox = document.getElementById("autoplay");
 var showHintsCheckBox = document.getElementById("showhints");
 var acceptGuessesCheckBox = document.getElementById("acceptguesses");
 var seedText = document.getElementById("seed");
+var gameTypeSafe = document.getElementById("gameTypeSafe");
+var gameTypeZero = document.getElementById("gameTypeZero");
+
 
 // add a listener for mouse clicks on the canvas
 canvas.addEventListener("mousedown", (event) => on_click(event));
@@ -157,7 +162,13 @@ async function newGame(width, height, mines, seed) {
 
     console.log("<== " + JSON.stringify(reply));
 
-    board = new Board(reply["id"], width, height, mines, seed);
+    if (gameTypeSafe.checked) {
+        var gameType = "safe";
+    } else {
+        var gameType = "zero";
+    }
+
+    board = new Board(reply["id"], width, height, mines, seed, gameType);
 
     document.getElementById('board').style.width = width * TILE_SIZE + "px";
     document.getElementById('board').style.height = height * TILE_SIZE + "px";
@@ -209,7 +220,7 @@ function followCursor(e) {
     var col = Math.floor(event.offsetX / TILE_SIZE);
 
     if (row >= board.height || row < 0 || col >= board.width || col < 0) {
-        console.log("outside of game boundaries!!");
+        //console.log("outside of game boundaries!!");
         return;
     } else {
         var tile = board.getTileXY(col, row);
@@ -426,6 +437,7 @@ async function sendMessage(message) {
         console.log("Game is over according to the server");
         canvasLocked = false;
         window.requestAnimationFrame(() => renderHints([]));  // clear the hints overlay
+
         return;
     }
 
@@ -450,9 +462,21 @@ async function sendMessage(message) {
             if (hints.length > 0 && (hints[0].prob == 1 || hints[0].prob == 0)) {
                 var message = buildMessageFromActions(hints);
 
-                var wait = Math.max(0, (250 - solverDuration));
+                var wait = Math.max(0, (CYCLE_DELAY - solverDuration));
 
                 setTimeout(function () { sendMessage(message) }, wait);
+
+            } else if (hints.length > 0 && acceptGuessesCheckBox.checked) {
+
+                var hint = [];
+                hint.push(hints[0]);
+
+                var message = buildMessageFromActions(hint); // if we are guessing send the first guess  
+
+                var wait = Math.max(0, (CYCLE_DELAY - solverDuration));
+
+                setTimeout(function () { sendMessage(message) }, wait);
+
             } else {
                 canvasLocked = false;
             }

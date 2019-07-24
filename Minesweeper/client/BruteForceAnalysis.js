@@ -24,11 +24,14 @@ class BruteForceAnalysis {
         allTiles = tiles;
 
         this.allDead = false;   // this is true if all the locations are dead
+        this.deadTiles = [];
+
 
         this.currentNode;
         this.expectedMove;
 
         this.maxSolutionSize = size;
+        this.completed = false;
 
         // reset the globals
         allSolutions = new SolutionTable(solutions);
@@ -89,8 +92,6 @@ class BruteForceAnalysis {
             }
         }
 
-
- 
         var end = performance.now();;
         console.log("Total nodes in cache = " + cache.size + ", total cache hits = " + cacheHit + ", total winning lines saved = " + cacheWinningLines);
         console.log("process took " + (end - start) + " milliseconds and explored " + processCount + " nodes");
@@ -155,6 +156,7 @@ class BruteForceAnalysis {
                 living.push(alive);
             } else {
                 console.log(allTiles[i].asText() + " is dead with value " + minValue);
+                this.deadTiles.push(allTiles[i]);   // store the dead tiles
             }
 
         }
@@ -603,7 +605,7 @@ class Node {
                     child.livingLocations = null;
 
                     //add the child to the cache if it didn't come from there and it is carrying sufficient winning lines
-                    if (child.work > 30) {
+                    if (child.work > 10) {
                         //console.log("Entry placed in cache with key " + child.position.hashCode());
                         child.work = 0;
                         child.fromCache = true;
