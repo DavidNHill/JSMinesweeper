@@ -23,12 +23,14 @@
                 <input id="seed" type="text" style="width: 150px" />
             </div>
 
-            <div style="margin-bottom: 1em;">
-                <input id="gameTypeSafe" type="radio" name="gameType" value="safe" checked> Safe start<br>
-                <input id="gameTypeZero" type="radio" name="gameType" value="zero"> Zero start<br>
+            <div class="radioButtons">
+                <label><input id="gameTypeSafe" type="radio" class="radioButton" name="gameType" value="safe" checked><span>Safe start</span></label>
+                <label><input id="gameTypeSafe" type="radio" class="radioButton" name="gameType" value="zero" checked><span>Zero start</span></label>
+                <!-- <input id="gameTypeSafe" type="radio" class="radioButton" name="gameType" value="safe" checked>  -->
+                <!-- <input id="gameTypeZero" type="radio" class="radioButton" name="gameType" value="zero">  -->
             </div>
 
-            <button onclick="doNewGame(8, 8, 10)">Beginner</button>
+            <button style="margin-top: 1em;" onclick="doNewGame(8, 8, 10)">Beginner</button>
             <button onclick="doNewGame(16, 16, 40)">Intermediate</button>
             <button onclick="doNewGame(30, 16, 99)">Expert</button>
 
@@ -63,7 +65,6 @@
         </section>
     </div>
 
-    <script src="main.js" type="text/javascript"></script>
     <script src="Board.js" type="text/javascript"></script>
     <script src="Tile.js" type="text/javascript"></script>
 
@@ -71,7 +72,9 @@
     <script src="solver_probability_engine.js" type="text/javascript"></script>
     <script src="Brute_force.js" type="text/javascript"></script>
     <script src="BruteForceAnalysis.js" type="text/javascript"></script>
-    <script src="clientMineServer.js" type="text/javascript"></script>
+    <script src="minesweeperGame.js" type="text/javascript"></script>
+
+    <script src="main.js" type="text/javascript"></script>
 
     <script type="text/javascript">
         function apply() {

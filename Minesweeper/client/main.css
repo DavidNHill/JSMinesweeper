@@ -89,6 +89,27 @@ button {
   	border-width: 5px;
 }
 
+/* make the radio button larger*/
+.radioButton {
+    height: 20px;
+    width: 20px;
+}
+
+.radioButtons label {
+    display: block;
+    float: left;
+    padding-right: 10px;
+    white-space: nowrap;
+}
+
+.radioButtons input {
+    vertical-align: middle;
+}
+
+.radioButtons label span {
+    vertical-align: middle;
+}
+
 /* make the tick box bigger*/
 .checkbox {
     height: 20px;

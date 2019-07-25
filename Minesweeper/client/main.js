@@ -1,6 +1,3 @@
-/**
-    * 
-    */
 
 "use strict";
 
@@ -16,6 +13,8 @@ const CYCLE_DELAY = 100;  // minimum delay in milliseconds between processing cy
 const BOMB = 9;
 const HIDDEN = 10;
 const FLAGGED = 11;
+
+const PLAY_CLIENT_SIDE = (location.hostname == "");
 
 // holds the images
 var images = [];
@@ -45,11 +44,6 @@ var seedText = document.getElementById("seed");
 var gameTypeSafe = document.getElementById("gameTypeSafe");
 var gameTypeZero = document.getElementById("gameTypeZero");
 
-
-// add a listener for mouse clicks on the canvas
-canvas.addEventListener("mousedown", (event) => on_click(event));
-canvas.addEventListener('mousemove', followCursor, false);
-
 /*
 // add a listener for when the client exists the page
 document.addEventListener("beforeunload", exiting(board), false);
@@ -67,6 +61,20 @@ function exiting(board) {
 
 // load the images
 load_images();
+
+// things to do to get the game up and running
+function startup() {
+
+    console.log("At start up...");
+
+    // add a listener for mouse clicks on the canvas
+    canvas.addEventListener("mousedown", (event) => on_click(event));
+    canvas.addEventListener('mousemove', followCursor, false);
+
+    // build a new layout
+    newGame(30, 16, 99, 0);
+
+}
 
 // render an array of tiles to the canvas
 function renderHints(hints) {
@@ -149,16 +157,28 @@ function updateMineCount(minesLeft) {
 
 async function newGame(width, height, mines, seed) {
 
+    // don't do this until the document is fully loaded
+    console.log(document.readyState);
+    //if (document.readyState != "complete") {
+    //    setTimeout(newGame(width, height, mines, seed), 100);
+    //    return;
+    //}
+ 
     console.log("Width=" + width + " Height=" + height + " mines=" + mines);
 
     // let the server know the game is over
     if (board != null) {
-        killGame(board.getID());
+        callKillGame(board.getID());
     }
 
-    // this is a message to the server
-    var json_data = await fetch("/requestID");
-    var reply = await json_data.json();
+    // this is a message to the server or local
+    if (PLAY_CLIENT_SIDE) {
+        var reply = getNextGameID();
+    } else {
+        var json_data = await fetch("/requestID");
+        var reply = await json_data.json();
+    }
+
     console.log("<== " + JSON.stringify(reply));
     var id = reply.id;
 
@@ -323,7 +343,7 @@ function on_click(event) {
         canvasLocked = true;
     }
 
-    var reply = sendMessage(message);
+    var reply = sendActionsMessage(message);
 
 
 }
@@ -351,21 +371,27 @@ function buildMessageFromActions(actions) {
 
 
 // send a JSON message to the server describing what action the user made
-async function sendMessage(message) {
+async function sendActionsMessage(message) {
 
     var outbound = JSON.stringify(message);
 
     console.log("==> " + outbound);
 
-    var json_data = await fetch("/data", {
-        method: "POST",
-        body: outbound,
-        headers: new Headers({
-            "Content-Type": "application/json"
-        })
-    });
+    // either play logcally or send to server
+    if (PLAY_CLIENT_SIDE) {
+        var reply = handleActions(message);
+    } else {
+        var json_data = await fetch("/data", {
+            method: "POST",
+            body: outbound,
+            headers: new Headers({
+                "Content-Type": "application/json"
+            })
+        });
 
-    var reply = await json_data.json();
+        var reply = await json_data.json();
+    }
+
 
     console.log("<== " + JSON.stringify(reply));
 
@@ -464,7 +490,7 @@ async function sendMessage(message) {
 
                 var wait = Math.max(0, (CYCLE_DELAY - solverDuration));
 
-                setTimeout(function () { sendMessage(message) }, wait);
+                setTimeout(function () { sendActionsMessage(message) }, wait);
 
             } else if (hints.length > 0 && acceptGuessesCheckBox.checked) {
 
@@ -475,7 +501,7 @@ async function sendMessage(message) {
 
                 var wait = Math.max(0, (CYCLE_DELAY - solverDuration));
 
-                setTimeout(function () { sendMessage(message) }, wait);
+                setTimeout(function () { sendActionsMessage(message) }, wait);
 
             } else {
                 canvasLocked = false;
@@ -493,22 +519,27 @@ async function sendMessage(message) {
 
 }
 
-// send a JSON message to the server describing what action the user made
-async function killGame(id) {
+// send a JSON message to the server asking it to kill the game
+async function callKillGame(id) {
 
-    var outbound = JSON.stringify({ "id": id });
+    var message = { "id": id };
 
+    var outbound = JSON.stringify(message);
     console.log("==> " + outbound);
 
-    var json_data = await fetch("/kill", {
-        method: "POST",
-        body: outbound,
-        headers: new Headers({
-            "Content-Type": "application/json"
-        })
-    });
-
-    var reply = await json_data.json();
+    // either client side or server side
+    if (PLAY_CLIENT_SIDE) {
+        var reply = killGame(message);   
+    } else {
+        var json_data = await fetch("/kill", {
+            method: "POST",
+            body: outbound,
+            headers: new Headers({
+                "Content-Type": "application/json"
+            })
+        });
+        var reply = await json_data.json();
+    }
 
     console.log("<== " + JSON.stringify(reply));
 
@@ -522,7 +553,7 @@ function load_image(image_path) {
         console.log("An image has loaded: " + image_path);
         imagesLoaded++;
         if (imagesLoaded == images.length + led_images.length) {
-            newGame(16, 16, 40, 0);
+            startup();
         }
 
     }, false);
