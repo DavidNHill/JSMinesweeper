@@ -13,6 +13,8 @@ const CYCLE_DELAY = 100;  // minimum delay in milliseconds between processing cy
 const BOMB = 9;
 const HIDDEN = 10;
 const FLAGGED = 11;
+const FLAGGED_WRONG = 12;
+const EXPLODED = 13;
 
 const PLAY_CLIENT_SIDE = (location.hostname == "");
 
@@ -44,6 +46,10 @@ var seedText = document.getElementById("seed");
 var gameTypeSafe = document.getElementById("gameTypeSafe");
 var gameTypeZero = document.getElementById("gameTypeZero");
 
+var messageLine = document.getElementById("messageLine");
+
+
+
 /*
 // add a listener for when the client exists the page
 document.addEventListener("beforeunload", exiting(board), false);
@@ -63,7 +69,7 @@ function exiting(board) {
 load_images();
 
 // things to do to get the game up and running
-function startup() {
+async function startup() {
 
     console.log("At start up...");
 
@@ -72,14 +78,15 @@ function startup() {
     canvas.addEventListener('mousemove', followCursor, false);
 
     // build a new layout
-    newGame(30, 16, 99, 0);
+    await newGame(30, 16, 99, 0);
 
+    showMessage("Welcome to minesweeper solver dedicated to Annie");
 }
 
 // render an array of tiles to the canvas
 function renderHints(hints) {
 
-    console.log(hints.length + " hints to render");
+    //console.log(hints.length + " hints to render");
 
     ctxHints.clearRect(0, 0, canvasHints.width, canvasHints.height);
 
@@ -110,17 +117,25 @@ function renderHints(hints) {
 // render an array of tiles to the canvas
 function renderTiles(tiles) {
 
-    console.log(tiles.length + " tiles to render");
+    //console.log(tiles.length + " tiles to render");
 
     for (var i = 0; i < tiles.length; i++) {
         var tile = tiles[i];
         var tileType = HIDDEN;
 
         if (tile.isBomb()) {
-            tileType = BOMB;
-
+            if (tile.exploded) {
+                tileType = EXPLODED;
+            } else {
+                tileType = BOMB;
+            }
+ 
         } else if (tile.isFlagged()) {
-            tileType = FLAGGED;
+            if (tile.isBomb() == null || tile.isBomb()) {  // isBomb() is null when the game hasn't finished
+                tileType = FLAGGED;
+            } else {
+                tileType = FLAGGED_WRONG;
+            }
 
         } else if (tile.isCovered()) {
             tileType = HIDDEN;
@@ -158,13 +173,13 @@ function updateMineCount(minesLeft) {
 async function newGame(width, height, mines, seed) {
 
     // don't do this until the document is fully loaded
-    console.log(document.readyState);
+    //console.log(document.readyState);
     //if (document.readyState != "complete") {
     //    setTimeout(newGame(width, height, mines, seed), 100);
     //    return;
     //}
  
-    console.log("Width=" + width + " Height=" + height + " mines=" + mines);
+    console.log("New game requested: Width=" + width + " Height=" + height + " Mines=" + mines);
 
     // let the server know the game is over
     if (board != null) {
@@ -211,6 +226,8 @@ async function newGame(width, height, mines, seed) {
     updateMineCount(mines);
 
     canvasLocked = false;  // just in case it was still locked (after an error for example)
+
+    showMessage("New game requested with width " + width + ", height " + height + " and " + mines + " mines.");
 
 }
 
@@ -407,9 +424,11 @@ async function sendActionsMessage(message) {
         seedText.value = board.seed;
     }
 
-    if (reply.header.status == "lost" || reply.header.status == "won") {
-        board.setGameover();
-    }
+    if (reply.header.status == "lost") { 
+        board.setGameLost();
+    } else if (reply.header.status == "won") {
+        board.setGameWon();
+    } 
 
     // translate the message and redraw the board
     var tiles = [];
@@ -440,9 +459,18 @@ async function sendActionsMessage(message) {
                 tiles.push(tile);
             }
 
-        } else if (action == 3) {  // clicked on a mine
-            board.setGameover();
-            tile.setBomb();
+        } else if (action == 3) {  // a tile which is a mine (these get returned when the game is lost)
+            board.setGameLost();
+            tile.setBomb(true);
+            tiles.push(tile);
+
+        } else if (action == 4) {  // a tile which is a mine and is the cause of losing the game
+            board.setGameLost();
+            tile.setBombExploded();
+            tiles.push(tile);
+
+        } else if (action == 5) {  // a which is flagged but shouldn't be
+            tile.setBomb(false);
             tiles.push(tile);
 
         } else {
@@ -463,7 +491,7 @@ async function sendActionsMessage(message) {
         console.log("Game is over according to the server");
         canvasLocked = false;
         window.requestAnimationFrame(() => renderHints([]));  // clear the hints overlay
-
+        showMessage("The game has been " + reply.header.status + ".");
         return;
     }
 
@@ -513,6 +541,7 @@ async function sendActionsMessage(message) {
     } else {
         canvasLocked = false;
         window.requestAnimationFrame(() => renderHints([]));  // clear the hints overlay
+        showMessage("The solver is not running.");
     }
  
     return reply;
@@ -565,8 +594,6 @@ function load_images() {
 
     console.log('Loading images...');
 
-    //var images = [];
-
     for (var i = 0; i <= 8; i++) {
         var file_path = "resources/images/" + i.toString() + ".png";
         images.push(load_image(file_path));
@@ -579,8 +606,13 @@ function load_images() {
     images.push(load_image("resources/images/bomb.png"));
     images.push(load_image("resources/images/facingDown.png"));
     images.push(load_image("resources/images/flagged.png"));
-
+    images.push(load_image("resources/images/flaggedWrong.png"));
+    images.push(load_image("resources/images/exploded.png"));
 
     console.log(images.length + ' Images Loaded');
 
+}
+
+function showMessage(text) {
+    messageLine.innerText = text;
 }

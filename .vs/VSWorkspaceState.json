@@ -2,9 +2,10 @@
   "ExpandedNodes": [
     "",
     "\\Minesweeper",
-    "\\Minesweeper\\.settings",
-    "\\Minesweeper\\client"
+    "\\Minesweeper\\client",
+    "\\Minesweeper\\client\\resources",
+    "\\Minesweeper\\client\\resources\\images"
   ],
-  "SelectedNode": "\\Minesweeper\\client\\index.html",
+  "SelectedNode": "\\Minesweeper\\client\\resources\\images\\flagged.png",
   "PreviewInSolutionExplorer": false
 }

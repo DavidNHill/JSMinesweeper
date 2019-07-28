@@ -176,7 +176,14 @@ function handleActions(message) {
             var tile = game.tiles[i];
 
             if (!tile.isFlagged() && tile.isBomb()) {
-                reply.tiles.push({ "action": 3, "index": tile.getIndex() });    // mine
+                if (tile.exploded) {
+                    reply.tiles.push({ "action": 4, "index": tile.getIndex() });    // exploded mine
+                } else {
+                    reply.tiles.push({ "action": 3, "index": tile.getIndex() });    // unflagged mine
+                }
+
+            } else if (tile.isFlagged() && !tile.isBomb()) {
+                reply.tiles.push({ "action": 5, "index": tile.getIndex() });    // wrongly flagged tile
             }
 
             game.cleanUp = true;  // mark for housekeeping
@@ -280,10 +287,12 @@ class ServerGame {
 	clickTile(tile) {
 		
         var reply = { "header": {}, "tiles": [] };
- 		
+
+        // are we clicking on a mine
 		if (tile.isBomb()) {
 			
-			reply.header.status = LOST;
+            reply.header.status = LOST;
+            tile.exploded = true;
 			//reply.tiles.push({"action" : 3, "index" : tile.getIndex()});    // mine
 
         } else {
@@ -320,10 +329,11 @@ class ServerGame {
 			return reply;
 		}
 		
-		// see if there are any unflagged bombs 
+		// see if there are any unflagged bombs in the area to be chorded - this loses the game
 		var bombCount = 0;
 		for (var adjTile of this.getAdjacent(tile)) {
-			if (adjTile.isBomb() && !adjTile.isFlagged()) {
+            if (adjTile.isBomb() && !adjTile.isFlagged()) {
+                adjTile.exploded = true;
 				bombCount++;
 				//reply.tiles.push({"action" : 3, "index" : adjTile.getIndex()});    // mine
 			}
@@ -390,7 +400,8 @@ class ServerGame {
 			}
 			
 		}
-		
+
+        // if there are no tiles left to find then set the remaining tiles to flagged and we've won
 		if (this.tiles_left == 0) {
 			for (var i=0; i < this.tiles.length; i++) {
 				var tile = this.tiles[i];
@@ -507,7 +518,8 @@ class ServerTile {
 		this.index = index
 		this.is_covered = true;
 		this.value = 0;
-		this.is_flagged = false;
+        this.is_flagged = false;
+        this.exploded = false;
 		this.is_bomb = false;
 	}
 

@@ -43,6 +43,7 @@ class ProbabilityEngine {
         this.independentIterations = 1n;
         this.remainingSquares = 0;
 
+        this.localClears = [];
 
         // generate a BoxWitness for each witness tile and also create a list of pruned witnesses for the brute force search
         var pruned = 0;
@@ -166,7 +167,11 @@ class ProbabilityEngine {
 
         }
 
-        this.calculateBoxProbabilities();
+        // if we don't have any local clears then do a full probability determination
+        if (this.localClears.length == 0) {
+            this.calculateBoxProbabilities();
+        }
+ 
 		
 	}
 
@@ -546,6 +551,37 @@ class ProbabilityEngine {
         }
 
         // if we are down here then there is no witness which is on the boundary, so we have processed a complete set of independent witnesses 
+
+        // look to see if this sub-section of the edge has any certain clears
+        for (var i = 0; i < this.mask.length; i++) {
+            if (this.mask[i]) {
+
+                var isClear = true;
+                for (var j = 0; j < this.workingProbs.length; j++) {
+                    var wp = this.workingProbs[j];
+                    if (wp.mineBoxCount[i] != 0n) {
+                        isClear = false;
+                        break;
+                    }
+                }
+                if (isClear) {
+                    // if the box is locally clear then store the tiles in it
+                    for (var j = 0; j < this.boxes[i].tiles.length; j++) {
+
+                        var tile = this.boxes[i].tiles[j];
+
+                        console.log(tile.asText() + " has been determined to be locally clear");
+                        tile.setProbability(1);
+                        this.localClears.push(tile);
+                    }
+                }
+            }
+        }
+
+        // if we have found some local clears then stop and use these
+        if (this.localClears.length > 0) {
+            return null;
+        }
 
         //independentGroups++;
 

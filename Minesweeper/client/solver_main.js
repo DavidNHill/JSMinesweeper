@@ -82,6 +82,7 @@ function solver(board) {
 	var result = trivial_actions(board, witnesses);
 
     if (result.length > 0) {
+        showMessage("The solver found " + result.length + " trivial safe moves");
         return result;
     }
     
@@ -108,14 +109,26 @@ function solver(board) {
         }
 
         if (result.length > 0) {
+            showMessage("The solver has determined all off edge tiles must be safe");
             return result;
         }
 
     }
 
+    // have we found any local clears which we can use
+    if (pe.localClears.length > 0) {
+        for (var tile of pe.localClears) {   // place each local clear into an action
+            var action = new Action(tile.getX(), tile.getY(), tile.probability);
+            result.push(action);
+        }
+        showMessage("The probability engine has found " + pe.localClears.length + " safe clears");
+        return result;
+    }
 
     // if we are having to guess and there are less then BFDA_THRESHOLD solutions use the brute force deep analysis...
     if (pe.bestProbability < 1 && pe.finalSolutionsCount < BFDA_THRESHOLD) {
+
+        showMessage("The solver is starting brute force deep analysis on " + pe.finalSolutionsCount + " solutions");
         pe.generateIndependentWitnesses();
 
         var iterator = new WitnessWebIterator(pe, allCoveredTiles, -1);
@@ -138,11 +151,13 @@ function solver(board) {
                 result.push(nextmove);
 
                 for (var tile of bfda.deadTiles) {   // show all dead tiles when deep analysis is happening
-                    var action = new Action(tile.getX(), tile.getY(), tile.prob);
+                    var action = new Action(tile.getX(), tile.getY(), tile.probability);
                     action.dead = true;
                     result.push(action);
                 }
 
+                var winChanceText  = (bfda.winChance * 100).toFixed(2);
+                showMessage("The solver has calculated the best move has a " + winChanceText + "% chance to win the game.");
                 return result;
             } else {
                 deadTiles = allCoveredTiles;   // all the tiles are dead
@@ -172,15 +187,25 @@ function solver(board) {
                     break;
                 }
             }
+
             //if (!found) {
             //    console.log("Need to create a dead square to place in the actions");
             //}
 
         }
+
+        if (pe.bestProbability == 1) {
+            showMessage("The solver has found some certain moves using the probability engine." + formatSolutions(pe.finalSolutionsCount));
+        } else {
+            showMessage("The solver has found the best guess on the edge using the probability engine." + formatSolutions(pe.finalSolutionsCount));
+        }
+
     } else {  // otherwise look for a guess with the least number of adjacent covered tiles (hunting zeros)
         var bestGuessTile = offEdgeGuess(board, witnessed);
 
         result.push(new Action(bestGuessTile.getX(), bestGuessTile.getY(), pe.offEdgeProbability));
+
+        showMessage("The solver has decided the best guess is off the edge");
 
     }
  
@@ -350,3 +375,14 @@ function combination(mines, squares) {
     return result;
 
 }    
+
+function formatSolutions(count) {
+
+    if (count > 100000000000000000n) {
+        return "";
+    } else {
+        return " " + count.toLocaleString() + " possible solutions remain.";
+    }
+
+
+}

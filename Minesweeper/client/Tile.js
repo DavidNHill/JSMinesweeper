@@ -10,7 +10,8 @@ class Tile {
 		this.is_covered = true;
 		this.value = 0;
 		this.is_flagged = false;
-		this.is_bomb = false;   // this gets set when the game is lost
+        this.is_bomb;   // this gets set when the game is lost
+        this.exploded = false;  // this gets set if this tile was the one clicked
         this.index = index;
 
         this.hint = false;
@@ -113,10 +114,15 @@ class Tile {
 		return this.is_flagged;
 	}
 
-	setBomb() {
-		this.is_bomb = true;
+	setBomb(bomb) {
+		this.is_bomb = bomb;
 	}
-	
+
+    setBombExploded() {
+        this.is_bomb = true;
+        this.exploded = true;
+    }
+
 	isBomb() {
 		return this.is_bomb;
 	}

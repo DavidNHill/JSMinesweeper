@@ -33,9 +33,14 @@ class Board {
 		return this.started;
 	}
 	
-	setGameover() {
+	setGameLost() {
 		this.gameover = true;
 	}
+
+    setGameWon() {
+        this.gameover = true;
+        this.won = true;
+    }
 
 	isGameover() {
 		return this.gameover;

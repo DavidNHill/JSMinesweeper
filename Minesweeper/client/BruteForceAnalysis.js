@@ -26,7 +26,7 @@ class BruteForceAnalysis {
         this.allDead = false;   // this is true if all the locations are dead
         this.deadTiles = [];
 
-
+        this.winChance;
         this.currentNode;
         this.expectedMove;
 
@@ -84,6 +84,7 @@ class BruteForceAnalysis {
         this.currentNode = top;
 
         if (processCount < BRUTE_FORCE_ANALYSIS_MAX_NODES) {
+            this.winChance = best / allSolutions.size() ;
             this.completed = true;
             if (true) {
                 console.log("--------- Probability Tree dump start ---------");

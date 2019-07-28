@@ -9,12 +9,13 @@ body {
 }
 
 h1 {
-	margin-top: 0px;
-	/* float: top; */
-	background: #ccc;
-  	padding: 5px;
-  	border-style: outset;
-  	border-width: 5px;
+    margin-top: 0px;
+    margin-bottom: 10px;
+    /* float: top; */
+    background: #ccc;
+    padding: 5px;
+    border-style: outset;
+    border-width: 5px;
 }
 
 /* Create two columns/boxes that floats next to each other */
@@ -22,6 +23,7 @@ nav {
   float: left;
   margin-right: 20px;
   width: 160px; 
+  height: 100%;
   background: #ccc;
   padding: 10px;
   border-style: outset;
@@ -33,6 +35,17 @@ nav ul {
   list-style-type: none;
   padding: 0;
   
+}
+
+/* divisions which appear to be raised */
+div.raised {
+    margin-top: 0px;
+    margin-right: 0px;
+    margin-bottom: 0px;
+    background: #ccc;
+    padding: 0px;
+    border-style: outset;
+    border-width: 5px;
 }
 
 /* the section holding the board and display canvas */
@@ -67,17 +80,18 @@ div#display {
   /* border-width: 5px; */
 }
 
-/* the section holding the canvas */
-canvas#myMinesLeft {
-  padding: 0px;
-  background-color: #ccc;
-  border-style: inset;
-  border-top-width: 5px;
-  border-left-width: 5px;
-  border-bottom-width: 1px;
-  border-right-width: 5px;
-  margin: 5px; 
-  margin-bottom: 2px; 
+
+/* canvases which hold LED digits */
+canvas.led {
+    padding: 0px;
+    background-color: #ccc;
+    border-style: inset;
+    border-top-width: 5px;
+    border-left-width: 5px;
+    border-bottom-width: 1px;
+    border-right-width: 5px;
+    margin: 5px;
+    margin-bottom: 2px;
 }
 
 button {
