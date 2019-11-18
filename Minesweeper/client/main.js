@@ -16,7 +16,8 @@ const FLAGGED = 11;
 const FLAGGED_WRONG = 12;
 const EXPLODED = 13;
 
-const PLAY_CLIENT_SIDE = (location.hostname == "");
+//const PLAY_CLIENT_SIDE = (location.hostname == "");
+const PLAY_CLIENT_SIDE = true;
 
 // holds the images
 var images = [];
