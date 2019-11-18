@@ -2,10 +2,8 @@
   "ExpandedNodes": [
     "",
     "\\Minesweeper",
-    "\\Minesweeper\\client",
-    "\\Minesweeper\\client\\resources",
-    "\\Minesweeper\\client\\resources\\images"
+    "\\Minesweeper\\client"
   ],
-  "SelectedNode": "\\Minesweeper\\client\\resources\\images\\flagged.png",
+  "SelectedNode": "\\Minesweeper\\client\\solver_probability_engine.js",
   "PreviewInSolutionExplorer": false
 }

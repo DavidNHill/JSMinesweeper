@@ -186,8 +186,8 @@ function handleActions(message) {
                 reply.tiles.push({ "action": 5, "index": tile.getIndex() });    // wrongly flagged tile
             }
 
-            game.cleanUp = true;  // mark for housekeeping
         }
+        game.cleanUp = true;  // mark for housekeeping
     } else if (reply.header.status == WON) {
         game.cleanUp = true;  // mark for housekeeping
     }

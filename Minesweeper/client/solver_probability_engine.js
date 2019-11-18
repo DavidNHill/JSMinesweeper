@@ -529,7 +529,7 @@ class ProbabilityEngine {
                         for (var k = 0; k < w.boxes.length; k++) {
                             var b1 = w.boxes[k];
 
-                            if (!b1.proccessed) {
+                            if (!b1.processed) {
                                 todo++;
                             }
                         }
@@ -1235,7 +1235,7 @@ class BoxWitness {
         }
 
         // if the locations are too far apart they can't share the same squares
-        if (Math.abs(boxWitness.tile.x - this.tile.x) > 2 || Math.abs(boxWitness.y - this.tile.y) > 2) {
+        if (Math.abs(boxWitness.tile.x - this.tile.x) > 2 || Math.abs(boxWitness.tile.y - this.tile.y) > 2) {
             return false;
         }
 
