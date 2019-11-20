@@ -366,7 +366,7 @@ function on_click(event) {
 
 }
 
-function buildMessageFromActions(actions) {
+function buildMessageFromActions(actions, safeOnly) {
 
     var message = { "header": board.getMessageHeader(), "actions": [] };
 
@@ -378,9 +378,10 @@ function buildMessageFromActions(actions) {
             message.actions.push({ "index": board.xy_to_index(action.x, action.y), "action": 2 });
 
         } else {   // otherwise we're trying to clear
-            message.actions.push({ "index": board.xy_to_index(action.x, action.y), "action": 1 });
+            if (!safeOnly || safeOnly && action.prob == 1) {
+                message.actions.push({ "index": board.xy_to_index(action.x, action.y), "action": 1 });
+            }
         }
-
     }
 
     return message;
@@ -515,7 +516,7 @@ async function sendActionsMessage(message) {
 
         if (autoPlayCheckBox.checked) {
             if (hints.length > 0 && (hints[0].prob == 1 || hints[0].prob == 0)) {
-                var message = buildMessageFromActions(hints);
+                var message = buildMessageFromActions(hints, true);  // send all safe actions
 
                 var wait = Math.max(0, (CYCLE_DELAY - solverDuration));
 
@@ -526,7 +527,7 @@ async function sendActionsMessage(message) {
                 var hint = [];
                 hint.push(hints[0]);
 
-                var message = buildMessageFromActions(hint); // if we are guessing send the first guess  
+                var message = buildMessageFromActions(hint, false); // if we are guessing send only the first guess  
 
                 var wait = Math.max(0, (CYCLE_DELAY - solverDuration));
 

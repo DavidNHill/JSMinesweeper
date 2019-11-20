@@ -3,7 +3,7 @@
  */
 "use strict";
 
-const BFDA_THRESHOLD = 400n;
+const BFDA_THRESHOLD = 400;
 
 function solver(board) {
 	
@@ -41,10 +41,10 @@ function solver(board) {
 			var adjTile = adjTiles[j];
 			if (adjTile.isCovered() && !adjTile.isFlagged()) {
 				needsWork = true;
-				
+
+
+
 				work.add(adjTile.index);
-				
-				//witnessed.push(adjTile);
 			} 
 		}
 
@@ -55,8 +55,10 @@ function solver(board) {
 	}	
 	
 	// generate an array of tiles from the map
-	for (var index of work) {
-		witnessed.push(board.getTile(index));
+    for (var index of work) {
+        var tile = board.getTile(index);
+        tile.setOnEdge(true);
+		witnessed.push(tile);
 	}
 
     console.log("tiles left = " + squaresLeft);
@@ -125,6 +127,16 @@ function solver(board) {
         return result;
     }
 
+    // set all off edge probabilities
+    for (var i = 0; i < board.tiles.length; i++) {
+
+        var tile = board.getTile(i);
+
+        if (tile.isCovered() && !tile.isFlagged() && !tile.onEdge) {
+            tile.setProbability(pe.offEdgeProbability);
+        }
+    }	
+
     // if we are having to guess and there are less then BFDA_THRESHOLD solutions use the brute force deep analysis...
     if (pe.bestProbability < 1 && pe.finalSolutionsCount < BFDA_THRESHOLD) {
 
@@ -150,18 +162,29 @@ function solver(board) {
                 var nextmove = bfda.getNextMove();
                 result.push(nextmove);
 
-                for (var tile of bfda.deadTiles) {   // show all dead tiles when deep analysis is happening
-                    var action = new Action(tile.getX(), tile.getY(), tile.probability);
-                    action.dead = true;
-                    result.push(action);
-                }
+                //for (var tile of bfda.deadTiles) {   // show all dead tiles when deep analysis is happening
+                //    var action = new Action(tile.getX(), tile.getY(), tile.probability);
+                //    action.dead = true;
+                //    result.push(action);
+                //}
 
+                deadTiles = bfda.deadTiles;
                 var winChanceText  = (bfda.winChance * 100).toFixed(2);
-                showMessage("The solver has calculated the best move has a " + winChanceText + "% chance to win the game.");
-                return result;
+                showMessage("The solver has calculated the best move has a " + winChanceText + "% chance to win the game." + formatSolutions(pe.finalSolutionsCount));
+
             } else {
+                showMessage("The solver has calculated that all the remaining tiles are dead." + formatSolutions(pe.finalSolutionsCount));
                 deadTiles = allCoveredTiles;   // all the tiles are dead
             }
+
+            // identify the dead tiles
+            for (var tile of deadTiles) {   // show all dead tiles 
+                var action = new Action(tile.getX(), tile.getY(), tile.probability);
+                action.dead = true;
+                result.push(action);
+            }
+
+            return result;
         }
 
     } else {
@@ -205,12 +228,17 @@ function solver(board) {
 
         result.push(new Action(bestGuessTile.getX(), bestGuessTile.getY(), pe.offEdgeProbability));
 
-        showMessage("The solver has decided the best guess is off the edge");
+        showMessage("The solver has decided the best guess is off the edge." + formatSolutions(pe.finalSolutionsCount));
 
     }
- 
 
-    
+    // identify the dead tiles
+    for (var tile of deadTiles) {   // show all dead tiles 
+        var action = new Action(tile.getX(), tile.getY(), tile.probability);
+        action.dead = true;
+        result.push(action);
+    }
+
 	return result;
 	
 }
@@ -340,8 +368,9 @@ class Action {
 	
 }
 
-const power10n = [1n, 10n, 100n, 1000n, 10000n, 100000n, 1000000n];
+const power10n = [BigInt(1), BigInt(10), BigInt(100), BigInt(1000), BigInt(10000), BigInt(100000), BigInt(1000000)];
 const power10 = [1, 10, 100, 1000, 10000, 100000, 1000000];
+const maxSolutionsDisplay = BigInt("100000000000000000");
 
 function divideBigInt(numerator, denominator, dp) {
 
@@ -378,7 +407,7 @@ function combination(mines, squares) {
 
 function formatSolutions(count) {
 
-    if (count > 100000000000000000n) {
+    if (count > maxSolutionsDisplay) {
         return "";
     } else {
         return " " + count.toLocaleString() + " possible solutions remain.";

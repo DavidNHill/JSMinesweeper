@@ -2,8 +2,9 @@
   "ExpandedNodes": [
     "",
     "\\Minesweeper",
-    "\\Minesweeper\\client"
+    "\\Minesweeper\\client",
+    "\\resources"
   ],
-  "SelectedNode": "\\Minesweeper\\client\\solver_probability_engine.js",
+  "SelectedNode": "\\index.html",
   "PreviewInSolutionExplorer": false
 }

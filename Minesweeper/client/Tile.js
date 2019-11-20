@@ -14,6 +14,7 @@ class Tile {
         this.exploded = false;  // this gets set if this tile was the one clicked
         this.index = index;
 
+        this.onEdge = false;
         this.hint = false;
         this.probability;
         this.hintText = "";
@@ -84,13 +85,18 @@ class Tile {
 
     }
 
-    getProbability() {
-        return this.probability;
-    }
+    //getProbability() {
+    //    return this.probability;
+    //}
 
     clearHint() {
+        this.onEdge = false;
         this.hasHint = false;
         this.hintText = "";
+    }
+
+    setOnEdge() {
+        this.onEdge = true;
     }
 
 	isCovered() {

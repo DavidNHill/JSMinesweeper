@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<meta charset="ISO-8859-1">
-	<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, shrink-to-fit=no">
-	<link rel="stylesheet" href="Minesweeper/client/main.css">
-	<title>Minesweeper solver</title>
+    <meta charset="ISO-8859-1">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="Minesweeper/client/main.css">
+    <link rel="icon" type="image/png" href="resources/images/flagged.png" />
+    <title>Minesweeper solver</title>
 </head>
 <body>
 
@@ -25,7 +26,7 @@
             </div>
 
             <div class="radioButtons">
-                <label><input id="gameTypeSafe" type="radio" class="radioButton" name="gameType" value="safe" checked><span>Safe start</span></label>
+                <label><input id="gameTypeSafe" type="radio" class="radioButton" name="gameType" value="safe"><span>Safe start</span></label>
                 <label><input id="gameTypeSafe" type="radio" class="radioButton" name="gameType" value="zero" checked><span>Zero start</span></label>
                 <!-- <input id="gameTypeSafe" type="radio" class="radioButton" name="gameType" value="safe" checked>  -->
                 <!-- <input id="gameTypeZero" type="radio" class="radioButton" name="gameType" value="zero">  -->
@@ -47,8 +48,8 @@
             <button onclick="apply()">Custom</button>
 
             <div class="checkboxes" style="margin-top: 1em;">
-                <label><input type="checkbox" class="checkbox" id="showhints" /> <span>Show hints</span></label>
-                <label><input type="checkbox" class="checkbox" id="autoplay" /> <span>Auto play</span></label>
+                <label><input type="checkbox" class="checkbox" id="showhints" checked/> <span>Show hints</span></label>
+                <label><input type="checkbox" class="checkbox" id="autoplay" checked/> <span>Auto play</span></label>
                 <label><input type="checkbox" class="checkbox" id="acceptguesses" /> <span>Accept guesses</span></label>
             </div>
 
@@ -131,9 +132,9 @@
                 mines = 1;
             }
 
-            if (mines > width * height - 1) {
-                document.getElementById("mines").value = width * height - 1;
-                mines = width * height - 1;
+            if (mines > width * height - 9) {
+                document.getElementById("mines").value = width * height - 9;
+                mines = width * height - 9;
             }
 
             doNewGame(width, height, mines);

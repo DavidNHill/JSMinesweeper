@@ -34,13 +34,13 @@ class ProbabilityEngine {
         this.heldProbs = [];
         this.bestProbability = 0;  // best probability of being safe
         this.offEdgeProbability = 0;
-        this.finalSolutionsCount = 0n;
+        this.finalSolutionsCount = BigInt(0);
 
         // details about independent witnesses
         this.independentWitnesses = [];
         this.dependentWitnesses = [];
         this.independentMines = 0;
-        this.independentIterations = 1n;
+        this.independentIterations = BigInt(1);
         this.remainingSquares = 0;
 
         this.localClears = [];
@@ -559,7 +559,7 @@ class ProbabilityEngine {
                 var isClear = true;
                 for (var j = 0; j < this.workingProbs.length; j++) {
                     var wp = this.workingProbs[j];
-                    if (wp.mineBoxCount[i] != 0n) {
+                    if (wp.mineBoxCount[i] != 0) {
                         isClear = false;
                         break;
                     }
@@ -613,7 +613,7 @@ class ProbabilityEngine {
     }
 
 
-    // check the candidate dead locations with the information we have
+    // check the candidate dead locations with the information we have - remove those that aren't dead
     checkCandidateDeadLocations() {
 
         var completeScan;
@@ -666,7 +666,6 @@ class ProbabilityEngine {
                 continue;
             }
 
-
             var okay = true;
             var mineCount = 0;
             line: for (var j = 0; j < this.workingProbs.length; j++) {
@@ -674,7 +673,7 @@ class ProbabilityEngine {
                 var pl = this.workingProbs[j];
 
                 if (completeScan && pl.mineCount != this.minesLeft) {
-                    continue;
+                    continue line;
                 }
 
                 // ignore probability lines where the candidate is a mine
@@ -688,8 +687,16 @@ class ProbabilityEngine {
 
                     var b = dc.badBoxes[k];
 
-                    if (pl.mineBoxCount[b.uid] != 0) {
-                        console.log("Location " + dc.candidate.asText() + " is not dead because a bad box is non-zero");
+                    var neededMines;
+                    if (b.uid == dc.myBox.uid) {
+                        neededMines = b.tiles.length - 1;
+                    } else {
+                        neededMines = b.tiles.length;
+                    }
+
+                    // a bad box must have either no mines or all mines
+                    if (pl.mineBoxCount[b.uid] != 0 && pl.mineBoxCount[b.uid] != neededMines) {
+                        console.log("Location " + dc.candidate.asText() + " is not dead because a bad box has neither zero or all mines: " + pl.mineBoxCount[b.uid] + "/" + neededMines);
                         okay = false;
                         break line;
                     }
@@ -784,6 +791,8 @@ class ProbabilityEngine {
                 return this.boxes[i];
             }
         }
+
+        console.log("ERROR - tile " + tile.asText() + " doesn't belong to a box");
 
         return null;
     }
@@ -952,6 +961,7 @@ class ProbabilityEngine {
 
             // for each tile in the box allocate a probability to it
             for (var j = 0; j < this.boxes[i].tiles.length; j++) {
+                //console.log(this.boxes[i].tiles[j].asText() + " set to probability " + this.boxProb[i]);
                 this.boxes[i].tiles[j].setProbability(this.boxProb[i]);
             }
 
@@ -1100,24 +1110,22 @@ class ProbabilityEngine {
                 for (var j = 0; j < this.boxes[i].tiles.length; j++) {
                     var squ = this.boxes[i].tiles[j];
 
-                    best.push(new Action(squ.x, squ.y, this.boxProb[i]));
+                    //best.push(new Action(squ.x, squ.y, this.boxProb[i]));
 
-                    // no longer exclude dead tiles because we want to show them on the display
-                    /*
+                    //  exclude dead tiles 
                     var dead = false;
-                    for (var k = 0; k < deadTiles.length; k++) {
-                        if (deadTiles[k].isEqual(squ)) {
+                    for (var k = 0; k < this.deadTiles.length; k++) {
+                        if (this.deadTiles[k].isEqual(squ)) {
                             dead = true;
                             break;
                         }
                     }
-                    if (!dead || boxProb[i].prob == 1) {   // if not dead or 100% safe then use the tile
+                    if (!dead || this.boxProb[i] == 1) {   // if not dead or 100% safe then use the tile
                         best.push(new Action(squ.x, squ.y, this.boxProb[i]));
                     } else {
                         console.log("Tile " + squ.asText() + " is ignored because it is dead");
                     }
-                    */
-
+ 
                 }
             }
         }

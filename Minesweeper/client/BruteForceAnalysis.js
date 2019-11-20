@@ -315,7 +315,7 @@ class Position {
         var h = BigInt(this.hash);
         if (h == 0 && this.position.length > 0) {
             for (var i = 0; i < this.position.length; i++) {
-                h = (31n * h + BigInt(this.position[i])) % this.mod;
+                h = (BigInt(31) * h + BigInt(this.position[i])) % this.mod;
             }
             this.hash = Number(h);  // convert back to a number
         }
