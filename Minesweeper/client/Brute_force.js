@@ -303,12 +303,12 @@ class WitnessWebIterator {
  
     }
 
-    getLocations() {
-        return location;
+    getTiles() {
+        return this.allCoveredTiles;
     }
 
     getIterations() {
-        return iterationsDone;
+        return this.iterationsDone;
     }
 
     // if the location is a Independent witness then we know it will always

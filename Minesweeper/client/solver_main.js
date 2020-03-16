@@ -90,7 +90,7 @@ function solver(board) {
     
     var peStart = Date.now();
  
-	var pe = new ProbabilityEngine(witnesses, witnessed, squaresLeft, minesLeft);
+	var pe = new ProbabilityEngine(board, witnesses, witnessed, squaresLeft, minesLeft);
 
     pe.process();
 
@@ -136,6 +136,52 @@ function solver(board) {
             tile.setProbability(pe.offEdgeProbability);
         }
     }	
+
+
+    // if we have an isolated edge process that
+    if (pe.isolatedEdgeBruteForce != null) {
+
+        var solutionCount = pe.isolatedEdgeBruteForce.crunch();
+
+        console.log("Solutions found by brute force for isolated edge " + solutionCount);
+
+        var bfda = new BruteForceAnalysis(pe.isolatedEdgeBruteForce.allSolutions, pe.isolatedEdgeBruteForce.iterator.tiles, 1000);  // the tiles and the solutions need to be in sync
+
+        bfda.process();
+
+        // if the brute force deep analysis completed then use the results
+        if (bfda.completed) {
+            // if they aren't all dead then send the best guess
+            if (!bfda.allTilesDead()) {
+                var nextmove = bfda.getNextMove();
+                result.push(nextmove);
+
+                //for (var tile of bfda.deadTiles) {   // show all dead tiles when deep analysis is happening
+                //    var action = new Action(tile.getX(), tile.getY(), tile.probability);
+                //    action.dead = true;
+                //    result.push(action);
+                //}
+
+                deadTiles = bfda.deadTiles;
+                var winChanceText = (bfda.winChance * 100).toFixed(2);
+                showMessage("The solver has calculated the best move has a " + winChanceText + "% chance to solve the isolated edge." + formatSolutions(pe.finalSolutionsCount));
+
+            } else {
+                showMessage("The solver has calculated that all the tiles on the isolated edge are dead." + formatSolutions(pe.finalSolutionsCount));
+                deadTiles = bfda.deadTiles;   // all the tiles are dead
+            }
+
+            // identify the dead tiles
+            for (var tile of deadTiles) {   // show all dead tiles 
+                var action = new Action(tile.getX(), tile.getY(), tile.probability);
+                action.dead = true;
+                result.push(action);
+            }
+
+            return result;
+        }
+
+    }
 
     // if we are having to guess and there are less then BFDA_THRESHOLD solutions use the brute force deep analysis...
     if (pe.bestProbability < 1 && pe.finalSolutionsCount < BFDA_THRESHOLD) {
