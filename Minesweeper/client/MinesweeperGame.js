@@ -262,11 +262,18 @@ class ServerGame {
 		// hold the tiles to exclude from being a mine 
 		var exclude = {};
 		exclude[index] = true;
+		var excludeCount = 1;
 
-        if (this.gameType == "zero") {
+		if (this.gameType == "zero") {
             for (var adjIndex of this.getAdjacentIndex(index)) {
-                exclude[adjIndex] = true;
+				exclude[adjIndex] = true;
+				excludeCount++;
             }
+        }
+
+		if (this.width * this.height - excludeCount < this.num_bombs) {
+			this.num_bombs = this.width * this.height - excludeCount;
+			console.log("Too many mines to be placed! Reducing mine count to " + this.num_bombs);
         }
 
 		this.init_tiles(exclude);

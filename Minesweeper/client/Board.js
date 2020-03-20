@@ -8,7 +8,9 @@ class Board {
 	constructor(id, width, height, num_bombs, seed, gameType) {
 		
 		console.log("Creating a new board with id=" + id + " ...");
-		
+
+		this.MAX = 4294967295;
+
         this.id = id;
         this.gameType = gameType;
 		this.width = width;
@@ -19,7 +21,7 @@ class Board {
 		this.tiles = [];
 		this.started = false;
 		this.bombs_left = this.num_bombs;
-		this.tiles_left = this.width * this.height - this.num_bombs;
+		//this.tiles_left = this.width * this.height - this.num_bombs;
 		this.init_tiles();
 
 		this.gameover = false;
@@ -51,7 +53,7 @@ class Board {
 		return this.id;
 	}
 	
-	setStarted(id) {
+	setStarted() {
 		
 		if (this.start) {
 			console.log("Logic error: starting the same game twice");
@@ -158,7 +160,19 @@ class Board {
 
 		return result;
 	}
-	
+
+	getFlagsPlaced() {
+
+		var tally = 0;
+		for (var i = 0; i < this.tiles.length; i++) {
+			if (this.tiles[i].isFlagged()) {
+				tally++;
+            }
+        }
+			 
+		return tally;
+    }
+
 	// sets up the initial tiles 
 	init_tiles() {
 		
@@ -170,5 +184,28 @@ class Board {
 		
 		console.log(this.tiles.length + " tiles added to board");
 	}
-	
+
+	setAllZero() {
+		for (var i = 0; i < this.tiles.length; i++) {
+			this.tiles[i].setValue(0);
+		}
+    }
+
+	getHashValue() {
+
+		var hash = (31 * 31 * 31 * this.num_bombs + 31 * 31 * this.getFlagsPlaced() + 31 * this.width + this.height) % this.MAX;
+
+		for (var i = 0; i < this.tiles.length; i++) {
+			var tile = this.tiles[i];
+			if (tile.isFlagged()) {
+				hash = (31 * hash + 13) % this.MAX;
+			} else if (tile.isCovered()) {
+				hash = (31 * hash + 12) % this.MAX;
+			} else {
+				hash = (31 * hash + tile.getValue()) % this.MAX;
+			}
+        }
+
+		return hash;
+	}
 }

@@ -36,6 +36,7 @@ class ProbabilityEngine {
         this.heldProbs = [];
         this.bestProbability = 0;  // best probability of being safe
         this.offEdgeProbability = 0;
+        this.bestOnEdgeProbability;
         this.finalSolutionsCount = BigInt(0);
 
         // details about independent witnesses
@@ -842,7 +843,13 @@ class ProbabilityEngine {
 
             }
 
-            this.deadCandidates.push(dc);
+            if (dc.goodBoxes.length == 0 && dc.badBoxes.length == 0) {
+                console.log(dc.candidate.asText() + " is dead since it has no open tiles around it");
+                this.deadTiles.push(dc.candidate);
+            } else {
+                this.deadCandidates.push(dc);
+            }
+            
 
         }
 
@@ -1096,7 +1103,6 @@ class ProbabilityEngine {
                     //   mines.add(squ);
                     //}
                 } else {
-                    //this.boxProb[i] = 1 - Number(tally[i] / totalTally);
                     this.boxProb[i] = 1 - divideBigInt(tally[i], totalTally, 6);
                 }
 
@@ -1134,10 +1140,9 @@ class ProbabilityEngine {
         this.finalSolutionsCount = totalTally;
 
         // see if we can find a guess which is better than outside the boxes
-        var hwm = this.offEdgeProbability;
+        var hwm = 0;
 
-        //offEdgeBest = true;
-
+        
         for (var i = 0; i < this.boxes.length; i++) {
 
             var b = this.boxes[i];
@@ -1169,21 +1174,14 @@ class ProbabilityEngine {
             if (boxLiving || prob == 1) {   // if living or 100% safe then consider this probability
 
                 if (hwm <= prob) {
-                    //offEdgeBest = false;
-                    hwm = prob;
+                     hwm = prob;
                 }
             }
         }
 
-        //for (BigDecimal bd: boxProb) {
-        //	if (hwm.compareTo(bd) <= 0) {
-        //		offEdgeBest = false;
-        //		hwm = bd;
-        //	}
-        //	hwm = hwm.max(bd);
-        //}
+        this.bestOnEdgeProbability = hwm;
 
-        this.bestProbability = hwm;
+        this.bestProbability = Math.max(this.bestOnEdgeProbability, this.offEdgeProbability);            ;
 
         //if (bestProbability.compareTo(BigDecimal.ONE) == 0) {
         //    cutoffProbability = BigDecimal.ONE;
@@ -1192,12 +1190,11 @@ class ProbabilityEngine {
         //}
 
         console.log("Off edge probability is " + this.offEdgeProbability);
+        console.log("Best on edge probability is " + this.bestOnEdgeProbability);
         console.log("Best probability is " + this.bestProbability);
         console.log("Game has  " + this.finalSolutionsCount + " candidate solutions" );
 
-
         //solver.display("probability off web is " + outsideProb);
-
 
     }
 

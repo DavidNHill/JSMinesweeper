@@ -3,7 +3,11 @@
  */
 "use strict";
 
-const BFDA_THRESHOLD = 400;
+const PLAY_BFDA_THRESHOLD = 750;       // number of solutions for the Brute force analysis to start
+const ANALYSIS_BFDA_THRESHOLD = 5000; 
+const HARD_CUT_OFF = 0.93;        // cutoff for considering on edge possibilities below the best probability
+const OFF_EDGE_THRESHOLD = 0.98;  // when to include possibilities off the edge
+const PROGRESS_CONTRIBUTION = 0.2  // how much progress counts towards the final score
 
 function solver(board) {
 	
@@ -18,7 +22,10 @@ function solver(board) {
     var deadTiles = [];  // used to hold the tiles which have been determined to be dead by either the probability engine or deep analysis
 
 	var work = new Set();  // use a map to deduplicate the witnessed tiles
-	
+
+   
+    showMessage("The solver is thinking...");
+
 	for (var i=0; i < board.tiles.length; i++) {
 
 		var tile = board.getTile(i);
@@ -41,9 +48,6 @@ function solver(board) {
 			var adjTile = adjTiles[j];
 			if (adjTile.isCovered() && !adjTile.isFlagged()) {
 				needsWork = true;
-
-
-
 				work.add(adjTile.index);
 			} 
 		}
@@ -75,11 +79,9 @@ function solver(board) {
             var tile = allCoveredTiles[i];
             result.push(new Action(tile.getX(), tile.getY(), 1))
         }
-
+        showMessage("No mines left to find all remaining tiles are safe");
         return result;
     }
-
-
 
 	var result = trivial_actions(board, witnesses);
 
@@ -184,7 +186,14 @@ function solver(board) {
     }
 
     // if we are having to guess and there are less then BFDA_THRESHOLD solutions use the brute force deep analysis...
-    if (pe.bestProbability < 1 && pe.finalSolutionsCount < BFDA_THRESHOLD) {
+    var bfdaThreshold;
+    if (analysisMode) {
+        bfdaThreshold = ANALYSIS_BFDA_THRESHOLD;
+    } else {
+        bfdaThreshold = PLAY_BFDA_THRESHOLD;
+    }
+
+    if (pe.bestProbability < 1 && pe.finalSolutionsCount < bfdaThreshold) {
 
         showMessage("The solver is starting brute force deep analysis on " + pe.finalSolutionsCount + " solutions");
         pe.generateIndependentWitnesses();
@@ -215,7 +224,7 @@ function solver(board) {
                 //}
 
                 deadTiles = bfda.deadTiles;
-                var winChanceText  = (bfda.winChance * 100).toFixed(2);
+                var winChanceText = (bfda.winChance * 100).toFixed(2);
                 showMessage("The solver has calculated the best move has a " + winChanceText + "% chance to win the game." + formatSolutions(pe.finalSolutionsCount));
 
             } else {
@@ -231,6 +240,8 @@ function solver(board) {
             }
 
             return result;
+        } else {
+            deadTiles = pe.getDeadTiles();  // use the dead tiles from the probability engine
         }
 
     } else {
@@ -239,7 +250,14 @@ function solver(board) {
 
     // ... otherwise we will use the probability engines results
 
-    result = pe.getBestCandidates(1);  // get best options within this ratio of the best value
+
+    result = pe.getBestCandidates(HARD_CUT_OFF);  // get best options within this ratio of the best value
+
+    // if the off edge tiles are within tolerance then add them to the candidates to consider
+    if (pe.offEdgeProbability > pe.bestOnEdgeProbability * OFF_EDGE_THRESHOLD) {
+        result.push(...getOffEdgeCandidates(board, pe, witnesses, allCoveredTiles));
+        result.sort(function (a, b) { return b.prob - a.prob });
+    }
 
     // if we have some good guesses on the edge
     if (result.length > 0) {
@@ -267,6 +285,7 @@ function solver(board) {
             showMessage("The solver has found some certain moves using the probability engine." + formatSolutions(pe.finalSolutionsCount));
         } else {
             showMessage("The solver has found the best guess on the edge using the probability engine." + formatSolutions(pe.finalSolutionsCount));
+            result = tieBreak(pe, result);
         }
 
     } else {  // otherwise look for a guess with the least number of adjacent covered tiles (hunting zeros)
@@ -289,6 +308,42 @@ function solver(board) {
 	
 }
 
+function tieBreak(pe, actions) {
+
+    var best; 
+    for (var i = 0; i < actions.length; i++) {
+
+        if (best != null) {
+            if (actions[i].prob * (1 + PROGRESS_CONTRIBUTION) < best.weight) {
+                console.log("(" + actions[i].x + "," + actions[i].y + ") is ignored because it can never do better than the best");
+                continue;
+            }
+        }
+
+        fullAnalysis(pe, board, actions[i]);  // updates variables in the Action class
+
+        if (best == null || best.weight < actions[i].weight) {
+            best = actions[i];
+        }
+
+    }
+
+    actions.sort(function (a, b) {
+
+        var c = b.weight - a.weight;
+        if (c != 0) {
+            return c;
+        } else {
+            return b.expectedClears - a.expectedClears;
+        }
+        
+    });
+
+    console.log("Solver recommends (" + actions[0].x + "," + actions[0].y + ")");
+
+    return actions;
+
+}
 
 function trivial_actions(board, witnesses) {
 	
@@ -410,9 +465,183 @@ class Action {
 		this.y = y;
         this.prob = prob;
         this.dead = false;
+
+        // part of full analysis output, until then assume worst case 
+        this.progress = 0;
+        this.expectedClears;
+        this.weight = prob;
  	}
 	
 }
+
+const OFFSETS = [[2, 0], [-2, 0], [0, 2], [0, -2]];
+
+function getOffEdgeCandidates(board, pe, witnesses, allCoveredTiles) {
+
+    console.log("getting off edge candidates");
+
+    var accepted = new Set();  // use a map to deduplicate the witnessed tiles
+
+    for (var i = 0; i < witnesses.length; i++) {
+
+        var tile = witnesses[i];
+
+        for (var j = 0; j < OFFSETS.length; j++) {
+
+            var x1 = tile.x + OFFSETS[j][0];
+            var y1 = tile.y + OFFSETS[j][1];
+
+            if (x1 >= 0 && x1 < board.width && y1 >= 0 && y1 < board.height) {
+
+                var workTile = board.getTileXY(x1, y1);
+
+                //console.log(x1 + " " + y1 + " is within range, covered " + workTile.isCovered() + ", on Edge " + workTile.onEdge);
+                if (workTile.isCovered() && !workTile.isFlagged()  && !workTile.onEdge) {
+                    //console.log(x1 + " " + y1 + " is covered and off edge");
+                    accepted.add(workTile);
+                    //result.push(new Action(x1, y1, pe.offEdgeProbability));
+                }
+            }
+
+        }
+
+    }
+
+    for (var i = 0; i < allCoveredTiles.length; i++) {
+
+        var workTile = allCoveredTiles[i];
+
+        // if the tile isn't alrerady being analysed and isn't on the edge
+        if (!accepted.has(workTile) && !workTile.onEdge) {
+
+            // see if it has a small number of free tiles around it
+            var adjCovered = board.adjacentCoveredCount(workTile);
+            if (adjCovered > 1 && adjCovered < 4) {
+                accepted.add(workTile);
+            }
+
+        }
+
+    }
+
+    var result = []
+
+    // generate an array of tiles from the map
+    for (var tile of accepted) {
+        result.push(new Action(tile.x, tile.y, pe.offEdgeProbability));
+    }
+
+    return result;
+
+}
+
+function fullAnalysis(pe, board, action) {
+
+    var tile = board.getTileXY(action.x, action.y);
+
+    var adjFlags = board.adjacentFlagsCount(tile);
+    var adjCovered = board.adjacentCoveredCount(tile);
+
+
+    var solutions = BigInt(0);
+    var expectedClears = BigInt(0);
+    for (var value = adjFlags; value <= adjCovered + adjFlags; value++) {
+
+        tile.setValue(value);
+
+        var work = countSolutions(board);
+        //totalSolutions = totalSolutions + work.finalSolutionsCount;
+        if (work.clearCount > 0) {
+            expectedClears = expectedClears + work.finalSolutionsCount * BigInt(work.clearCount);
+            solutions = solutions + work.finalSolutionsCount;
+        }
+
+    }
+
+    tile.setCovered(true);
+
+    action.expectedClears = divideBigInt(expectedClears, pe.finalSolutionsCount, 6);
+
+    var progress = divideBigInt(solutions, pe.finalSolutionsCount, 6);
+
+    action.progress = progress;
+
+    action.weight = action.prob * (1 + progress * PROGRESS_CONTRIBUTION);
+
+    tile.setProbability(action.prob, action.progress);
+
+    console.log(tile.asText() + " progress = " + action.progress + " weight = " + action.weight + " expected clears = " + action.expectedClears);
+
+}
+
+function countSolutions(board) {
+
+    // find all the tiles which are revealed and have un-revealed / un-flagged adjacent squares
+    var allCoveredTiles = [];
+    var witnesses = [];
+    var witnessed = [];
+
+    var minesLeft = board.num_bombs;
+    var squaresLeft = 0;
+
+    var deadTiles = [];  // used to hold the tiles which have been determined to be dead by either the probability engine or deep analysis
+
+    var work = new Set();  // use a map to deduplicate the witnessed tiles
+
+    for (var i = 0; i < board.tiles.length; i++) {
+
+        var tile = board.getTile(i);
+
+        if (tile.isFlagged()) {
+            minesLeft--;
+            continue;  // if the tile is a flag then nothing to consider
+        } else if (tile.isCovered()) {
+            squaresLeft++;
+            allCoveredTiles.push(tile);
+            continue;  // if the tile hasn't been revealed yet then nothing to consider
+        }
+
+        var adjTiles = board.getAdjacent(tile);
+
+        var needsWork = false;
+        for (var j = 0; j < adjTiles.length; j++) {
+            var adjTile = adjTiles[j];
+            if (adjTile.isCovered() && !adjTile.isFlagged()) {
+                needsWork = true;
+                work.add(adjTile.index);
+            }
+        }
+
+        if (needsWork) {
+            witnesses.push(tile);
+        }
+
+    }
+
+    // generate an array of tiles from the map
+    for (var index of work) {
+        var tile = board.getTile(index);
+        tile.setOnEdge(true);
+        witnessed.push(tile);
+    }
+
+    //console.log("tiles left = " + squaresLeft);
+    //console.log("mines left = " + minesLeft);
+    //console.log("Witnesses  = " + witnesses.length);
+    //console.log("Witnessed  = " + witnessed.length);
+
+    var start = Date.now();
+
+    var solutionCounter = new SolutionCounter(board, witnesses, witnessed, squaresLeft, minesLeft);
+
+    solutionCounter.process();
+
+    console.log("solution counter took " + (Date.now() - start) + " milliseconds to complete");
+
+    return solutionCounter;
+
+}
+
 
 const power10n = [BigInt(1), BigInt(10), BigInt(100), BigInt(1000), BigInt(10000), BigInt(100000), BigInt(1000000)];
 const power10 = [1, 10, 100, 1000, 10000, 100000, 1000000];
@@ -427,10 +656,15 @@ function divideBigInt(numerator, denominator, dp) {
     return result;
 }
 
+function combination(mines, squares) {
+
+     return BINOMIAL.generate(mines, squares);
+
+}    
 
 function combination(mines, squares) {
 
-    var start = Date.now();
+    //var start = Date.now();
 
     var top = BigInt(1);
     var bot = BigInt(1);
@@ -445,7 +679,7 @@ function combination(mines, squares) {
 
     var result = top / bot;
 
-    console.log("Combination duration " + (Date.now() - start) + " milliseconds");
+    //console.log("Combination duration " + (Date.now() - start) + " milliseconds");
 
     return result;
 

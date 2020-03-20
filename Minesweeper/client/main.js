@@ -3,9 +3,9 @@
 
 console.log('At start of main.js');
 
-const TILE_SIZE = 32;
-const DIGIT_HEIGHT = 30;
-const DIGIT_WIDTH = 18;
+const TILE_SIZE = 24;
+const DIGIT_HEIGHT = 36;
+const DIGIT_WIDTH = 24;
 
 const CYCLE_DELAY = 100;  // minimum delay in milliseconds between processing cycles
 
@@ -19,6 +19,8 @@ const EXPLODED = 13;
 //const PLAY_CLIENT_SIDE = (location.hostname == "");
 const PLAY_CLIENT_SIDE = true;
 
+var BINOMIAL;
+
 // holds the images
 var images = [];
 var imagesLoaded = 0;
@@ -29,7 +31,8 @@ var canvasLocked = false;   // we need to lock the canvas if we are auto playing
 var canvas = document.getElementById('myCanvas');
 var ctx = canvas.getContext('2d');
 
-var ctxBombsLeft = document.getElementById('myMinesLeft').getContext('2d');
+var minesLeft = document.getElementById('myMinesLeft');
+var ctxBombsLeft = minesLeft.getContext('2d');
 
 var canvasHints = document.getElementById('myHints');
 var ctxHints = canvasHints.getContext('2d');
@@ -46,11 +49,14 @@ var acceptGuessesCheckBox = document.getElementById("acceptguesses");
 var seedText = document.getElementById("seed");
 var gameTypeSafe = document.getElementById("gameTypeSafe");
 var gameTypeZero = document.getElementById("gameTypeZero");
-
+var analysisModeButton = document.getElementById("analysismode");
+var analysisButton = document.getElementById("AnalysisButton");
 var messageLine = document.getElementById("messageLine");
+var title = document.getElementById("title");
+var lockMineCount = document.getElementById("lockMineCount");
 
-
-
+var analysisMode = false;
+var previousBoardHash = 0;
 /*
 // add a listener for when the client exists the page
 document.addEventListener("beforeunload", exiting(board), false);
@@ -74,12 +80,29 @@ async function startup() {
 
     console.log("At start up...");
 
+    BINOMIAL = new Binomial(50000, 100);
+
+    /*
+    var start = performance.now();
+    BINOMIAL.generate(99, 240)
+    //console.log(ps.generate(200, 480));
+    var mid = performance.now();
+    //console.log(combination(200, 480));
+    combination(99, 240)
+    var end = performance.now();
+    console.log("fast " + (mid - start) + " slow " + (end - mid));
+    */
+
     // add a listener for mouse clicks on the canvas
     canvas.addEventListener("mousedown", (event) => on_click(event));
     canvas.addEventListener('mousemove', followCursor, false);
+    canvas.addEventListener('wheel', (event) => on_mouseWheel(event));
+    minesLeft.addEventListener('wheel', (event) => on_mouseWheel_minesLeft(event));
 
     // build a new layout
     await newGame(30, 16, 99, 0);
+
+    setInterval(checkBoard, 1000);
 
     showMessage("Welcome to minesweeper solver dedicated to Annie");
 }
@@ -95,6 +118,7 @@ function renderHints(hints) {
 
         var hint = hints[i];
 
+        var bestGuess = false;
         if (hint.prob == 0) {   // mine
             ctxHints.fillStyle = "#FF0000";
         } else if (hint.prob == 1) {  // safe
@@ -103,12 +127,19 @@ function renderHints(hints) {
             ctxHints.fillStyle = "black";
         } else {  //uncertain
             ctxHints.fillStyle = "orange";
+            if (i == 0) {
+                bestGuess = true;
+            }
         }
 
         ctxHints.globalAlpha = 0.5;
 
         //console.log("Hint X=" + hint.x + " Y=" + hint.y);
         ctxHints.fillRect(hint.x * TILE_SIZE, hint.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        if (bestGuess) {
+            ctxHints.fillStyle = "#00FF00";
+            ctxHints.fillRect((hint.x + 0.25)* TILE_SIZE, (hint.y + 0.25) * TILE_SIZE, 0.5 * TILE_SIZE, 0.5 * TILE_SIZE);
+        }
 
     }
 
@@ -204,13 +235,36 @@ async function newGame(width, height, mines, seed) {
         var gameType = "zero";
     }
 
-    board = new Board(id, width, height, mines, seed, gameType);
+    if (analysisModeButton.checked) {
+        title.innerHTML = "Minesweeper analyser";
+        analysisMode = true;
+    } else {
+        title.innerHTML = "Minesweeper player";
+        analysisMode = false;
+    }
 
-    document.getElementById('board').style.width = width * TILE_SIZE + "px";
-    document.getElementById('board').style.height = height * TILE_SIZE + "px";
+    var drawTile = HIDDEN;
+    if (analysisMode) {
+        if (document.getElementById('buildZero').checked) {
+            board = new Board(id, width, height, 0, seed, gameType);
+            board.setAllZero();
+            drawTile = 0;
+        } else {
+            board = new Board(id, width, height, mines, seed, gameType);
+        }
+    } else {
+        board = new Board(id, width, height, mines, seed, gameType);
+    }
+
+
+    //document.getElementById('canvas').style.width = (width * TILE_SIZE) + "px";
+    document.getElementById('canvas').style.height = (height * TILE_SIZE + 150) + "px";
+
+    document.getElementById('board').style.width = (width * TILE_SIZE) + "px";
+    document.getElementById('board').style.height = (height * TILE_SIZE) + "px";
 
     canvas.width = width * TILE_SIZE;
-    canvas.height = height * TILE_SIZE;
+    canvas.height = height * TILE_SIZE; 
 
     // keep the hints and the board canvas in step
     canvasHints.width = canvas.width;
@@ -220,17 +274,62 @@ async function newGame(width, height, mines, seed) {
 
     for (var y = 0; y < height; y++) {
         for (var x = 0; x < width; x++) {
-            draw(x, y, HIDDEN);
+            draw(x, y, drawTile);
         }
     }
 
-    updateMineCount(mines);
+    updateMineCount(board.num_bombs);
 
     canvasLocked = false;  // just in case it was still locked (after an error for example)
 
     showMessage("New game requested with width " + width + ", height " + height + " and " + mines + " mines.");
 
 }
+
+function doAnalysis() {
+
+    console.log("Doing analysis");
+
+    var solutionCounter = countSolutions(board);
+
+    if (solutionCounter.finalSolutionsCount != 0) {
+        var hints = solver(board);  // look for solutions
+        window.requestAnimationFrame(() => renderHints(hints));
+    } else {
+        showMessage("The board is in an invalid state");
+        window.requestAnimationFrame(() => renderHints([]));
+    }
+
+}
+
+function checkBoard() {
+
+    if (!analysisMode) {
+        return;
+    }
+
+    var currentBoardHash = board.getHashValue();
+
+    if (currentBoardHash == previousBoardHash) {
+        return;
+    } 
+
+    previousBoardHash = currentBoardHash;
+
+    console.log("Checking board with hash " + currentBoardHash);
+
+    var solutionCounter = countSolutions(board);
+
+    if (solutionCounter.finalSolutionsCount != 0) {
+        analysisButton.disabled = false;
+        showMessage("The board has " + solutionCounter.finalSolutionsCount + " possible solutions");
+    } else {
+        analysisButton.disabled = true;
+        showMessage("The board is in an invalid state");
+    }
+
+}
+
 
 // draw a tile to the canvas
 function draw(x, y, tileType) {
@@ -249,16 +348,23 @@ function draw(x, y, tileType) {
 // have the tooltip follow the mouse
 function followCursor(e) {
 
+    // if not showing hints don't show tooltip
+    if (!showHintsCheckBox.checked && !analysisMode) {
+        tooltip.innerText = "";
+        return;
+    }
+
     //console.log("Following cursor at X=" + e.offsetX + ", Y=" + e.offsetY);
 
-    tooltip.style.left = e.offsetX + 'px';
-    tooltip.style.top = (e.offsetY - TILE_SIZE) + 'px';
+    tooltip.style.left = (TILE_SIZE + e.offsetX) + 'px';
+    tooltip.style.top = (e.offsetY - TILE_SIZE * 1.5) + 'px';
 
     var row = Math.floor(event.offsetY / TILE_SIZE);
     var col = Math.floor(event.offsetX / TILE_SIZE);
 
     if (row >= board.height || row < 0 || col >= board.width || col < 0) {
         //console.log("outside of game boundaries!!");
+        tooltip.innerText = "";
         return;
     } else {
         var tile = board.getTileXY(col, row);
@@ -292,7 +398,82 @@ function on_click(event) {
     if (row >= board.height || row < 0 || col >= board.width || col < 0) {
         console.log("Click outside of game boundaries!!");
         return;
-    } else {
+    } else if (analysisMode) {  // analysis mode
+
+        var button = event.which
+
+        var tile = board.getTileXY(col, row);
+
+        var tiles = [];
+
+        if (button == 1) {   // left mouse button
+
+            if (tile.isFlagged()) {  // no point clicking on an tile with a flag on it
+                console.log("Tile has a flag on it - no action to take");
+                return;
+            }
+
+            if (!board.isStarted()) {
+                 board.setStarted();
+            }
+
+            if (tile.isCovered()) {
+                var flagCount = board.adjacentFlagsCount(tile);
+                tile.setValue(flagCount);
+            } else {
+                tile.setCovered(true);
+            }
+
+            tiles.push(tile);
+
+        } else if (button == 3) {  // right mouse button
+
+            if (!tile.isCovered()) {
+                tile.setCovered(true);
+            }
+
+            var delta;
+            if (tile.isFlagged()) {
+                delta = -1;
+            } else {
+                delta = 1;
+            }
+
+            // if we have locked the mine count then adjust the bombs left 
+            if (lockMineCount.checked) {
+                if (delta == 1 && board.bombs_left == 0) {
+                    showMessage("Can't reduce mines to find to below zero whilst the mine count is locked");
+                    return;
+                }
+                board.bombs_left = board.bombs_left - delta;
+                window.requestAnimationFrame(() => updateMineCount(board.bombs_left));
+
+            } else {   // otherwise adjust the total number of bombs
+                var tally = board.getFlagsPlaced();
+                board.num_bombs = tally + board.bombs_left + delta;
+            }
+
+            // if the adjacent tiles values are in step then keep them in step
+            var adjTiles = board.getAdjacent(tile);
+            for (var i = 0; i < adjTiles.length; i++) {
+                var adjTile = adjTiles[i];
+                var adjFlagCount = board.adjacentFlagsCount(adjTile);
+                if (adjTile.getValue() == adjFlagCount) {
+                    adjTile.setValueOnly(adjFlagCount + delta);
+                    tiles.push(adjTile);
+                }
+            }
+
+            tile.toggleFlag();
+            tiles.push(tile);
+
+            console.log("Number of bombs " + board.num_bombs + "  bombs left to find " + board.bombs_left);
+        }
+
+        // update the graphical board
+        window.requestAnimationFrame(() => renderTiles(tiles));
+
+    } else {  // play mode
         var button = event.which
 
         var tile = board.getTileXY(col, row);
@@ -342,27 +523,97 @@ function on_click(event) {
                 return;
             } else {
                 message = { "header": board.getMessageHeader(), "actions": [{ "index": board.xy_to_index(col, row), "action": 2 }] };
-                //message = {"id" : board.getID(), "index" : board.xy_to_index(col, row), "action" : 2};					
             }
-            // get the tile clicked and toggle the flag 
-
-            //tile.toggleFlag();
-
-            // add it to the array of tiles to be redrawn
-            //tiles.push(tile);
         }
     }
 
-    // one last check before we send the message
-    if (canvasLocked) {
-        console.log("The canvas is logically locked");
-        return;
-    } else {
-        canvasLocked = true;
+    // we don't need to send a message if we are drawing a board in analysis mode
+    if (!analysisMode) {
+        // one last check before we send the message
+        if (canvasLocked) {
+            console.log("The canvas is logically locked");
+            return;
+        } else {
+            canvasLocked = true;
+        }
+
+        var reply = sendActionsMessage(message);
     }
 
-    var reply = sendActionsMessage(message);
+}
 
+function on_mouseWheel(event) {
+
+    if (!analysisMode) {
+        return;
+    }
+
+    console.log("Mousewheel event at X=" + event.offsetX + ", Y=" + event.offsetY);
+
+    var row = Math.floor(event.offsetY / TILE_SIZE);
+    var col = Math.floor(event.offsetX / TILE_SIZE);
+
+    console.log("Resolved to Col=" + col + ", row=" + row);
+
+    var delta = Math.sign(event.deltaY);
+
+    var tile = board.getTileXY(col, row);
+
+    var flagCount = board.adjacentFlagsCount(tile);
+    var covered = board.adjacentCoveredCount(tile);
+
+    var newValue = tile.getValue() + delta;
+ 
+    if (newValue < flagCount) {
+        newValue = flagCount + covered;
+    } else if (newValue > flagCount + covered) {
+        newValue = flagCount;
+    }
+
+    tile.setValue(newValue);
+
+     // update the graphical board
+    window.requestAnimationFrame(() => renderTiles([tile]));
+
+}
+
+function on_mouseWheel_minesLeft(event) {
+
+    if (!analysisMode) {
+        return;
+    }
+
+    console.log("Mousewheel event at X=" + event.offsetX + ", Y=" + event.offsetY);
+
+    var delta = Math.sign(event.deltaY);
+
+    var digit = Math.floor(event.offsetX / DIGIT_WIDTH);
+
+    console.log("Mousewheel event at X=" + event.offsetX + ", Y=" + event.offsetY + ", digit=" + digit);
+
+    var newCount = board.bombs_left;
+    if (digit == 3) {
+        newCount = newCount + delta; 
+    } else if (digit == 2) {
+        newCount = newCount + delta * 10;
+    } else if (digit == 1 || digit == 0) {
+        newCount = newCount + delta * 10;
+    }
+
+    var flagsPlaced = board.getFlagsPlaced();
+
+    if (newCount < 0) {
+        board.bombs_left = 0;
+        board.num_bombs = flagsPlaced;
+    } else if (newCount > 9999) {
+        board.bombs_left = 9999;
+        board.num_bombs = 9999 + flagsPlaced;
+    } else {
+        board.bombs_left = newCount;
+        board.num_bombs = newCount + flagsPlaced;
+    }
+
+    window.requestAnimationFrame(() => updateMineCount(board.bombs_left));
 
 }
 
@@ -427,8 +678,10 @@ async function sendActionsMessage(message) {
     }
 
     if (reply.header.status == "lost") { 
+        document.getElementById("canvas").style.cursor = "default";
         board.setGameLost();
     } else if (reply.header.status == "won") {
+        document.getElementById("canvas").style.cursor = "default";
         board.setGameWon();
     } 
 
@@ -501,6 +754,7 @@ async function sendActionsMessage(message) {
     if (showHintsCheckBox.checked) {
 
         var solverStart = Date.now();
+        document.getElementById("canvas").style.cursor = "wait";
 
         var hints = solver(board);  // look for solutions
 
@@ -534,15 +788,18 @@ async function sendActionsMessage(message) {
                 setTimeout(function () { sendActionsMessage(message) }, wait);
 
             } else {
+                document.getElementById("canvas").style.cursor = "default";
                 canvasLocked = false;
             }
         } else {
+            document.getElementById("canvas").style.cursor = "default";
             canvasLocked = false;
         }
 
     } else {
         canvasLocked = false;
         window.requestAnimationFrame(() => renderHints([]));  // clear the hints overlay
+        document.getElementById("canvas").style.cursor = "default";
         showMessage("The solver is not running.");
     }
  

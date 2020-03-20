@@ -71,16 +71,18 @@ class Tile {
 
     }
 
-    setProbability(prob) {
+    setProbability(prob, progress) {
         this.probability = prob;
         this.hasHint = true;
 
-        if (prob == 1) {
-            this.hintText = "Clear";
-        } else if (prob == 0) {
-            this.hintText = "Mine";
-        } else {
-            this.hintText = (prob * 100).toFixed(2) + "% safe";
+		if (prob == 1) {
+			this.hintText = "Clear";
+		} else if (prob == 0) {
+			this.hintText = "Mine";
+		} else if (progress == null) {
+			this.hintText = "\n" + (prob * 100).toFixed(2) + "% safe";
+		} else {
+			this.hintText = "\n" + (prob * 100).toFixed(2) + "% safe" + "\n" + (progress * 100).toFixed(2) + "% progress"
         }
 
     }
@@ -102,16 +104,37 @@ class Tile {
 	isCovered() {
 		return this.is_covered;
 	}
-	
+
+	setCovered(covered) {
+		this.is_covered = covered;
+    }
+
 	setValue(value) {
 		this.value = value;
 		this.is_covered = false;
 	}
 
+	setValueOnly(value) {
+		this.value = value;
+    }
+
 	getValue() {
 		return this.value;
 	}
-	
+
+	rotateValue(delta) {
+
+		var newValue = this.value + delta;
+
+		if (newValue < 0) {
+			newValue = 8;
+		} else if (newValue > 8) {
+			newValue = 0;
+        }
+
+		this.setValue(newValue);
+    }
+
 	toggleFlag() {
 		this.is_flagged = !this.is_flagged;
 	}

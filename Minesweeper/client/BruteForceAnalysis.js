@@ -1,9 +1,9 @@
 "use strict";
 
 // constants used in this processing
-const BRUTE_FORCE_ANALYSIS_MAX_NODES = 100000;
+const BRUTE_FORCE_ANALYSIS_MAX_NODES = 500000;
 const PRUNE_BF_ANALYSIS = true;
-const BRUTE_FORCE_ANALYSIS_TREE_DEPTH = 5;
+const BRUTE_FORCE_ANALYSIS_TREE_DEPTH = 4;
 
 const INDENT = "................................................................................";
 
@@ -184,23 +184,7 @@ class BruteForceAnalysis {
         //solver.display("first best move is " + loc.display());
         var prob = 1 - (bestLiving.mineCount / this.currentNode.getSolutionSize());
 
-        /*
-        while (boardState.isRevealed(loc)) {
-            int value = boardState.getWitnessValue(loc);
-
-            currentNode = bestLiving.children[value];
-            bestLiving = getBestLocation(currentNode);
-            if (bestLiving == null) {
-                return null;
-            }
-            prob = BigDecimal.ONE.subtract(BigDecimal.valueOf(bestLiving.mineCount).divide(BigDecimal.valueOf(currentNode.getSolutionSize()), Solver.DP, RoundingMode.HALF_UP));
-
-            loc = this.locations.get(bestLiving.index);
-
-        }
-        */
-
-        console.log("mines = " + bestLiving.mineCount + " solutions = " + this.currentNode.getSolutionSize());
+         console.log("mines = " + bestLiving.mineCount + " solutions = " + this.currentNode.getSolutionSize());
         for (var i = 0; i < bestLiving.children.length; i++) {
             if (bestLiving.children[i] == null) {
                 //solver.display("Value of " + i + " is not possible");
@@ -322,20 +306,6 @@ class Position {
         return this.hash;
     }
 
-    /*
-    equals(o) {
-        if (o instanceof Position) {
-            for (var i = 0; i < position.length; i++) {
-                if (this.position[i] != o.position[i]) {
-                    return false;
-                }
-            }
-            return true;
-        } else {
-            return false;
-        }
-    }
-    */
 }
 
 /**

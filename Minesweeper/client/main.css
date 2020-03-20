@@ -114,6 +114,7 @@ button {
     float: left;
     padding-right: 10px;
     white-space: nowrap;
+    width: 150px;
 }
 
 .radioButtons input {
@@ -122,6 +123,19 @@ button {
 
 .radioButtons label span {
     vertical-align: middle;
+}
+
+/* for label + text combos*/
+.block label {
+    display: inline-block;
+    width: 50px;
+    text-align: right;
+}
+
+.block input {
+    display: inline-block;
+    width: 100px;
+    text-align: left;
 }
 
 /* make the tick box bigger*/
