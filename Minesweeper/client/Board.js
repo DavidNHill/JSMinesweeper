@@ -26,7 +26,9 @@ class Board {
 
 		this.gameover = false;
 		this.won = false;
-		
+
+		this.highDensity = false;
+
 		console.log("... board created");
 
 	}
@@ -62,7 +64,21 @@ class Board {
 		
 		this.started = true;
 	}
-	
+
+	setHighDensity(tilesLeft, minesLeft) {
+
+		if (minesLeft * 5 > tilesLeft * 2) {
+			this.highDensity = true;
+		} else {
+			this.highDensity = false;
+        }
+
+    }
+
+	isHighDensity() {
+		return this.highDensity;
+    }
+
 	xy_to_index(x, y) {
 		return y*this.width + x;
 	}

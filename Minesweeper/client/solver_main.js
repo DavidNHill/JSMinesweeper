@@ -5,8 +5,8 @@
 
 const PLAY_BFDA_THRESHOLD = 750;       // number of solutions for the Brute force analysis to start
 const ANALYSIS_BFDA_THRESHOLD = 5000; 
-const HARD_CUT_OFF = 0.93;        // cutoff for considering on edge possibilities below the best probability
-const OFF_EDGE_THRESHOLD = 0.98;  // when to include possibilities off the edge
+const HARD_CUT_OFF = 0.90;        // cutoff for considering on edge possibilities below the best probability
+const OFF_EDGE_THRESHOLD = 0.95;  // when to include possibilities off the edge
 const PROGRESS_CONTRIBUTION = 0.2  // how much progress counts towards the final score
 
 function solver(board) {
@@ -64,6 +64,9 @@ function solver(board) {
         tile.setOnEdge(true);
 		witnessed.push(tile);
 	}
+
+    board.setHighDensity(squaresLeft, minesLeft);
+
 
     console.log("tiles left = " + squaresLeft);
     console.log("mines left = " + minesLeft);
@@ -328,16 +331,35 @@ function tieBreak(pe, actions) {
 
     }
 
-    actions.sort(function (a, b) {
+    if (board.isHighDensity()) {
+        actions.sort(function (a, b) {
 
-        var c = b.weight - a.weight;
-        if (c != 0) {
-            return c;
-        } else {
-            return b.expectedClears - a.expectedClears;
-        }
-        
-    });
+            var c = b.prob - a.prob;
+            if (c != 0) {
+                return c;
+            } else if (a.maxSolutions > b.maxSolutions) {
+                return 1;
+            } else if (a.maxSolutions < b.maxSolutions) {
+                return -1;
+            } else {
+                return b.weight - a.weight;
+            }
+
+        });
+    } else {
+        actions.sort(function (a, b) {
+
+            var c = b.weight - a.weight;
+            if (c != 0) {
+                return c;
+            } else {
+
+                return b.expectedClears - a.expectedClears;
+            }
+
+        });
+    }
+
 
     console.log("Solver recommends (" + actions[0].x + "," + actions[0].y + ")");
 
@@ -470,11 +492,13 @@ class Action {
         this.progress = 0;
         this.expectedClears;
         this.weight = prob;
+        this.maxSolutions;
  	}
 	
 }
 
 const OFFSETS = [[2, 0], [-2, 0], [0, 2], [0, -2]];
+const OFFSETS_ALL = [[ 2,-2], [ 2, -1], [ 2, 0 ], [ 2, 1 ], [ 2, 2 ], [ -2, -2 ], [ -2, -1 ], [ -2, 0 ], [ -2, 1 ], [ -2, 2 ], [ -1, 2 ], [ 0, 2 ], [ 1, 2 ], [ -1, -2 ], [ 0, -2 ], [ 1, -2 ]];
 
 function getOffEdgeCandidates(board, pe, witnesses, allCoveredTiles) {
 
@@ -482,42 +506,63 @@ function getOffEdgeCandidates(board, pe, witnesses, allCoveredTiles) {
 
     var accepted = new Set();  // use a map to deduplicate the witnessed tiles
 
-    for (var i = 0; i < witnesses.length; i++) {
+    // if there are only a small number of tiles off the edge then consider them all
+    if (allCoveredTiles.length - pe.witnessed.length < 30) {
+        for (var i = 0; i < allCoveredTiles.length; i++) {
+            var workTile = allCoveredTiles[i];
+            // if the tile  isn't on the edge
+            if (!workTile.onEdge) {
+                accepted.add(workTile);
+            }
+        }
 
-        var tile = witnesses[i];
+    } else {  // otherwise prioritise those most promising
 
-        for (var j = 0; j < OFFSETS.length; j++) {
+        var offsets;
+        if (board.isHighDensity()) {
+            offsets = OFFSETS_ALL;
+        } else {
+            offsets = OFFSETS;
+        }
 
-            var x1 = tile.x + OFFSETS[j][0];
-            var y1 = tile.y + OFFSETS[j][1];
+        for (var i = 0; i < witnesses.length; i++) {
 
-            if (x1 >= 0 && x1 < board.width && y1 >= 0 && y1 < board.height) {
+            var tile = witnesses[i];
 
-                var workTile = board.getTileXY(x1, y1);
+            for (var j = 0; j < offsets.length; j++) {
 
-                //console.log(x1 + " " + y1 + " is within range, covered " + workTile.isCovered() + ", on Edge " + workTile.onEdge);
-                if (workTile.isCovered() && !workTile.isFlagged()  && !workTile.onEdge) {
-                    //console.log(x1 + " " + y1 + " is covered and off edge");
-                    accepted.add(workTile);
-                    //result.push(new Action(x1, y1, pe.offEdgeProbability));
+                var x1 = tile.x + offsets[j][0];
+                var y1 = tile.y + offsets[j][1];
+
+                if (x1 >= 0 && x1 < board.width && y1 >= 0 && y1 < board.height) {
+
+                    var workTile = board.getTileXY(x1, y1);
+
+                    //console.log(x1 + " " + y1 + " is within range, covered " + workTile.isCovered() + ", on Edge " + workTile.onEdge);
+                    if (workTile.isCovered() && !workTile.isFlagged() && !workTile.onEdge) {
+                        //console.log(x1 + " " + y1 + " is covered and off edge");
+                        accepted.add(workTile);
+                        //result.push(new Action(x1, y1, pe.offEdgeProbability));
+                    }
                 }
+
             }
 
         }
 
-    }
+        for (var i = 0; i < allCoveredTiles.length; i++) {
 
-    for (var i = 0; i < allCoveredTiles.length; i++) {
+            var workTile = allCoveredTiles[i];
 
-        var workTile = allCoveredTiles[i];
+            // if the tile isn't alrerady being analysed and isn't on the edge
+            if (!accepted.has(workTile) && !workTile.onEdge) {
 
-        // if the tile isn't alrerady being analysed and isn't on the edge
-        if (!accepted.has(workTile) && !workTile.onEdge) {
+                // see if it has a small number of free tiles around it
+                var adjCovered = board.adjacentCoveredCount(workTile);
+                if (adjCovered > 1 && adjCovered < 4) {
+                    accepted.add(workTile);
+                }
 
-            // see if it has a small number of free tiles around it
-            var adjCovered = board.adjacentCoveredCount(workTile);
-            if (adjCovered > 1 && adjCovered < 4) {
-                accepted.add(workTile);
             }
 
         }
@@ -545,6 +590,7 @@ function fullAnalysis(pe, board, action) {
 
     var solutions = BigInt(0);
     var expectedClears = BigInt(0);
+    var maxSolutions = BigInt(0);
     for (var value = adjFlags; value <= adjCovered + adjFlags; value++) {
 
         tile.setValue(value);
@@ -554,6 +600,10 @@ function fullAnalysis(pe, board, action) {
         if (work.clearCount > 0) {
             expectedClears = expectedClears + work.finalSolutionsCount * BigInt(work.clearCount);
             solutions = solutions + work.finalSolutionsCount;
+        }
+
+        if (work.finalSolutionsCount > maxSolutions) {
+            maxSolutions = work.finalSolutionsCount;
         }
 
     }
@@ -567,6 +617,7 @@ function fullAnalysis(pe, board, action) {
     action.progress = progress;
 
     action.weight = action.prob * (1 + progress * PROGRESS_CONTRIBUTION);
+    action.maxSolutions = maxSolutions;
 
     tile.setProbability(action.prob, action.progress);
 
