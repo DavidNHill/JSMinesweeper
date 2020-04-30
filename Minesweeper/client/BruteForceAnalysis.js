@@ -202,7 +202,7 @@ class BruteForceAnalysis {
             console.log("Value of " + i + " leaves " + bestLiving.children[i].getSolutionSize() + " solutions and winning probability " + probText + " (work size " + bestLiving.children[i].work + ")");
         }
 
-        var action = new Action(loc.getX(), loc.getY(), prob);
+        var action = new Action(loc.getX(), loc.getY(), prob, ACTION_CLEAR);
 
         this.expectedMove = loc;
 

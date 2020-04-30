@@ -119,7 +119,9 @@ function renderHints(hints) {
         var hint = hints[i];
 
         var bestGuess = false;
-        if (hint.prob == 0) {   // mine
+        if (hint.action == ACTION_CHORD) {
+            ctxHints.fillStyle = "#00FF00";
+        } else if (hint.prob == 0) {   // mine
             ctxHints.fillStyle = "#FF0000";
         } else if (hint.prob == 1) {  // safe
             ctxHints.fillStyle = "#00FF00";
@@ -293,7 +295,17 @@ function doAnalysis() {
     var solutionCounter = countSolutions(board);
 
     if (solutionCounter.finalSolutionsCount != 0) {
-        var hints = solver(board);  // look for solutions
+
+        var noMoves = 0;
+        var hints = [];
+
+        // allow the solver to bring baxck no moves 5 times. No moves is possible when playing no-flags 
+        while (noMoves < 5 && hints.length == 0) {
+            noMoves++;
+            hints = solver(board);  // look for solutions
+        }
+
+        board.resetForAnalysis();
         window.requestAnimationFrame(() => renderHints(hints));
     } else {
         showMessage("The board is in an invalid state");
@@ -400,6 +412,8 @@ function on_click(event) {
         return;
     } else if (analysisMode) {  // analysis mode
 
+        //board.resetForAnalysis();
+
         var button = event.which
 
         var tile = board.getTileXY(col, row);
@@ -435,8 +449,10 @@ function on_click(event) {
             var delta;
             if (tile.isFlagged()) {
                 delta = -1;
+                tile.foundBomb = false;  // in analysis mode we believe the flags are mines
             } else {
                 delta = 1;
+                tile.foundBomb = true;  // in analysis mode we believe the flags are mines
             }
 
             // if we have locked the mine count then adjust the bombs left 
@@ -457,7 +473,7 @@ function on_click(event) {
             var adjTiles = board.getAdjacent(tile);
             for (var i = 0; i < adjTiles.length; i++) {
                 var adjTile = adjTiles[i];
-                var adjFlagCount = board.adjacentFlagsCount(adjTile);
+                var adjFlagCount = board.adjacentFlagsPlaced(adjTile);
                 if (adjTile.getValue() == adjFlagCount) {
                     adjTile.setValueOnly(adjFlagCount + delta);
                     tiles.push(adjTile);
@@ -548,6 +564,8 @@ function on_mouseWheel(event) {
         return;
     }
 
+    //board.resetForAnalysis();
+
     console.log("Mousewheel event at X=" + event.offsetX + ", Y=" + event.offsetY);
 
     var row = Math.floor(event.offsetY / TILE_SIZE);
@@ -625,7 +643,10 @@ function buildMessageFromActions(actions, safeOnly) {
 
         var action = actions[i];
 
-        if (action.prob == 0) {   // zero safe probability == mine
+        if (action.action == ACTION_CHORD) {
+            message.actions.push({ "index": board.xy_to_index(action.x, action.y), "action": 3 });
+
+        } else if (action.prob == 0) {   // zero safe probability == mine
             message.actions.push({ "index": board.xy_to_index(action.x, action.y), "action": 2 });
 
         } else {   // otherwise we're trying to clear
@@ -746,7 +767,19 @@ async function sendActionsMessage(message) {
         console.log("Game is over according to the server");
         canvasLocked = false;
         window.requestAnimationFrame(() => renderHints([]));  // clear the hints overlay
-        showMessage("The game has been " + reply.header.status + ".");
+
+        var value3BV = reply.header.value3BV;
+        var actionsMade = reply.header.actions;
+
+        var efficiency;
+        if (reply.header.status == "won") {
+            var efficiency = (100 * value3BV / actionsMade).toFixed(2) + "%";
+        } else {
+            var efficiency = "n/a";
+        }
+ 
+
+        showMessage("The game has been " + reply.header.status + ". 3BV: " + value3BV + ",  Actions: " + actionsMade + ",  Efficiency: " + efficiency);
         return;
     }
 
@@ -756,7 +789,14 @@ async function sendActionsMessage(message) {
         var solverStart = Date.now();
         document.getElementById("canvas").style.cursor = "wait";
 
-        var hints = solver(board);  // look for solutions
+        var noMoves = 0;
+        var hints = [];
+
+        // allow the solver to bring baxck no moves 5 times. No moves is possible when playing no-flags 
+        while (noMoves < 5 && hints.length == 0) {
+            noMoves++;
+            hints = solver(board);  // look for solutions
+        }
 
         var solverDuration = Date.now() - solverStart;
 

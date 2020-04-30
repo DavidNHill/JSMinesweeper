@@ -5,11 +5,12 @@
 "use strict";
 
 class ProbabilityEngine {
-	constructor(board, allWitnesses, allWitnessed, squaresLeft, minesLeft) {
+	constructor(board, allWitnesses, allWitnessed, squaresLeft, minesLeft, playStyle) {
 
        	this.SMALL_COMBINATIONS = [ [ 1 ], [ 1, 1 ], [ 1, 2, 1 ], [ 1, 3, 3, 1 ], [ 1, 4, 6, 4, 1 ], [ 1, 5, 10, 10, 5, 1 ], [ 1, 6, 15, 20, 15, 6, 1 ], [ 1, 7, 21, 35, 35, 21, 7, 1 ], [ 1, 8, 28, 56, 70, 56, 28, 8, 1 ] ];
 
         this.board = board;
+        this.playStyle = playStyle;
 
 		//this.witnesses = allWitnesses;
 		this.witnessed = allWitnessed;
@@ -30,6 +31,7 @@ class ProbabilityEngine {
         // list of 'DeadCandidate' which are potentially dead
         this.deadCandidates = [];
         this.deadTiles = [];
+        this.lonelyTiles = [];  // tiles with no empty space around them
 
         this.boxProb = [];  // the probabilities end up here
 		this.workingProbs = []; 
@@ -47,6 +49,8 @@ class ProbabilityEngine {
         this.remainingSquares = 0;
 
         this.localClears = [];
+
+        this.minesFound = [];  // discovered mines are stored in here
 
         this.canDoDeadTileAnalysis = true;
 
@@ -606,36 +610,62 @@ class ProbabilityEngine {
 
         // if we are down here then there is no witness which is on the boundary, so we have processed a complete set of independent witnesses 
 
-        // look to see if this sub-section of the edge has any certain clears
-        for (var i = 0; i < this.mask.length; i++) {
-            if (this.mask[i]) {
+        // if playing for efficiency check all edges, slower but we get better information
+        if (this.playStyle != PLAY_STYLE_EFFICIENCY) {
 
-                var isClear = true;
-                for (var j = 0; j < this.workingProbs.length; j++) {
-                    var wp = this.workingProbs[j];
-                    if (wp.mineBoxCount[i] != 0) {
-                        isClear = false;
-                        break;
+            // look to see if this sub-section of the edge has any certain clears
+            for (var i = 0; i < this.mask.length; i++) {
+                if (this.mask[i]) {
+
+                    var isClear = true;
+                    for (var j = 0; j < this.workingProbs.length; j++) {
+                        var wp = this.workingProbs[j];
+                        if (wp.mineBoxCount[i] != 0) {
+                            isClear = false;
+                            break;
+                        }
                     }
-                }
-                if (isClear) {
-                    // if the box is locally clear then store the tiles in it
-                    for (var j = 0; j < this.boxes[i].tiles.length; j++) {
+                    if (isClear) {
+                        // if the box is locally clear then store the tiles in it
+                        for (var j = 0; j < this.boxes[i].tiles.length; j++) {
 
-                        var tile = this.boxes[i].tiles[j];
+                            var tile = this.boxes[i].tiles[j];
 
-                        console.log(tile.asText() + " has been determined to be locally clear");
-                        tile.setProbability(1);
-                        this.localClears.push(tile);
+                            console.log(tile.asText() + " has been determined to be locally clear");
+                            tile.setProbability(1);
+                            this.localClears.push(tile);
+                        }
+                    }
+
+                    var isFlag = true;
+                    for (var j = 0; j < this.workingProbs.length; j++) {
+                        var wp = this.workingProbs[j];
+                        if (wp.mineBoxCount[i] != wp.solutionCount * BigInt(this.boxes[i].tiles.length)) {
+                            isFlag = false;
+                            break;
+                        }
+                    }
+                    if (isFlag) {
+                        // if the box is locally clear then store the tiles in it
+                        for (var j = 0; j < this.boxes[i].tiles.length; j++) {
+
+                            var tile = this.boxes[i].tiles[j];
+
+                            console.log(tile.asText() + " has been determined to be locally a mine");
+                            tile.setProbability(0);
+                            this.minesFound.push(tile);
+                        }
                     }
                 }
             }
-        }
 
-        // if we have found some local clears then stop and use these
-        if (this.localClears.length > 0) {
-            return null;
+            // if we have found some local clears then stop and use these
+            if (this.localClears.length > 0) {
+                return null;
+            }
+
         }
+ 
 
         //independentGroups++;
 
@@ -844,8 +874,8 @@ class ProbabilityEngine {
             }
 
             if (dc.goodBoxes.length == 0 && dc.badBoxes.length == 0) {
-                console.log(dc.candidate.asText() + " is dead since it has no open tiles around it");
-                this.deadTiles.push(dc.candidate);
+                console.log(dc.candidate.asText() + " is lonely since it has no open tiles around it");
+                this.lonelyTiles.push(dc);
             } else {
                 this.deadCandidates.push(dc);
             }
@@ -887,7 +917,7 @@ class ProbabilityEngine {
             var adjLoc = adjLocs[i];
 
             // we only want adjacent tile which are un-revealed
-            if (!adjLoc.isCovered() || adjLoc.isFlagged()) {
+            if (!adjLoc.isCovered() || adjLoc.isSolverFoundBomb()) {
                 continue;
             }
 
@@ -976,7 +1006,7 @@ class ProbabilityEngine {
                     var adjTiles = this.board.getAdjacent(tile);
                     for (var k = 0; k < adjTiles.length; k++) {
                         var adjTile = adjTiles[k];
-                        if (adjTile.isCovered() && !adjTile.isFlagged() && !edgeTiles.has(adjTile)) {
+                        if (adjTile.isCovered() && !adjTile.isSolverFoundBomb() && !edgeTiles.has(adjTile)) {
                             console.log("Not isolated because a tile's adjacent tiles isn't on the edge: " + tile.asText() + " ==> " + adjTile.asText());
                             return false;
                         }
@@ -1092,7 +1122,8 @@ class ProbabilityEngine {
 
         }
 
-        // for each box calcaulate a probability
+        this.minesFound = [];  // forget any mines we found on edges as we went along, we'll find them again here
+        // for each box calculate a probability
         for (var i = 0; i < this.boxes.length; i++) {
 
             if (totalTally != 0) {
@@ -1116,15 +1147,31 @@ class ProbabilityEngine {
             for (var j = 0; j < this.boxes[i].tiles.length; j++) {
                 //console.log(this.boxes[i].tiles[j].asText() + " set to probability " + this.boxProb[i]);
                 this.boxes[i].tiles[j].setProbability(this.boxProb[i]);
+
+                if (this.boxProb[i] == 0) {
+                    //console.log(this.boxes[i].tiles[j].asText() + " set to mine");
+                    this.minesFound.push(this.boxes[i].tiles[j]);
+                    //this.boxes[i].tiles[j].setFoundBomb();
+                }
             }
 
         }
 
+        // see if the lonely tiles are dead
+        //for (var dc in this.lonelyTiles) {
+        for (var i = 0; i < this.lonelyTiles.length; i++) {
+            var dc = this.lonelyTiles[i];
+            if (this.boxProb[dc.myBox.uid] != 0 && this.boxProb[dc.myBox.uid] != 1) {   // a lonely tile is dead if not a definite mine or safe
+                console.log("Lonely tile found " + dc.candidate.asText() + " to be dead");
+                this.deadTiles.push(dc.candidate);
+            }
+        }
 
         // add the dead locations we found
         for (var i = 0; i < this.deadCandidates.length; i++) {
             var dc = this.deadCandidates[i];
-            if (!dc.isAlive && this.boxProb[dc.myBox.uid] != 0) {   // if it is dead and not a definite flag 
+            if (!dc.isAlive && this.boxProb[dc.myBox.uid] != 0 && this.boxProb[dc.myBox.uid] != 1) {   // if it is dead and not a definite mine or safe
+                console.log("PE found " + dc.candidate.asText() + " to be dead");
                 this.deadTiles.push(dc.candidate);
             }
         }
@@ -1142,7 +1189,6 @@ class ProbabilityEngine {
         // see if we can find a guess which is better than outside the boxes
         var hwm = 0;
 
-        
         for (var i = 0; i < this.boxes.length; i++) {
 
             var b = this.boxes[i];
@@ -1236,7 +1282,7 @@ class ProbabilityEngine {
                         }
                     }
                     if (!dead || this.boxProb[i] == 1) {   // if not dead or 100% safe then use the tile
-                        best.push(new Action(squ.x, squ.y, this.boxProb[i]));
+                        best.push(new Action(squ.x, squ.y, this.boxProb[i], ACTION_CLEAR));
                     } else {
                         console.log("Tile " + squ.asText() + " is ignored because it is dead");
                     }
@@ -1366,7 +1412,7 @@ class BoxWitness {
 
         // determine how many mines are left to find and store adjacent tiles
         for (var i = 0; i < adjTile.length; i++) {
-            if (adjTile[i].isFlagged()) {
+            if (adjTile[i].isSolverFoundBomb()) {
                 this.minesToFind--;
             } else if (adjTile[i].isCovered()) {
                 this.tiles.push(adjTile[i]);

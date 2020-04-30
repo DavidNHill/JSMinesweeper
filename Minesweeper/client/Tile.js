@@ -10,6 +10,7 @@ class Tile {
 		this.is_covered = true;
 		this.value = 0;
 		this.is_flagged = false;
+		this.foundBomb = false
         this.is_bomb;   // this gets set when the game is lost
         this.exploded = false;  // this gets set if this tile was the one clicked
         this.index = index;
@@ -143,10 +144,21 @@ class Tile {
 		return this.is_flagged;
 	}
 
+	// this is set when the solver discovers a bomb - trying to separate the discovery of a bomb from the flagging of a tile
+	setFoundBomb() {
+		this.foundBomb = true;
+	}
+
+	isSolverFoundBomb() {
+		return this.foundBomb;
+    }
+
+	// this is used to display the bombs when the game is lost
 	setBomb(bomb) {
 		this.is_bomb = bomb;
 	}
 
+	// this is used to display the exploded bomb when the game is lost
     setBombExploded() {
         this.is_bomb = true;
         this.exploded = true;

@@ -118,26 +118,42 @@ class Board {
 		
 	}
 
-    // return number of flags adjacent to this tile
+    // return number of confirmed mines adjacent to this tile
     adjacentFlagsCount(tile) {
 
-        var flagCount = 0;
+        var mineCount = 0;
         for (var adjTile of this.getAdjacent(tile)) {
-            if (adjTile.isFlagged()) {
-                flagCount++;
+			//if (adjTile.isFlagged()) {
+			if (adjTile.isSolverFoundBomb()) {
+                mineCount++;
             }
         }
 
-        return flagCount;
+        return mineCount;
 
     }
+
+	// return number of flags adjacent to this tile
+	adjacentFlagsPlaced(tile) {
+
+		var flagCount = 0;
+		for (var adjTile of this.getAdjacent(tile)) {
+			if (adjTile.isFlagged()) {
+				flagCount++;
+			}
+		}
+
+		return flagCount;
+
+	}
 
     // return number of covered tiles adjacent to this tile
     adjacentCoveredCount(tile) {
 
         var coveredCount = 0;
         for (var adjTile of this.getAdjacent(tile)) {
-            if (adjTile.isCovered() && !adjTile.isFlagged()) {
+			//if (adjTile.isCovered() && !adjTile.isFlagged()) {
+			if (adjTile.isCovered() && !adjTile.isSolverFoundBomb()) {
                 coveredCount++;
             }
         }
@@ -205,6 +221,19 @@ class Board {
 		for (var i = 0; i < this.tiles.length; i++) {
 			this.tiles[i].setValue(0);
 		}
+    }
+
+	resetForAnalysis() {
+
+		for (var i = 0; i < this.tiles.length; i++) {
+			var tile = this.tiles[i];
+			if (tile.isFlagged()) {
+				tile.foundBomb = true;
+			} else {
+				tile.foundBomb = false;
+            }
+		}
+
     }
 
 	getHashValue() {

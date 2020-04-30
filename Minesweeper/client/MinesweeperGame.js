@@ -24,7 +24,9 @@ if (typeof module === "object" && module && typeof module.exports === "object") 
     }
 }
 
-
+const ACTION_CLEAR = 1;
+const ACTION_FLAG = 2;
+const ACTION_CHORD = 3;
 
 const WON = "won";
 const LOST = "lost";
@@ -133,7 +135,7 @@ function handleActions(message) {
 		
 		var tile = game.getTile(action.index);  
 		
-		if (action.action == 1) {  // click tile
+		if (action.action == ACTION_CLEAR) {  // click tile
 			var revealedTiles = game.clickTile(tile);
 
 			// get all the tiles revealed by this click
@@ -142,13 +144,18 @@ function handleActions(message) {
 			}
 
 			reply.header.status = revealedTiles.header.status;
+			reply.header.actions = game.actions;
 			
-		} else if (action.action == 2) {  // toggle flag
-			tile.toggleFlag();
+		} else if (action.action == ACTION_FLAG) {  // toggle flag
+
+			game.flag(tile);
+
+			//tile.toggleFlag();
 			reply.header.status = IN_PLAY;
+			reply.header.actions = game.actions;
 			reply.tiles.push({"action" : 2, "index" : action.index, "flag" : tile.isFlagged()});    // set or remove flag
-			
-		} else if (action.action == 3) {  // chord
+
+		} else if (action.action == ACTION_CHORD) {  // chord
 			var revealedTiles = game.chordTile(tile);
 
 			// get all the tiles revealed by this chording
@@ -157,6 +164,7 @@ function handleActions(message) {
 			}
 			
 			reply.header.status = revealedTiles.header.status;
+			reply.header.actions = game.actions;
 			
 		} else {
 			console.log("Invalid action received: " + action.action);
@@ -171,7 +179,9 @@ function handleActions(message) {
     // if we have lost then return the location of all unflagged mines
     if (reply.header.status == LOST) {
 
-        for (var i = 0; i < game.tiles.length; i++) {
+		reply.header.value3BV = game.value3BV;
+
+		for (var i = 0; i < game.tiles.length; i++) {
 
             var tile = game.tiles[i];
 
@@ -188,7 +198,9 @@ function handleActions(message) {
 
         }
         game.cleanUp = true;  // mark for housekeeping
-    } else if (reply.header.status == WON) {
+	} else if (reply.header.status == WON) {
+
+		reply.header.value3BV = game.value3BV;
         game.cleanUp = true;  // mark for housekeeping
     }
 
@@ -239,7 +251,8 @@ class ServerGame {
 		this.height = height;
         this.num_bombs = num_bombs;
         this.seed = seed;
-        this.cleanUp = false;
+		this.cleanUp = false;
+		this.actions = 0;
 
         console.log("Using seed " + this.seed);
 
@@ -278,6 +291,8 @@ class ServerGame {
 
 		this.init_tiles(exclude);
 
+		this.value3BV = this.calculate3BV();
+
 		console.log("... game created");
 
 	}
@@ -289,7 +304,15 @@ class ServerGame {
 	getTile(index) {
 		return this.tiles[index];
 	}
-	
+
+	// toggles the flag on a tile
+	flag(tile) {
+
+		this.actions++;
+		tile.toggleFlag();
+
+    }
+
 	// clicks the assigned tile and returns an object containing a list of tiles cleared
 	clickTile(tile) {
 		
@@ -297,13 +320,16 @@ class ServerGame {
 
         // are we clicking on a mine
 		if (tile.isBomb()) {
-			
+			this.actions++;
+
             reply.header.status = LOST;
             tile.exploded = true;
 			//reply.tiles.push({"action" : 3, "index" : tile.getIndex()});    // mine
 
         } else {
-            if (tile.isCovered()) {    // make sure the tile is clickable
+			if (tile.isCovered()) {    // make sure the tile is clickable
+				this.actions++;
+
                 var tilesToReveal = [];
                 tilesToReveal.push(tile);
                 return this.reveal(tilesToReveal);
@@ -348,12 +374,16 @@ class ServerGame {
 		
 		// if we have triggered a bomb then return
 		if (bombCount != 0) {
+			this.actions++;
+
 			reply.header.status = LOST;
 			return reply;
 		}
 		
 		var tilesToReveal = [];
-		
+
+		this.actions++;
+
 		// determine which tiles need revealing 
 		for (var adjTile of this.getAdjacent(tile)) {
 			if (adjTile.isCovered() && !adjTile.isFlagged()) {  // covered and not flagged
@@ -514,6 +544,65 @@ class ServerGame {
         return result;
     }
 
+	calculate3BV() {
+
+		var value3BV = 0;
+
+		for (var i = 0; i < this.tiles.length; i++) {
+			var tile = this.tiles[i];
+
+			if (!tile.used3BV && !tile.isBomb() && tile.getValue() == 0) {
+
+				value3BV++;
+				tile.used3BV = true;
+
+				var toReveal = [tile];
+				var soFar = 0;
+
+				var safety = 100000;
+
+				while (soFar < toReveal.length) {
+
+					var tile1 = toReveal[soFar];
+
+					// if the value is zero then for each adjacent tile not yet revealed add it to the list
+					if (tile1.getValue() == 0) {
+
+						for (var adjTile of this.getAdjacent(tile1)) {
+
+							if (!adjTile.used3BV) {
+
+								adjTile.used3BV = true;
+
+								if (!adjTile.isBomb() && adjTile.getValue() == 0) {  // if also a zero add to ties to be exploded
+									toReveal.push(adjTile);
+								}
+                            }
+						}
+					}
+
+					soFar++;
+					if (safety-- < 0) {
+						console.log("Safety limit reached !!");
+						break;
+					}
+				}
+            }
+		}
+
+		for (var i = 0; i < this.tiles.length; i++) {
+			var tile = this.tiles[i];
+			if (!tile.isBomb() && !tile.used3BV) {
+				value3BV++;
+            }
+
+		}
+
+		console.log("3BV is " + value3BV);
+
+		return value3BV;
+	}
+
 } 
 
 /**
@@ -528,6 +617,7 @@ class ServerTile {
         this.is_flagged = false;
         this.exploded = false;
 		this.is_bomb = false;
+		this.used3BV = false;
 	}
 
 	//reveal() {
