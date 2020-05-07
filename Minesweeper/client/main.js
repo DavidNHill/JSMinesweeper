@@ -54,6 +54,7 @@ var analysisButton = document.getElementById("AnalysisButton");
 var messageLine = document.getElementById("messageLine");
 var title = document.getElementById("title");
 var lockMineCount = document.getElementById("lockMineCount");
+var docPlayStyle = document.getElementById("playstyle");
 
 var analysisMode = false;
 var previousBoardHash = 0;
@@ -231,10 +232,10 @@ async function newGame(width, height, mines, seed) {
     console.log("<== " + JSON.stringify(reply));
     var id = reply.id;
 
-    if (gameTypeSafe.checked) {
-        var gameType = "safe";
-    } else {
+    if (gameTypeZero.checked) {
         var gameType = "zero";
+    } else {
+        var gameType = "safe";
     }
 
     if (analysisModeButton.checked) {
@@ -296,13 +297,21 @@ function doAnalysis() {
 
     if (solutionCounter.finalSolutionsCount != 0) {
 
+        if (docPlayStyle.value == "flag") {
+            var playStyle = PLAY_STYLE_FLAGS;
+        } else if (docPlayStyle.value == "noflag") {
+            var playStyle = PLAY_STYLE_NOFLAGS;
+        } else {
+            var playStyle = PLAY_STYLE_EFFICIENCY;
+        } 
+
         var noMoves = 0;
         var hints = [];
 
         // allow the solver to bring baxck no moves 5 times. No moves is possible when playing no-flags 
         while (noMoves < 5 && hints.length == 0) {
             noMoves++;
-            hints = solver(board);  // look for solutions
+            hints = solver(board, playStyle);  // look for solutions
         }
 
         board.resetForAnalysis();
@@ -792,10 +801,18 @@ async function sendActionsMessage(message) {
         var noMoves = 0;
         var hints = [];
 
+        if (docPlayStyle.value == "flag") {
+            var playStyle = PLAY_STYLE_FLAGS;
+        } else if (docPlayStyle.value == "noflag") {
+            var playStyle = PLAY_STYLE_NOFLAGS;
+        } else {
+            var playStyle = PLAY_STYLE_EFFICIENCY;
+        } 
+
         // allow the solver to bring baxck no moves 5 times. No moves is possible when playing no-flags 
         while (noMoves < 5 && hints.length == 0) {
             noMoves++;
-            hints = solver(board);  // look for solutions
+            hints = solver(board, playStyle);  // look for solutions
         }
 
         var solverDuration = Date.now() - solverStart;

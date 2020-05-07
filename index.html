@@ -26,11 +26,16 @@
                     <input id="seed" type="text" style="width: 150px" />
                 </div>
 
+                <div style="margin-top: 1em;" class="checkboxes">
+                    <label><input type="checkbox" class="checkbox" id="gameTypeZero" checked /> <span>Opening on start</span></label>
+                </div>
 
+                <!--
                 <div style="margin-top: 1em;" class="radioButtons">
                     <label><input id="gameTypeSafe" type="radio" class="radioButton" name="gameType" value="safe"><span>Safe start</span></label>
                     <label><input id="gameTypeZero" type="radio" class="radioButton" name="gameType" value="zero" checked><span>Zero start</span></label>
                 </div>
+                -->
             </div>
 
             <div class="radioButtons">
@@ -59,6 +64,15 @@
             </div>
 
             <button style="margin-top: 1em;" id="NewGame" onclick="apply()">New game</button>
+
+            <div style="margin-top: 1em;">
+                <label>Style:</label>
+                <select id="playstyle">
+                    <option value="flag">Flagging</option>
+                    <option value="noflag">No flagging</option>
+                    <option value="eff">Efficiency</option>
+                </select>
+            </div>
 
             <div style="margin-top: 1em;" class="checkboxes" id="play1">
                 <label><input type="checkbox" class="checkbox" id="showhints" checked /> <span>Show hints</span></label>

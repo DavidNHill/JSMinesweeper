@@ -37,6 +37,9 @@ var gamesWon = 0;
 var gamesLost = 0;
 var gamesAbandoned = 0;
 
+const FIND_3BV = 1;     // 1 for high 3BV, -1 for low
+const FIND_3BV_CYCLES = 0;
+
 // provides the next game id
 function getNextGameID() {
 
@@ -215,14 +218,26 @@ function getGame(id) {
 
 function createGame(header, index) {
 
+	var cycles;
     var seed;
     if (header.seed != null && header.seed != 0) {
-        seed = header.seed;
+		seed = header.seed;
+		cycles = 0;
     } else {
-        seed = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+		seed = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+		cycles = FIND_3BV_CYCLES - 1;
     }
 
 	var game = new ServerGame(header.id, header.width, header.height, header.mines, index, seed, header.gametype);
+
+	while (cycles > 0) {
+		seed = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+		var tryGame = new ServerGame(header.id, header.width, header.height, header.mines, index, seed, header.gametype);
+		if (FIND_3BV * tryGame.value3BV > FIND_3BV * game.value3BV) {
+			game = tryGame;
+		}
+		cycles--;
+    }
 	
 	serverGames.set(header.id, game);
 	

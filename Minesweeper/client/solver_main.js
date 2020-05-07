@@ -91,7 +91,7 @@ function solver(board, playStyle) {
         result = [];
         for (var i = 0; i < allCoveredTiles.length; i++) {
             var tile = allCoveredTiles[i];
-            result.push(new Action(tile.getX(), tile.getY(), 1))
+            result.push(new Action(tile.getX(), tile.getY(), 1, ACTION_CLEAR))
         }
         showMessage("No mines left to find all remaining tiles are safe");
         return new EfficiencyHelper(board, witnesses, result, playStyle).process();
@@ -183,8 +183,10 @@ function solver(board, playStyle) {
 
         var tile = board.getTile(i);
 
-        if (tile.isSolverFoundBomb() && !tile.isFlagged()) {
-            tile.setProbability(0);
+        if (tile.isSolverFoundBomb()) {
+            if (!tile.isFlagged()) {
+                tile.setProbability(0);
+            }
         } else if (tile.isCovered() && !tile.onEdge) {
             tile.setProbability(pe.offEdgeProbability);
         }
@@ -287,7 +289,7 @@ function solver(board, playStyle) {
 
             // identify the dead tiles
             for (var tile of deadTiles) {   // show all dead tiles 
-                if (playStyle == PLAY_STYLE_FLAGS || tile.probability != 0) {
+                if (tile.probability != 0) {   // a mine isn't dead
                     var action = new Action(tile.getX(), tile.getY(), tile.probability);
                     action.dead = true;
                     result.push(action);
@@ -342,6 +344,10 @@ function solver(board, playStyle) {
             // identify where the bombs are
             for (var tile of pe.minesFound) {
                 tile.setFoundBomb();
+                if (playStyle == PLAY_STYLE_FLAGS) {
+                    var action = new Action(tile.getX(), tile.getY(), 0, ACTION_FLAG);
+                    result.push(action);
+                }
             }
             result = new EfficiencyHelper(board, witnesses, result, playStyle).process();
         } else {
@@ -360,11 +366,11 @@ function solver(board, playStyle) {
 
     // identify the dead tiles
     for (var tile of deadTiles) {   // show all dead tiles 
-        //if (tile.probability != 0 & tile.probability != 1) {  // a definite mine or clear isn't considered dead
+        if (tile.probability != 0 & tile.probability != 1) {  // a definite mine or clear isn't considered dead
             var action = new Action(tile.getX(), tile.getY(), tile.probability);
             action.dead = true;
             result.push(action);
-        //}
+        }
     }
 
 	return result;

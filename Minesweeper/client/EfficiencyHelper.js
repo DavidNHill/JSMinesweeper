@@ -25,8 +25,11 @@ class EfficiencyHelper {
             if (tile.getValue() == this.board.adjacentFlagsCount(tile)) {
                 var benefit = this.board.adjacentCoveredCount(tile);
                 var cost = tile.getValue() - this.board.adjacentFlagsPlaced(tile);
+                if (tile.getValue() != 0) {  // if the witness isn't a zero then add the cost of chording - this can only really happen in the analyser
+                    cost++;
+                }
 
-                if (benefit - cost > 1) {
+                if (benefit > cost) {
                     chordLocations.push(new ChordLocation(tile, benefit))
                 }
 
@@ -35,6 +38,7 @@ class EfficiencyHelper {
 
         chordLocations.sort(function (a, b) { return b.benefit - a.benefit });
 
+        var witnessReward;
         for (var cl of chordLocations) {
 
             //console.log("checking chord at " + cl.tile.asText());
@@ -49,6 +53,8 @@ class EfficiencyHelper {
             // Add the chord action
             result.push(new Action(cl.tile.getX(), cl.tile.getY(), 0, ACTION_CHORD))
 
+            witnessReward = benefit - cost;
+
             break;
         }
 
@@ -60,8 +66,16 @@ class EfficiencyHelper {
 
             var bestAction = null;
             var highest = BigInt(0);
-            //var currentReward = 0;
 
+            /*
+            var counter = countSolutions(board);
+            if (witnessReward != null) {
+                var highest = counter.finalSolutionsCount * BigInt(witnessReward);
+            } else {
+                var highest = BigInt(0);
+            }
+            */
+ 
             for (var act of this.actions) {
 
                 if (act.action == ACTION_CLEAR) {
@@ -70,31 +84,39 @@ class EfficiencyHelper {
 
                     var adjMines = this.board.adjacentFlagsCount(tile);
                     var adjFlags = this.board.adjacentFlagsPlaced(tile);
-                    var hidden = this.board.adjacentCoveredCount(tile);
+                    var hidden = this.board.adjacentCoveredCount(tile);   // hidden excludes unflagged but found mines
 
-                    var reward = hidden - adjMines + adjFlags;  // tiles adjacent - ones which are mines - mines which aren't flagged yet
-
-                    //console.log("considering " + act.x + "," + act.y + " with value " + adjMines + " and reward " + reward);
-
-                    tile.setValue(adjMines);
-                    var counter = countSolutions(board);
-                    tile.setCovered(true);
-
-                    var current = counter.finalSolutionsCount * BigInt(reward);
-
-                    if (current > highest) {
-                        //console.log("best " + act.x + "," + act.y);
-                        highest = current;
-                        bestAction = act;
-                        //currentReward = reward;
+                    if (adjMines != 0) {  // if the value we want isn't zero subtract the cost of chording
+                        var chord = 1;
+                    } else {
+                        var chord = 0;
                     }
 
+                    // reward = H - (M - F) = H - M + F
+                    var reward = hidden - adjMines + adjFlags - chord;  
+
+                    console.log("considering " + act.x + "," + act.y + " with value " + adjMines + " and reward " + reward + " ( H=" + hidden + " M=" + adjMines + " F=" + adjFlags + " Chord=" + chord + ")");
+
+                    if (reward > 0) {
+
+                        tile.setValue(adjMines);
+                        var counter = countSolutions(board);
+                        tile.setCovered(true);
+
+                        var current = counter.finalSolutionsCount * BigInt(reward);
+
+                        if (current > highest) {
+                            //console.log("best " + act.x + "," + act.y);
+                            highest = current;
+                            bestAction = act;
+                        }
+                    }
                 }
 
             }
 
             if (bestAction != null) {
-                result.push(bestAction);
+                result = [bestAction];
             }
 
         }
