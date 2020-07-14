@@ -20,26 +20,26 @@
 
             <div id="play0">
                 <div class="checkboxes">
-                    <label style="margin-top: 1em;"><input type="checkbox" class="checkbox" id="useSeed" /> <span>Use seed</span></label>
+                    <label style="margin-top: 0.2em;"><input type="checkbox" class="checkbox" id="useSeed" /> <span>Use seed</span></label>
                 </div>
                 <div>
                     <input id="seed" type="text" style="width: 150px" />
                 </div>
 
-                <div style="margin-top: 1em;" class="checkboxes">
+                <div style="margin-top: 0.2em;" class="checkboxes">
                     <label><input type="checkbox" class="checkbox" id="gameTypeZero" checked /> <span>Opening on start</span></label>
                 </div>
 
                 <!--
-                <div style="margin-top: 1em;" class="radioButtons">
-                    <label><input id="gameTypeSafe" type="radio" class="radioButton" name="gameType" value="safe"><span>Safe start</span></label>
-                    <label><input id="gameTypeZero" type="radio" class="radioButton" name="gameType" value="zero" checked><span>Zero start</span></label>
-                </div>
-                -->
+        <div style="margin-top: 1em;" class="radioButtons">
+            <label><input id="gameTypeSafe" type="radio" class="radioButton" name="gameType" value="safe"><span>Safe start</span></label>
+            <label><input id="gameTypeZero" type="radio" class="radioButton" name="gameType" value="zero" checked><span>Zero start</span></label>
+        </div>
+        -->
             </div>
 
             <div class="radioButtons">
-                <label style="margin-top: 1em;"><input id="beginner" type="radio" class="radioButton" name="boardSize" value="0"><span>Beginner</span></label>
+                <label style="margin-top: 0.5em;"><input id="beginner" type="radio" class="radioButton" name="boardSize" value="0"><span>Beginner</span></label>
                 <label><input id="intermediate" type="radio" class="radioButton" name="boardSize" value="1"><span>Intermediate</span></label>
                 <label><input id="expert" type="radio" class="radioButton" name="boardSize" value="2" checked><span>Expert</span></label>
                 <label style="margin-bottom: 0.5em;"><input id="custom" type="radio" class="radioButton" name="boardSize" value="3"><span>Custom</span></label>
@@ -47,15 +47,15 @@
 
             <div class="block">
                 <label>Width:</label>
-                <input id="width" type="text" />
+                <input id="width" onkeypress="makeCustom()" type="text" />
             </div>
             <div class="block">
                 <label>Height:</label>
-                <input id="height" type="text" />
+                <input id="height" onkeypress="makeCustom()" type="text" />
             </div>
             <div class="block">
                 <label>Mines:</label>
-                <input id="mines" type="text" />
+                <input id="mines" onkeypress="makeCustom()" type="text" />
             </div>
 
             <div style="margin-top: 1em; display: none;" class="radioButtons" id="analysis0">
@@ -71,6 +71,18 @@
                     <option value="flag">Flagging</option>
                     <option value="noflag">No flagging</option>
                     <option value="eff">Efficiency</option>
+                </select>
+            </div>
+
+            <div style="margin-top: 1em;">
+                <label>Tile size:</label>
+                <select id="tilesize">
+                    <option value="12">12 pixels</option>
+                    <option value="16">16 pixels</option>
+                    <option value="20">20 pixels</option>
+                    <option selected value="24">24 pixels</option>
+                    <option value="28">28 pixels</option>
+                    <option value="32">32 pixels</option>
                 </select>
             </div>
 
@@ -137,8 +149,8 @@
                 return;
             }
 
-            const MAX_WIDTH = 60;
-            const MAX_HEIGHT = 60;
+            const MAX_WIDTH = 100;
+            const MAX_HEIGHT = 100;
 
             var widthX = document.getElementById("width").value;
             var heightX = document.getElementById("height").value;
@@ -217,6 +229,12 @@
                 document.getElementById("analysis1").style.display = "none";
                 document.getElementById("NewGame").innerHTML = "New game";
             }
+
+        }
+
+        function makeCustom() {
+
+            document.getElementById("custom").checked = true;
 
         }
 

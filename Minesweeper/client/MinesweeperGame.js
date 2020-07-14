@@ -37,7 +37,7 @@ var gamesWon = 0;
 var gamesLost = 0;
 var gamesAbandoned = 0;
 
-const FIND_3BV = 1;     // 1 for high 3BV, -1 for low
+const FIND_3BV = -1;     // 1 for high 3BV, -1 for low
 const FIND_3BV_CYCLES = 0;
 
 // provides the next game id
@@ -174,6 +174,7 @@ function handleActions(message) {
 		}		  
 		  
 		if (reply.header.status != IN_PLAY) {
+			console.log("Tile " + tile.getIndex());
 			console.log("status is now: " + reply.header.status);
 			break;
 		}
@@ -345,9 +346,11 @@ class ServerGame {
 			if (tile.isCovered()) {    // make sure the tile is clickable
 				this.actions++;
 
-                var tilesToReveal = [];
-                tilesToReveal.push(tile);
-                return this.reveal(tilesToReveal);
+				var tilesToReveal = [];
+				tilesToReveal.push(tile);
+				return this.reveal(tilesToReveal);
+			} else {
+				reply.header.status = IN_PLAY;
             }
 		}
 		

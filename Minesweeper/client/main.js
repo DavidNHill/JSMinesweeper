@@ -3,7 +3,7 @@
 
 console.log('At start of main.js');
 
-const TILE_SIZE = 24;
+var TILE_SIZE = 24;
 const DIGIT_HEIGHT = 36;
 const DIGIT_WIDTH = 24;
 
@@ -55,6 +55,7 @@ var messageLine = document.getElementById("messageLine");
 var title = document.getElementById("title");
 var lockMineCount = document.getElementById("lockMineCount");
 var docPlayStyle = document.getElementById("playstyle");
+var docTileSize = document.getElementById("tilesize");
 
 var analysisMode = false;
 var previousBoardHash = 0;
@@ -259,12 +260,25 @@ async function newGame(width, height, mines, seed) {
         board = new Board(id, width, height, mines, seed, gameType);
     }
 
+    /*
+    if (docTileSize.value == "32") {
+        TILE_SIZE = 32;
+    } else if (docTileSize.value == "16") {
+        TILE_SIZE = 16;
+    } else {
+        TILE_SIZE = 24;
+    }
+    */
+
+    TILE_SIZE = parseInt(docTileSize.value);
+
+    //
 
     //document.getElementById('canvas').style.width = (width * TILE_SIZE) + "px";
     document.getElementById('canvas').style.height = (height * TILE_SIZE + 150) + "px";
 
     document.getElementById('board').style.width = (width * TILE_SIZE) + "px";
-    document.getElementById('board').style.height = (height * TILE_SIZE) + "px";
+    document.getElementById('board').style.height = (height * TILE_SIZE + 0) + "px";
 
     canvas.width = width * TILE_SIZE;
     canvas.height = height * TILE_SIZE; 
