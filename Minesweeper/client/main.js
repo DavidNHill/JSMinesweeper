@@ -57,6 +57,11 @@ var lockMineCount = document.getElementById("lockMineCount");
 var docPlayStyle = document.getElementById("playstyle");
 var docTileSize = document.getElementById("tilesize");
 
+// elements used in the local storage modal
+var localStorageButton = document.getElementById("localStorageButton");
+var localStorageModal = document.getElementById("localStorage");
+var localStorageSelection = document.getElementById("localStorageSelection");
+
 var analysisMode = false;
 var previousBoardHash = 0;
 /*
@@ -81,6 +86,14 @@ load_images();
 async function startup() {
 
     console.log("At start up...");
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const testParm = urlParams.get('test');
+    if (testParm == "y") {
+        localStorageButton.style.display = "block";
+    } else {
+        localStorageButton.style.display = "none";
+    }
 
     BINOMIAL = new Binomial(50000, 100);
 
@@ -108,6 +121,63 @@ async function startup() {
 
     showMessage("Welcome to minesweeper solver dedicated to Annie");
 }
+
+// launch a floating window to store/retrieve from local storage
+function openLocalStorage() {
+
+    console.log("There are " + localStorage.length + " items in local storage");
+
+    // remove all the options from the selection
+    localStorageSelection.length = 0;
+
+    // iterate localStorage
+    for (var i = 0; i < localStorage.length; i++) {
+
+        // set iteration key name
+        var key = localStorage.key(i);
+
+        var option = document.createElement("option");
+        option.text = key;
+        option.value = key;
+        localStorageSelection.add(option);
+
+        // use key name to retrieve the corresponding value
+        var value = localStorage.getItem(key);
+
+        // console.log the iteration key and value
+        console.log('Key: ' + key + ', Value: ' + value);
+
+    }
+
+    localStorageModal.style.display = "block";
+
+}
+
+function closeLocalStorage() {
+
+    localStorageModal.style.display = "none";
+
+}
+
+function saveLocalStorage() {
+
+    key = localStorageSelection.value;
+
+    console.log("Saving board position to local storage key '" + key + "'");
+
+}
+
+function loadLocalStorage() {
+
+
+}
+
+function fetchLocalStorage() {
+
+
+}
+
+
 
 // render an array of tiles to the canvas
 function renderHints(hints) {
@@ -260,20 +330,9 @@ async function newGame(width, height, mines, seed) {
         board = new Board(id, width, height, mines, seed, gameType);
     }
 
-    /*
-    if (docTileSize.value == "32") {
-        TILE_SIZE = 32;
-    } else if (docTileSize.value == "16") {
-        TILE_SIZE = 16;
-    } else {
-        TILE_SIZE = 24;
-    }
-    */
-
     TILE_SIZE = parseInt(docTileSize.value);
 
-    //
-
+ 
     //document.getElementById('canvas').style.width = (width * TILE_SIZE) + "px";
     document.getElementById('canvas').style.height = (height * TILE_SIZE + 150) + "px";
 

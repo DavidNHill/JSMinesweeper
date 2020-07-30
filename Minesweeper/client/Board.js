@@ -253,4 +253,23 @@ class Board {
 
 		return hash;
 	}
+
+	// returns a string that represents this board state which can be save and restored later
+	getStateData() {
+
+		// wip
+
+		for (var i = 0; i < this.tiles.length; i++) {
+			var tile = this.tiles[i];
+			if (tile.isFlagged()) {
+				hash = (31 * hash + 13) % this.MAX;
+			} else if (tile.isCovered()) {
+				hash = (31 * hash + 12) % this.MAX;
+			} else {
+				hash = (31 * hash + tile.getValue()) % this.MAX;
+			}
+		}
+
+
+    }
 }
