@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html style="width: 100%; height: 100%">
 <head>
     <meta charset="ISO-8859-1">
     <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, shrink-to-fit=no">
@@ -7,119 +7,122 @@
     <link rel="icon" type="image/png" href="resources/images/flagged.png" />
     <title>Minesweeper solver</title>
 </head>
-<body>
+<body style="position: absolute; left:0px; right:0px; top:0px; bottom:0px; zoom: 1;" onresize="browserResized()">
 
+    <!-- Title at the top -->
     <h1 id="title">Minesweeper solver</h1>
-    <div style="overflow: auto;">
 
-        <nav id="controls">
+    <!-- control panel on the left -->
+    <nav id="controls">
 
+        <div class="checkboxes">
+            <label><input type="checkbox" class="checkbox" id="analysismode" onclick="setAnalysis()" /> <span>Analysis mode</span></label>
+        </div>
+
+        <div id="play0">
             <div class="checkboxes">
-                <label><input type="checkbox" class="checkbox" id="analysismode" onclick="setAnalysis()" /> <span>Analysis mode</span></label>
+                <label style="margin-top: 0.2em;"><input type="checkbox" class="checkbox" id="useSeed" /> <span>Use seed</span></label>
+            </div>
+            <div>
+                <input id="seed" type="text" style="width: 150px" />
             </div>
 
-            <div id="play0">
-                <div class="checkboxes">
-                    <label style="margin-top: 0.2em;"><input type="checkbox" class="checkbox" id="useSeed" /> <span>Use seed</span></label>
-                </div>
-                <div>
-                    <input id="seed" type="text" style="width: 150px" />
-                </div>
-
-                <div style="margin-top: 0.2em;" class="checkboxes">
-                    <label><input type="checkbox" class="checkbox" id="gameTypeZero" checked /> <span>Opening on start</span></label>
-                </div>
-
-                <!--
-                <div style="margin-top: 1em;" class="radioButtons">
-                    <label><input id="gameTypeSafe" type="radio" class="radioButton" name="gameType" value="safe"><span>Safe start</span></label>
-                    <label><input id="gameTypeZero" type="radio" class="radioButton" name="gameType" value="zero" checked><span>Zero start</span></label>
-                </div>
-                -->
+            <div style="margin-top: 0.2em;" class="checkboxes">
+                <label><input type="checkbox" class="checkbox" id="gameTypeZero" checked /> <span>Opening on start</span></label>
             </div>
 
-            <div class="radioButtons">
-                <label style="margin-top: 0.5em;"><input id="beginner" type="radio" class="radioButton" name="boardSize" value="0"><span>Beginner</span></label>
-                <label><input id="intermediate" type="radio" class="radioButton" name="boardSize" value="1"><span>Intermediate</span></label>
-                <label><input id="expert" type="radio" class="radioButton" name="boardSize" value="2" checked><span>Expert</span></label>
-                <label style="margin-bottom: 0.5em;"><input id="custom" type="radio" class="radioButton" name="boardSize" value="3"><span>Custom</span></label>
+            <!--
+            <div style="margin-top: 1em;" class="radioButtons">
+                <label><input id="gameTypeSafe" type="radio" class="radioButton" name="gameType" value="safe"><span>Safe start</span></label>
+                <label><input id="gameTypeZero" type="radio" class="radioButton" name="gameType" value="zero" checked><span>Zero start</span></label>
             </div>
+            -->
+        </div>
 
-            <div class="block">
-                <label>Width:</label>
-                <input id="width" onkeypress="makeCustom()" type="text" />
-            </div>
-            <div class="block">
-                <label>Height:</label>
-                <input id="height" onkeypress="makeCustom()" type="text" />
-            </div>
-            <div class="block">
-                <label>Mines:</label>
-                <input id="mines" onkeypress="makeCustom()" type="text" />
-            </div>
+        <div class="radioButtons">
+            <label style="margin-top: 0.5em;"><input id="beginner" type="radio" class="radioButton" name="boardSize" value="0"><span>Beginner</span></label>
+            <label><input id="intermediate" type="radio" class="radioButton" name="boardSize" value="1"><span>Intermediate</span></label>
+            <label><input id="expert" type="radio" class="radioButton" name="boardSize" value="2" checked><span>Expert</span></label>
+            <label style="margin-bottom: 0.5em;"><input id="custom" type="radio" class="radioButton" name="boardSize" value="3"><span>Custom</span></label>
+        </div>
 
-            <div style="margin-top: 1em; display: none;" class="radioButtons" id="analysis0">
-                <label><input id="buildHidden" type="radio" class="radioButton" name="buildType" value="hidden"><span>Build all hidden</span></label>
-                <label><input id="buildZero" type="radio" class="radioButton" name="buildType" value="zero" checked><span>Build all zero</span></label>
-                <button style="margin-top: 1em;" id="localStorageButton" onclick="openLocalStorage()">Local Storage</button>
-            </div>
+        <div class="block">
+            <label>Width:</label>
+            <input id="width" onkeypress="makeCustom()" type="text" />
+        </div>
+        <div class="block">
+            <label>Height:</label>
+            <input id="height" onkeypress="makeCustom()" type="text" />
+        </div>
+        <div class="block">
+            <label>Mines:</label>
+            <input id="mines" onkeypress="makeCustom()" type="text" />
+        </div>
 
-            <button style="margin-top: 1em;" id="NewGame" onclick="apply()">New game</button>
+        <div style="margin-top: 1em; display: none;" class="radioButtons" id="analysis0">
+            <label><input id="buildHidden" type="radio" class="radioButton" name="buildType" value="hidden"><span>Build all hidden</span></label>
+            <label><input id="buildZero" type="radio" class="radioButton" name="buildType" value="zero" checked><span>Build all zero</span></label>
+            <button style="margin-top: 1em;" id="localStorageButton" onclick="openLocalStorage()">Local Storage</button>
+        </div>
 
-            <div style="margin-top: 1em;">
-                <label>Style:</label>
-                <select id="playstyle">
-                    <option value="flag">Flagging</option>
-                    <option value="noflag">No flagging</option>
-                    <option value="eff">Efficiency</option>
-                </select>
-            </div>
+        <button style="margin-top: 1em;" id="NewGame" onclick="apply()">New game</button>
 
-            <div style="margin-top: 1em;">
-                <label>Tile size:</label>
-                <select id="tilesize">
-                    <option value="12">12 pixels</option>
-                    <option value="16">16 pixels</option>
-                    <option value="20">20 pixels</option>
-                    <option selected value="24">24 pixels</option>
-                    <option value="28">28 pixels</option>
-                    <option value="32">32 pixels</option>
-                </select>
-            </div>
+        <div style="margin-top: 1em;">
+            <label>Style:</label>
+            <select id="playstyle">
+                <option value="flag">Flagging</option>
+                <option value="noflag">No flagging</option>
+                <option value="eff">Efficiency</option>
+            </select>
+        </div>
 
-            <div style="margin-top: 1em;" class="checkboxes" id="play1">
-                <label><input type="checkbox" class="checkbox" id="showhints" checked /> <span>Show hints</span></label>
-                <label><input type="checkbox" class="checkbox" id="autoplay" checked /> <span>Auto play</span></label>
-                <label><input type="checkbox" class="checkbox" id="acceptguesses" /> <span>Accept guesses</span></label>
-            </div>
+        <div style="margin-top: 1em;">
+            <label>Tile size:</label>
+            <select id="tilesize">
+                <option value="12">12 pixels</option>
+                <option value="16">16 pixels</option>
+                <option value="20">20 pixels</option>
+                <option selected value="24">24 pixels</option>
+                <option value="28">28 pixels</option>
+                <option value="32">32 pixels</option>
+            </select>
+        </div>
 
-            <div style="margin-top: 1em; display: none;" class="checkboxes" id="analysis1">
-                <label><input type="checkbox" class="checkbox" id="lockMineCount" /> <span>Lock mine count</span></label>
-            </div>
+        <div style="margin-top: 1em;" class="checkboxes" id="play1">
+            <label><input type="checkbox" class="checkbox" id="showhints" checked /> <span>Show hints</span></label>
+            <label><input type="checkbox" class="checkbox" id="autoplay" checked /> <span>Auto play</span></label>
+            <label><input type="checkbox" class="checkbox" id="acceptguesses" /> <span>Accept guesses</span></label>
+        </div>
 
-            <button style="margin-top: 1em;" id="AnalysisButton" onclick="doAnalysis()">Analyse</button>
+        <div style="margin-top: 1em; display: none;" class="checkboxes" id="analysis1">
+            <label><input type="checkbox" class="checkbox" id="lockMineCount" /> <span>Lock mine count</span></label>
+        </div>
 
-        </nav>
+        <button style="margin-top: 1em;" id="AnalysisButton" onclick="doAnalysis()">Analyse</button>
 
-        <section id="canvas">
+    </nav>
+
+    <!-- where the board goes -->
+    <div style="position: absolute; left: 200px; right: 10px; top: 75px; bottom: 60px;">
+        <section class="tooltip" id="canvas" style="position: absolute; left: 10px; top: 0px; bottom: 0px; right: 0px;">
             <div id="display">
                 <canvas class="led" id="myMinesLeft" width="96" height="40" oncontextmenu="return false"></canvas>
             </div>
-            <div class="tooltip" id="board" style="position:relative; width: 512px; height: 512px">
-                <canvas id="myCanvas" width="500" height="500" oncontextmenu="return false" style="position: absolute; top: 0; left: 0;"></canvas>
-                <canvas id="myHints" width="500" height="500" oncontextmenu="return false" style="position: absolute; top: 0; left: 0; pointer-events: none;"></canvas>
-                <span id="tooltip" class="tooltiptext" style="pointer-events: none;">Tooltip text</span>
+            <div  id="board" style="overflow: auto; position: absolute; top:60px; left:0px;">
+                <canvas id="myCanvas" width="500" height="500" oncontextmenu="return false" style="position: absolute; top: 0px; left: 0px;"></canvas>
+                <canvas id="myHints" width="500" height="500" oncontextmenu="return false" style="position: absolute; top: 0px; left: 0px; pointer-events: none;"></canvas>
             </div>
+            <span id="tooltip" class="tooltiptext" style="pointer-events: none;">Tooltip text</span>
         </section>
-
     </div>
 
-    <div class="raised" style="margin-top: 0em;">
-        <label id="messageLine" style="font-size:20px; padding:5px; width: 100%">A message line</label>
+    <!-- message line at the bottom -->
+    <div class="raised" style="position: absolute; bottom: 0px; left: 0px; right: 0px; margin: 10px;">
+        <label id="messageLine" style="font-size:20px; padding:5px;">A message line</label>
     </div>
 
     <!-- Local storage popup -->
-    <div id="localStorage" class="modal" >
+    <div id="localStorage" class="modal">
         <!-- Modal content -->
         <div class="modal-content" style="position: relative; width: 600px; height: 600px">
             <p>From here you can store and fetch positions from the browsers local storage. This storage persists between sessions.</p>
@@ -258,8 +261,4 @@
     </script>
 
 </body>
-
-
-
-
 </html>

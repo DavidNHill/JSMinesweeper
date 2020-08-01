@@ -5,32 +5,31 @@ body {
   	padding: 10px;
   	border-style: inset;
   	border-width: 5px;
-  	overflow: auto;
 }
 
 h1 {
     position: sticky;
-    top: 0;
+    top: 0px;
     z-index: 1; /* Sit on top */
     margin-top: 0px;
     margin-bottom: 10px;
-    /* float: top; */
     background: #ccc;
     padding: 5px;
     border-style: outset;
     border-width: 5px;
 }
 
-/* Create two columns/boxes that floats next to each other */
 nav {
-  float: left;
-  margin-right: 20px;
-  width: 160px; 
-  height: 100%;
-  background: #ccc;
-  padding: 10px;
-  border-style: outset;
-  border-width: 5px;
+    position: absolute;
+    margin-right: 20px;
+    left: 10px;
+    width: 160px;
+    top: 75px;
+    bottom: 50px;
+    background: #ccc;
+    padding: 10px;
+    border-style: outset;
+    border-width: 5px;
 }
 
 /* Style the list inside the menu */
@@ -53,9 +52,8 @@ div.raised {
 
 /* the section holding the board and display canvas */
 section {
-  float: left;
-  padding: 0px;
-  background-color: #ccc;
+    padding: 0px;
+    background-color: #ccc;
 }
 
 /* the section holding the canvas */
@@ -174,9 +172,8 @@ button:hover {
 
 /* Tooltip container */
 .tooltip {
-    position: relative;
+    position: absolute;
     display: inline-block;
-    border-bottom: 1px dotted black; /* If you want dots under the hoverable text */
 }
 
 /* Tooltip text */

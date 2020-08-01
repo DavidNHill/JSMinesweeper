@@ -19,6 +19,9 @@ const EXPLODED = 13;
 //const PLAY_CLIENT_SIDE = (location.hostname == "");
 const PLAY_CLIENT_SIDE = true;
 
+const GAME_DESCRIPTION_KEY = "CURRENT_GAME_DESCRIPTION";
+const GAME_BOARD_STATE_KEY = "CURRENT_GAME_BOARD_STATE";
+
 var BINOMIAL;
 
 // holds the images
@@ -37,6 +40,7 @@ var ctxBombsLeft = minesLeft.getContext('2d');
 var canvasHints = document.getElementById('myHints');
 var ctxHints = canvasHints.getContext('2d');
 
+var currentGameDescription;
 var board;
 
 myMinesLeft.width = DIGIT_WIDTH * 4;
@@ -64,20 +68,24 @@ var localStorageSelection = document.getElementById("localStorageSelection");
 
 var analysisMode = false;
 var previousBoardHash = 0;
-/*
 // add a listener for when the client exists the page
-document.addEventListener("beforeunload", exiting(board), false);
 
-function exiting(board) {
+
+// when exiting store the current game
+function exiting(event) {
 
     console.log("exiting...");
-	
+
+    if (currentGameDescription != null) {
+        //localStorage.setItem(GAME_DESCRIPTION_KEY, JSON.stringify(currentGameDescription));
+    }
+
     if (board != null) {
         killGame(board.getID());
     }
 
+    return "";
 }
-*/
 
 // load the images
 load_images();
@@ -108,14 +116,27 @@ async function startup() {
     console.log("fast " + (mid - start) + " slow " + (end - mid));
     */
 
+    window.addEventListener("beforeunload", (event) => exiting(event));
+
     // add a listener for mouse clicks on the canvas
     canvas.addEventListener("mousedown", (event) => on_click(event));
     canvas.addEventListener('mousemove', followCursor, false);
     canvas.addEventListener('wheel', (event) => on_mouseWheel(event));
+    canvas.addEventListener('mouseenter', (event) => on_mouseEnter(event));
+    canvas.addEventListener('mouseleave', (event) => on_mouseLeave(event));
+
     minesLeft.addEventListener('wheel', (event) => on_mouseWheel_minesLeft(event));
 
-    // build a new layout
-    await newGame(30, 16, 99, 0);
+    currentGameDescription = localStorage.getItem(GAME_DESCRIPTION_KEY);
+
+    if (currentGameDescription != null) {
+        var gameDescription = JSON.parse(currentGameDescription);
+        console.log(gameDescription);
+        await newGame(gameDescription.width, gameDescription.height, gameDescription.mines, gameDescription.seed);
+
+    } else {
+        await newGame(30, 16, 99, 0); // default to a new expert game
+    }
 
     setInterval(checkBoard, 1000);
 
@@ -278,14 +299,7 @@ function updateMineCount(minesLeft) {
 
 async function newGame(width, height, mines, seed) {
 
-    // don't do this until the document is fully loaded
-    //console.log(document.readyState);
-    //if (document.readyState != "complete") {
-    //    setTimeout(newGame(width, height, mines, seed), 100);
-    //    return;
-    //}
- 
-    console.log("New game requested: Width=" + width + " Height=" + height + " Mines=" + mines);
+    console.log("New game requested: Width=" + width + " Height=" + height + " Mines=" + mines + " Seed=" + seed);
 
     // let the server know the game is over
     if (board != null) {
@@ -332,21 +346,33 @@ async function newGame(width, height, mines, seed) {
 
     TILE_SIZE = parseInt(docTileSize.value);
 
- 
+
+    // make the canvases large enough to fit the game
+    var boardWidth = width * TILE_SIZE;
+    var boardHeight = height * TILE_SIZE;
+
+    canvas.width = boardWidth;
+    canvas.height = boardHeight;
+
+    canvasHints.width = boardWidth;
+    canvasHints.height = boardHeight;
+
+    /*
+    var screenWidth = document.getElementById('canvas').offsetWidth;
+    var screenHeight = document.getElementById('canvas').offsetHeight;
+
+    console.log("Available size is " + screenWidth + " x " + screenHeight);
+
     //document.getElementById('canvas').style.width = (width * TILE_SIZE) + "px";
-    document.getElementById('canvas').style.height = (height * TILE_SIZE + 150) + "px";
+    //document.getElementById('canvas').style.height = (height * TILE_SIZE + 0) + "px";
 
-    document.getElementById('board').style.width = (width * TILE_SIZE) + "px";
-    document.getElementById('board').style.height = (height * TILE_SIZE + 0) + "px";
+    //document.getElementById('board').style.width = (width * TILE_SIZE) + "px";
+    //document.getElementById('board').style.height = (height * TILE_SIZE + 0) + "px";
 
-    canvas.width = width * TILE_SIZE;
-    canvas.height = height * TILE_SIZE; 
+    document.getElementById("display").style.width = width * TILE_SIZE + "px";
+    */
 
-    // keep the hints and the board canvas in step
-    canvasHints.width = canvas.width;
-    canvasHints.height = canvas.height;
-
-    document.getElementById('display').width = width * TILE_SIZE;;
+    browserResized();
 
     for (var y = 0; y < height; y++) {
         for (var x = 0; x < width; x++) {
@@ -359,6 +385,84 @@ async function newGame(width, height, mines, seed) {
     canvasLocked = false;  // just in case it was still locked (after an error for example)
 
     showMessage("New game requested with width " + width + ", height " + height + " and " + mines + " mines.");
+
+}
+
+function browserResized() {
+
+    var boardElement = document.getElementById('board');
+
+    var boardWidth = board.width * TILE_SIZE;
+    var boardHeight = board.height * TILE_SIZE;
+
+    var screenWidth = document.getElementById('canvas').offsetWidth - 10;
+    var screenHeight = document.getElementById('canvas').offsetHeight - 60;   // subtract some space to allow for the mine count panel
+
+    console.log("Available size is " + screenWidth + " x " + screenHeight);
+
+    // decide screen size and set scroll bars
+    if (boardWidth > screenWidth && boardHeight > screenHeight) {  // both need scroll bars
+        var useWidth = screenWidth;
+        var useHeight = screenHeight;
+        boardElement.style.overflowX = "scroll";
+        boardElement.style.overflowY = "scroll";
+
+        var scrollbarYWidth = 0;    
+        var scrollbarXHeight = 0;
+
+    } else if (boardWidth > screenWidth) {  // need a scroll bar on the bottom
+        var useWidth = screenWidth;
+        boardElement.style.overflowX = "scroll";
+
+        var scrollbarXHeight = boardElement.offsetHeight - boardElement.clientHeight - 10;
+        var scrollbarYWidth = 0;
+
+        if (boardHeight + scrollbarXHeight > screenHeight) {  // the scroll bar has made the height to large now !
+            var useHeight = screenHeight;
+            boardElement.style.overflowY = "scroll";
+            var scrollbarXHeight = 0;
+        } else {
+            var useHeight = boardHeight;
+            boardElement.style.overflowY = "hidden";
+        }
+
+    } else if (boardHeight > screenHeight) {  // need a scroll bar on the right
+        var useHeight = screenHeight;
+        boardElement.style.overflowY = "scroll";
+
+        var scrollbarYWidth = boardElement.offsetWidth - boardElement.clientWidth - 10;
+        var scrollbarXHeight = 0;
+
+        if (boardWidth + scrollbarYWidth > screenWidth) {  // the scroll bar has made the width to large now !
+            var useWidth = screenWidth;
+            var scrollbarYWidth = 0;
+            boardElement.style.overflowX = "scroll";
+        } else {
+            var useWidth = boardWidth;
+            boardElement.style.overflowX = "hidden";
+        }
+
+    } else {
+        var useWidth = boardWidth;
+        boardElement.style.overflowX = "hidden";
+        var useHeight = boardHeight;
+        boardElement.style.overflowY = "hidden";
+        var scrollbarYWidth = 0;
+        var scrollbarXHeight = 0;
+    }
+
+    //var useWidth = Math.min(boardWidth, screenWidth);
+    //var useHeight = Math.min(boardHeight, screenHeight);
+
+    console.log("Usable size is " + useWidth + " x " + useHeight);
+    console.log("Scroll bar Y width  " + scrollbarYWidth);
+    console.log("Scroll bar X Height  " + scrollbarXHeight);
+
+    // change the size of the viewable frame
+    boardElement.style.width = (useWidth + scrollbarYWidth) + "px";
+    boardElement.style.height = (useHeight + scrollbarXHeight) + "px";
+
+    document.getElementById("display").style.width = (useWidth + scrollbarYWidth) + "px";
 
 }
 
@@ -450,8 +554,8 @@ function followCursor(e) {
 
     //console.log("Following cursor at X=" + e.offsetX + ", Y=" + e.offsetY);
 
-    tooltip.style.left = (TILE_SIZE + e.offsetX) + 'px';
-    tooltip.style.top = (e.offsetY - TILE_SIZE * 1.5) + 'px';
+    tooltip.style.left = (TILE_SIZE + e.clientX - 220) + 'px';
+    tooltip.style.top = (e.clientY - TILE_SIZE * 1.5 - 70) + 'px';
 
     var row = Math.floor(event.offsetY / TILE_SIZE);
     var col = Math.floor(event.offsetX / TILE_SIZE);
@@ -459,11 +563,25 @@ function followCursor(e) {
     if (row >= board.height || row < 0 || col >= board.width || col < 0) {
         //console.log("outside of game boundaries!!");
         tooltip.innerText = "";
+        tooltip.style.display = "none";
         return;
     } else {
         var tile = board.getTileXY(col, row);
         tooltip.innerText = tile.asText() + " " + tile.getHintText();
+        tooltip.style.display = "inline-block";
     }
+
+}
+
+function on_mouseEnter(e) {
+
+    tooltip.style.display = "inline-block";
+
+}
+
+function on_mouseLeave(e) {
+
+    tooltip.style.display = "none";
 
 }
 
@@ -605,12 +723,7 @@ function on_click(event) {
                 message = { "header": board.getMessageHeader(), "actions": [{ "index": board.xy_to_index(col, row), "action": 1 }] }; // click
             }
 
-            //if (this.board.tiles_left == 0) {
-            //	var now = new Date();
-            //	var time = (now - this.start) / 1000;
-            //	setTimeout("alert('time: " + time.toString() + "');", 1);
-            //}
-        } else if (button == 3) {  // right mouse button
+         } else if (button == 3) {  // right mouse button
 
             if (!tile.isCovered()) {  // no point flagging an already uncovered tile
                 return;
@@ -765,8 +878,8 @@ async function sendActionsMessage(message) {
         var reply = await json_data.json();
     }
 
-
     console.log("<== " + JSON.stringify(reply));
+    console.log(reply.header);
 
     if (board.id != reply.header.id) {
         console.log("Game when message sent " + reply.header.id + " game now " + board.id + " ignoring reply");
@@ -859,7 +972,10 @@ async function sendActionsMessage(message) {
         } else {
             var efficiency = "n/a";
         }
- 
+
+        // if the current game is no longer in play then no need to remember the games details
+        currentGameDescription = null;
+        localStorage.removeItem(GAME_DESCRIPTION_KEY);
 
         showMessage("The game has been " + reply.header.status + ". 3BV: " + value3BV + ",  Actions: " + actionsMade + ",  Efficiency: " + efficiency);
         return;
@@ -920,10 +1036,12 @@ async function sendActionsMessage(message) {
             } else {
                 document.getElementById("canvas").style.cursor = "default";
                 canvasLocked = false;
+                 currentGameDescription = reply.header;
             }
         } else {
             document.getElementById("canvas").style.cursor = "default";
             canvasLocked = false;
+             currentGameDescription = reply.header;
         }
 
     } else {
@@ -931,6 +1049,7 @@ async function sendActionsMessage(message) {
         window.requestAnimationFrame(() => renderHints([]));  // clear the hints overlay
         document.getElementById("canvas").style.cursor = "default";
         showMessage("The solver is not running.");
+        currentGameDescription = reply.header;
     }
  
     return reply;

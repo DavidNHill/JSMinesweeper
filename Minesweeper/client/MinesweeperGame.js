@@ -72,7 +72,6 @@ function heartbeat() {
         console.log("Game " + game.id + " created " + game.created + " last action " + game.lastAction + "Tiles left " + game.tiles_left + " ==> " + action);
     }
 
-
     console.log("...heartbeat ending, " + serverGames.size + " games in memory");
 }
 
@@ -129,8 +128,13 @@ function handleActions(message) {
 		game = createGame(header, actions[0].index);
 	}
 
-    // send the seed to the client
-    reply.header.seed = game.seed;
+    // send the game details to the client
+	reply.header.seed = game.seed;
+	reply.header.gameType = game.gameType;
+	reply.header.width = game.width;
+	reply.header.height = game.height;
+	reply.header.mines = game.num_bombs;
+	reply.header.startIndex = game.startIndex;
 
 	// process each action sent
 	for (var i = 0; i < actions.length; i++) {
@@ -269,6 +273,7 @@ class ServerGame {
         this.seed = seed;
 		this.cleanUp = false;
 		this.actions = 0;
+		this.startIndex = index;
 
         console.log("Using seed " + this.seed);
 
@@ -410,7 +415,6 @@ class ServerGame {
 		}
 
 		return this.reveal(tilesToReveal);
-		
 		
 	}
 	
@@ -621,6 +625,12 @@ class ServerGame {
 		return value3BV;
 	}
 
+	getGameDescription() {
+
+		return new gameDescription(this.seed, this.gameType, this.width, this.height, this.mines, this.startIndex, this.actions);
+
+    }
+
 } 
 
 /**
@@ -684,7 +694,22 @@ class ServerTile {
 
 }
 
+class gameDescription {
 
+	constructor(seed, gameType, width, height, mines, index, actions) {
+
+		console.log("Creating a new game state with");
+
+		this.seed = seed;
+		this.gameType = gameType;
+		this.width = width;
+		this.height = height;
+		this.mines = mines;
+		this.index = index;
+		this.actions = actions;
+	}
+
+}
 
 // used to shuffle an array
 function shuffle(a, rng) {
