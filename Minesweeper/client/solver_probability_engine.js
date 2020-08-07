@@ -1162,7 +1162,7 @@ class ProbabilityEngine {
         for (var i = 0; i < this.lonelyTiles.length; i++) {
             var dc = this.lonelyTiles[i];
             if (this.boxProb[dc.myBox.uid] != 0 && this.boxProb[dc.myBox.uid] != 1) {   // a lonely tile is dead if not a definite mine or safe
-                console.log("Lonely tile found " + dc.candidate.asText() + " to be dead");
+                console.log("PE found Lonely tile " + dc.candidate.asText() + " is dead with value +" + dc.total);
                 this.deadTiles.push(dc.candidate);
             }
         }
@@ -1171,7 +1171,7 @@ class ProbabilityEngine {
         for (var i = 0; i < this.deadCandidates.length; i++) {
             var dc = this.deadCandidates[i];
             if (!dc.isAlive && this.boxProb[dc.myBox.uid] != 0 && this.boxProb[dc.myBox.uid] != 1) {   // if it is dead and not a definite mine or safe
-                console.log("PE found " + dc.candidate.asText() + " to be dead");
+                console.log("PE found " + dc.candidate.asText() + " to be dead with value +" + dc.total);
                 this.deadTiles.push(dc.candidate);
             }
         }

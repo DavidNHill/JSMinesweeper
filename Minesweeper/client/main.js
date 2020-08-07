@@ -207,11 +207,11 @@ function renderHints(hints) {
 
     ctxHints.clearRect(0, 0, canvasHints.width, canvasHints.height);
 
+    var firstGuess = 0;  // used to identify the first (best) guess, subsequent guesses are just for info 
     for (var i = 0; i < hints.length; i++) {
 
         var hint = hints[i];
 
-        var bestGuess = false;
         if (hint.action == ACTION_CHORD) {
             ctxHints.fillStyle = "#00FF00";
         } else if (hint.prob == 0) {   // mine
@@ -222,8 +222,8 @@ function renderHints(hints) {
             ctxHints.fillStyle = "black";
         } else {  //uncertain
             ctxHints.fillStyle = "orange";
-            if (i == 0) {
-                bestGuess = true;
+            if (firstGuess == 0) {
+                firstGuess = 1;
             }
         }
 
@@ -231,9 +231,10 @@ function renderHints(hints) {
 
         //console.log("Hint X=" + hint.x + " Y=" + hint.y);
         ctxHints.fillRect(hint.x * TILE_SIZE, hint.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-        if (bestGuess) {
+        if (firstGuess == 1) {
             ctxHints.fillStyle = "#00FF00";
-            ctxHints.fillRect((hint.x + 0.25)* TILE_SIZE, (hint.y + 0.25) * TILE_SIZE, 0.5 * TILE_SIZE, 0.5 * TILE_SIZE);
+            ctxHints.fillRect((hint.x + 0.25) * TILE_SIZE, (hint.y + 0.25) * TILE_SIZE, 0.5 * TILE_SIZE, 0.5 * TILE_SIZE);
+            firstGuess = 2;
         }
 
     }
@@ -357,21 +358,6 @@ async function newGame(width, height, mines, seed) {
     canvasHints.width = boardWidth;
     canvasHints.height = boardHeight;
 
-    /*
-    var screenWidth = document.getElementById('canvas').offsetWidth;
-    var screenHeight = document.getElementById('canvas').offsetHeight;
-
-    console.log("Available size is " + screenWidth + " x " + screenHeight);
-
-    //document.getElementById('canvas').style.width = (width * TILE_SIZE) + "px";
-    //document.getElementById('canvas').style.height = (height * TILE_SIZE + 0) + "px";
-
-    //document.getElementById('board').style.width = (width * TILE_SIZE) + "px";
-    //document.getElementById('board').style.height = (height * TILE_SIZE + 0) + "px";
-
-    document.getElementById("display").style.width = width * TILE_SIZE + "px";
-    */
-
     browserResized();
 
     for (var y = 0; y < height; y++) {
@@ -485,7 +471,7 @@ function doAnalysis() {
         var noMoves = 0;
         var hints = [];
 
-        // allow the solver to bring baxck no moves 5 times. No moves is possible when playing no-flags 
+        // allow the solver to bring back no moves 5 times. No moves is possible when playing no-flags 
         while (noMoves < 5 && hints.length == 0) {
             noMoves++;
             hints = solver(board, playStyle);  // look for solutions
@@ -879,7 +865,7 @@ async function sendActionsMessage(message) {
     }
 
     console.log("<== " + JSON.stringify(reply));
-    console.log(reply.header);
+    //console.log(reply.header);
 
     if (board.id != reply.header.id) {
         console.log("Game when message sent " + reply.header.id + " game now " + board.id + " ignoring reply");
