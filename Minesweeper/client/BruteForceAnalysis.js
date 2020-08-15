@@ -281,13 +281,10 @@ class Position {
 
         if (p == null) {
             this.position = new Array(allTiles.length).fill(15);
-            //for (var i = 0; i < this.position.length; i++) {
-            //    this.position[i] = 15;
-            //}
         } else {
             // copy and update to reflect the new position
-            this.position = [];
-            this.position.push(...p.position);   // copy the old position to this one
+            this.position = p.position.slice(); 
+            //this.position.push(...p.position); 
             this.position[index] = value + 50;
         }
 
@@ -671,21 +668,6 @@ class Node {
 
     }
 
-    /*
-    @Override
-    public int hashCode() {
-        return position.hashCode();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (o instanceof Node) {
-            return position.equals(((Node) o).position);
-        } else {
-            return false;
-        }
-    }
-	*/	
 }
 
 // used to hold all the solutions left in the game

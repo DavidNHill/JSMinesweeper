@@ -46,7 +46,7 @@ class SolutionCounter {
         //this.independentIterations = BigInt(1);
         //this.remainingSquares = 0;
 
-        //this.localClears = [];
+        this.localClears = [];
 
         //this.canDoDeadTileAnalysis = true;
 
@@ -66,10 +66,6 @@ class SolutionCounter {
                 var w = this.boxWitnesses[j];
 
                 if (w.equivalent(boxWit)) {
-                    //if (boardState.getWitnessValue(w) - boardState.countAdjacentConfirmedFlags(w) != boardState.getWitnessValue(wit) - boardState.countAdjacentConfirmedFlags(wit)) {
-                    //    boardState.display(w.display() + " and " + wit.display() + " share unrevealed squares but have different mine totals!");
-                    //    validWeb = false;
-                    //}
                     duplicate = true;
                     break;
                 }
@@ -286,9 +282,6 @@ class SolutionCounter {
                 return result;
             }
 
-            // otherwise place the mines in the probability line
-            //pl.mineBoxCount[nw.newBoxes[index].uid] = BigInt(missingMines);
-            //pl.mineCount = pl.mineCount + missingMines;
             result.push(this.extendProbabilityLine(pl, nw.newBoxes[index], missingMines));
             //console.log("Distribute missing mines line after " + pl.mineBoxCount);
             return result;
@@ -459,16 +452,6 @@ class SolutionCounter {
                 this.mergeLineProbabilities(current, pl);
             }
 
-            /*
-            if (pl.mineCount != mc) {
-                result.push(npl);
-                mc = pl.mineCount;
-                npl = new ProbabilityLine(this.boxes.length);
-                npl.mineCount = mc;
-            }
-            this.mergeLineProbabilities(npl, pl);
-            */
-
         }
 
         //if (npl.mineCount >= minTotalMines) {
@@ -560,9 +543,6 @@ class SolutionCounter {
 
         // reset the mask indicating that no boxes have been processed 
         this.mask.fill(false);
-        //for (var i = 0; i < this.mask.length; i++) {
-        //    this.mask[i] = false;
-        //}
 
         // if the position is invalid exit now
         if (this.heldProbs.length == 0) {
@@ -649,9 +629,6 @@ class SolutionCounter {
     calculateBoxProbabilities() {
 
         var emptyBox = Array(this.boxes.length).fill(true);
-        //for (var i = 0; i < this.boxes.length; i++) {
-        //    tally[i] = BigInt(0);
-        //}
 
         // total game tally
         var totalTally = BigInt(0);
@@ -692,7 +669,8 @@ class SolutionCounter {
             for (var i = 0; i < this.boxes.length; i++) {
                 if (emptyBox[i]) {
                     this.clearCount = this.clearCount + this.boxes[i].tiles.length;
-                }
+                    this.localClears.push(...this.boxes[i].tiles);
+                 }
             }
         }
 
@@ -700,6 +678,10 @@ class SolutionCounter {
 
          console.log("Game has  " + this.finalSolutionsCount + " candidate solutions and " + this.clearCount + " clears");
 
+    }
+
+    getLocalClears() {
+        return this.localClears;
     }
 
 }

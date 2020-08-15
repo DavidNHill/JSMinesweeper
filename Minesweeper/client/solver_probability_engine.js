@@ -142,16 +142,12 @@ class ProbabilityEngine {
 	process() {
 
         // create an array showing which boxes have been procesed this iteration - none have to start with
-        for (var i = 0; i < this.boxes.length; i++) {
-            this.mask.push(false);
-        }
+        this.mask = Array(this.boxes.length).fill(false);
 
         // look for places which could be dead
         this.getCandidateDeadLocations();
 
 		// create an initial solution of no mines anywhere 
-		//var held = new ProbabilityLine(this.boxes.length);
-		//held.solutionCount = BigInt(1);
         this.heldProbs.push(new ProbabilityLine(this.boxes.length, BigInt(1)));
 		
 		// add an empty probability line to get us started
@@ -211,10 +207,6 @@ class ProbabilityEngine {
                 
                 var result = this.distributeMissingMines(pl, nw, missingMines, 0);
                 newProbs.push(...result);
-
-                //for (var j = 0; j < result.length; j++) {
-                //   newProbs.push(result[j]);
-                //}
 
             }
 
@@ -493,10 +485,6 @@ class ProbabilityEngine {
 
         var result = [];
 
-        //var mc = target[0].mineCount;
-        //var npl = new ProbabilityLine(this.boxes.length);
-        //npl.mineCount = mc;
-
         var current = null;
 
         for (var i = 0; i < target.length; i++) {
@@ -511,16 +499,6 @@ class ProbabilityEngine {
             } else {
                 this.mergeLineProbabilities(current, pl);
             }
-
-            /*
-            if (pl.mineCount != mc) {
-                result.push(npl);
-                mc = pl.mineCount;
-                npl = new ProbabilityLine(this.boxes.length);
-                npl.mineCount = mc;
-            }
-            this.mergeLineProbabilities(npl, pl);
-            */
 
         }
 
@@ -692,13 +670,11 @@ class ProbabilityEngine {
             this.storeProbabilities();
 
             // reset the working array so we can start building up one for the new set of witnesses
-            this.workingProbs = [];
-            this.workingProbs.push(new ProbabilityLine(this.boxes.length, BigInt(1)));
+            this.workingProbs = [new ProbabilityLine(this.boxes.length, BigInt(1))];
+            //this.workingProbs.push(new ProbabilityLine(this.boxes.length, BigInt(1)));
 
             // reset the mask indicating that no boxes have been processed 
-            for (var i = 0; i < this.mask.length; i++) {
-                this.mask[i] = false;
-            }
+            this.mask.fill(false);
         //}
 
         // return the next witness to process
@@ -1513,8 +1489,8 @@ class Box {
         this.minMines;
         this.maxMines;
 
-		this.tiles = [];
-		this.tiles.push(tile);
+		this.tiles = [tile];
+		//this.tiles.push(tile);
 		
 		this.boxWitnesses = [];
 		
