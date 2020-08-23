@@ -39,7 +39,7 @@ class Binomial {
 	generate(k, n) {
 
 		if (n == 0 && k == 0) {
-			return BigInteger.ONE;
+			return BigInt(1);
 		}
 
 		if (n < 1 || n > this.max) {
@@ -90,7 +90,7 @@ class Binomial {
 	
 	combinationLarge(k, n) {
 
-		if ((k == 0) || (k == n)) return BigInt.ONE;
+		if ((k == 0) || (k == n)) return BigInt(1);
 
 		var n2 = n / 2;
 

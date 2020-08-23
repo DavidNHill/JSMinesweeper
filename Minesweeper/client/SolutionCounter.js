@@ -676,7 +676,7 @@ class SolutionCounter {
 
         this.finalSolutionsCount = totalTally;
 
-         console.log("Game has  " + this.finalSolutionsCount + " candidate solutions and " + this.clearCount + " clears");
+         //console.log("Game has  " + this.finalSolutionsCount + " candidate solutions and " + this.clearCount + " clears");
 
     }
 

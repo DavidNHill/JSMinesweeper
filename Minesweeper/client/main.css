@@ -150,8 +150,15 @@ button:hover {
 
 /* make the tick box bigger*/
 .checkbox {
+    position: relative;
     height: 20px;
     width: 20px;
+}
+
+.checkboxes {
+    position: relative;
+    height: 24px;
+    width: 150px;
 }
 
 .checkboxes label {

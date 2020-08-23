@@ -6,6 +6,7 @@ console.log('At start of main.js');
 var TILE_SIZE = 24;
 const DIGIT_HEIGHT = 36;
 const DIGIT_WIDTH = 24;
+const DIGITS = 5;
 
 const CYCLE_DELAY = 100;  // minimum delay in milliseconds between processing cycles
 
@@ -34,8 +35,8 @@ var canvasLocked = false;   // we need to lock the canvas if we are auto playing
 var canvas = document.getElementById('myCanvas');
 var ctx = canvas.getContext('2d');
 
-var minesLeft = document.getElementById('myMinesLeft');
-var ctxBombsLeft = minesLeft.getContext('2d');
+var docMinesLeft = document.getElementById('myMinesLeft');
+var ctxBombsLeft = docMinesLeft.getContext('2d');
 
 var canvasHints = document.getElementById('myHints');
 var ctxHints = canvasHints.getContext('2d');
@@ -43,8 +44,8 @@ var ctxHints = canvasHints.getContext('2d');
 var currentGameDescription;
 var board;
 
-myMinesLeft.width = DIGIT_WIDTH * 4;
-myMinesLeft.height = DIGIT_HEIGHT;
+docMinesLeft.width = DIGIT_WIDTH * DIGITS;
+docMinesLeft.height = DIGIT_HEIGHT;
 
 var tooltip = document.getElementById('tooltip');
 var autoPlayCheckBox = document.getElementById("autoplay");
@@ -60,6 +61,7 @@ var title = document.getElementById("title");
 var lockMineCount = document.getElementById("lockMineCount");
 var docPlayStyle = document.getElementById("playstyle");
 var docTileSize = document.getElementById("tilesize");
+var docFastPlay = document.getElementById("fastPlay");
 
 // elements used in the local storage modal
 var localStorageButton = document.getElementById("localStorageButton");
@@ -103,7 +105,7 @@ async function startup() {
         localStorageButton.style.display = "none";
     }
 
-    BINOMIAL = new Binomial(50000, 100);
+    BINOMIAL = new Binomial(50000, 200);
 
     /*
     var start = performance.now();
@@ -125,7 +127,7 @@ async function startup() {
     canvas.addEventListener('mouseenter', (event) => on_mouseEnter(event));
     canvas.addEventListener('mouseleave', (event) => on_mouseLeave(event));
 
-    minesLeft.addEventListener('wheel', (event) => on_mouseWheel_minesLeft(event));
+    docMinesLeft.addEventListener('wheel', (event) => on_mouseWheel_minesLeft(event));
 
     currentGameDescription = localStorage.getItem(GAME_DESCRIPTION_KEY);
 
@@ -279,21 +281,30 @@ function renderTiles(tiles) {
 
 function updateMineCount(minesLeft) {
 
-    var d1 = minesLeft % 10;
-    var work = (minesLeft - d1) / 10;
+    var work = minesLeft;
+    var digits = 3;
 
-    var d2 = work % 10;
-    work = (work - d2) / 10;
+    if (minesLeft < 1000) {
+        digits = 3;
+    } else if (minesLeft < 10000) {
+        digits = 4;
+    } else {
+        digits = 5;
+    }
 
-    var d3 = work % 10;
-    work = (work - d3) / 10;
+    var position = digits - 1;
 
-    var d4 = work % 10;
+    docMinesLeft.width = DIGIT_WIDTH * digits;
 
-    ctxBombsLeft.drawImage(led_images[d4], 0, 0, DIGIT_WIDTH, DIGIT_HEIGHT);
-    ctxBombsLeft.drawImage(led_images[d3], DIGIT_WIDTH, 0, DIGIT_WIDTH, DIGIT_HEIGHT);
-    ctxBombsLeft.drawImage(led_images[d2], DIGIT_WIDTH * 2, 0, DIGIT_WIDTH, DIGIT_HEIGHT);
-    ctxBombsLeft.drawImage(led_images[d1], DIGIT_WIDTH * 3, 0, DIGIT_WIDTH, DIGIT_HEIGHT);
+    for (var i = 0; i < DIGITS; i++) {
+
+        var digit = work % 10;
+        work = (work - digit) / 10;
+
+        ctxBombsLeft.drawImage(led_images[digit], DIGIT_WIDTH * position, 0, DIGIT_WIDTH, DIGIT_HEIGHT);
+
+        position--;
+    }
 
 
 }
@@ -384,7 +395,7 @@ function browserResized() {
     var screenWidth = document.getElementById('canvas').offsetWidth - 10;
     var screenHeight = document.getElementById('canvas').offsetHeight - 60;   // subtract some space to allow for the mine count panel
 
-    console.log("Available size is " + screenWidth + " x " + screenHeight);
+    //console.log("Available size is " + screenWidth + " x " + screenHeight);
 
     // decide screen size and set scroll bars
     if (boardWidth > screenWidth && boardHeight > screenHeight) {  // both need scroll bars
@@ -440,9 +451,9 @@ function browserResized() {
     //var useWidth = Math.min(boardWidth, screenWidth);
     //var useHeight = Math.min(boardHeight, screenHeight);
 
-    console.log("Usable size is " + useWidth + " x " + useHeight);
-    console.log("Scroll bar Y width  " + scrollbarYWidth);
-    console.log("Scroll bar X Height  " + scrollbarXHeight);
+    //console.log("Usable size is " + useWidth + " x " + useHeight);
+    //console.log("Scroll bar Y width  " + scrollbarYWidth);
+    //console.log("Scroll bar X Height  " + scrollbarXHeight);
 
     // change the size of the viewable frame
     boardElement.style.width = (useWidth + scrollbarYWidth) + "px";
@@ -887,6 +898,13 @@ async function sendActionsMessage(message) {
         board.setGameWon();
     } 
 
+    if (reply.tiles.length == 0) {
+        showMessage("Unable to continue");
+        document.getElementById("canvas").style.cursor = "default";
+        canvasLocked = false;
+        return;
+    }
+
     // translate the message and redraw the board
     var tiles = [];
     var prevMineCounter = board.bombs_left;
@@ -967,14 +985,25 @@ async function sendActionsMessage(message) {
         return;
     }
 
+    var assistedPlay = docFastPlay.checked;
+    var assistedPlayHints;
+    if (assistedPlay) {
+        assistedPlayHints = board.findAutoMove();
+        if (assistedPlayHints.length == 0) {
+            assistedPlay = false;
+        }
+    } else {
+        assistedPlayHints = [];
+    }
+
     // do we want to show hints
-    if (showHintsCheckBox.checked) {
+    if (showHintsCheckBox.checked || autoPlayCheckBox.checked || assistedPlayHints.length != 0) {
 
         var solverStart = Date.now();
         document.getElementById("canvas").style.cursor = "wait";
 
         var noMoves = 0;
-        var hints = [];
+        var hints = assistedPlayHints;
 
         if (docPlayStyle.value == "flag") {
             var playStyle = PLAY_STYLE_FLAGS;
@@ -1000,7 +1029,7 @@ async function sendActionsMessage(message) {
 
         window.requestAnimationFrame(() => renderHints(hints));
 
-        if (autoPlayCheckBox.checked) {
+        if (autoPlayCheckBox.checked || assistedPlay) {
             if (hints.length > 0 && (hints[0].prob == 1 || hints[0].prob == 0)) {
                 var message = buildMessageFromActions(hints, true);  // send all safe actions
 
@@ -1008,7 +1037,7 @@ async function sendActionsMessage(message) {
 
                 setTimeout(function () { sendActionsMessage(message) }, wait);
 
-            } else if (hints.length > 0 && acceptGuessesCheckBox.checked) {
+            } else if (hints.length > 0 && acceptGuessesCheckBox.checked) { // if we are accepting guesses
 
                 var hint = [];
                 hint.push(hints[0]);
@@ -1022,12 +1051,12 @@ async function sendActionsMessage(message) {
             } else {
                 document.getElementById("canvas").style.cursor = "default";
                 canvasLocked = false;
-                 currentGameDescription = reply.header;
+                currentGameDescription = reply.header;
             }
         } else {
             document.getElementById("canvas").style.cursor = "default";
             canvasLocked = false;
-             currentGameDescription = reply.header;
+            currentGameDescription = reply.header;
         }
 
     } else {

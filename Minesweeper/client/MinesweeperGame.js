@@ -348,7 +348,7 @@ class ServerGame {
 			//reply.tiles.push({"action" : 3, "index" : tile.getIndex()});    // mine
 
         } else {
-			if (tile.isCovered()) {    // make sure the tile is clickable
+			if (tile.isCovered() && !tile.isFlagged()) {    // make sure the tile is clickable
 				this.actions++;
 
 				var tilesToReveal = [];
@@ -364,7 +364,7 @@ class ServerGame {
 		
 	}
 	
-	// clicks the assigned tile and returns an object containing a list of tiles cleared
+	// clicks the tiles adjacent to the assigned tile and returns an object containing a list of tiles cleared
 	chordTile(tile) {
 		
         var reply = { "header": {}, "tiles": [] };
@@ -478,7 +478,41 @@ class ServerGame {
 		
 		return reply;
 	}
-	
+
+	// auto play chords
+	checkAuto(tile, reply) {
+
+		return false;
+
+		var flagCount = 0;
+		var covered = 0;
+		for (var adjTile of this.getAdjacent(tile)) {
+			if (adjTile.isFlagged()) {
+				flagCount++;
+			} else if (adjTile.isCovered()) {
+				covered++;
+            }
+		}
+
+		// can be chorded
+		if (tile.getValue() == flagCount) {
+			return true;
+		}
+
+		// all covered tiles are flags
+		if (tile.getValue() == flagCount + covered) {
+			for (var adjTile of this.getAdjacent(tile)) {
+				if (adjTile.isFlagged()) {
+				} else if (adjTile.isCovered()) {
+					this.flag(adjTile);
+					reply.tiles.push({ "action": 2, "index": adjTile.getIndex(), "flag": adjTile.isFlagged() });
+				}
+			}
+        }
+
+
+    }
+
 	// builds all the tiles and assigns bombs to them
 	init_tiles(to_exclude) {
 		

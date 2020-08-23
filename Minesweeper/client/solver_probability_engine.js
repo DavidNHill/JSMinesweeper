@@ -15,6 +15,8 @@ class ProbabilityEngine {
 		//this.witnesses = allWitnesses;
 		this.witnessed = allWitnessed;
 
+        this.duration = 0;
+
         this.prunedWitnesses = [];  // a subset of allWitnesses with equivalent witnesses removed
 
         // constraints in the game
@@ -141,6 +143,8 @@ class ProbabilityEngine {
     // calculate a probability for each un-revealed tile on the board
 	process() {
 
+        var peStart = Date.now();
+
         // create an array showing which boxes have been procesed this iteration - none have to start with
         this.mask = Array(this.boxes.length).fill(false);
 
@@ -178,7 +182,9 @@ class ProbabilityEngine {
         if (this.localClears.length == 0) {
             this.calculateBoxProbabilities();
         }
- 
+
+        this.duration = Date.now() - peStart;
+
 		
 	}
 

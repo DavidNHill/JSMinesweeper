@@ -271,5 +271,63 @@ class Board {
 		}
 
 
-    }
+	}
+
+	findAutoMove() {
+
+		var result = new Map();
+
+		for (var i = 0; i < this.tiles.length; i++) {
+
+			var tile = this.getTile(i);
+
+			if (tile.isFlagged()) {
+				continue;  // if the tile is a mine then nothing to consider
+			} else if (tile.isCovered()) {
+				continue;  // if the tile hasn't been revealed yet then nothing to consider
+			}
+
+			var adjTiles = this.getAdjacent(tile);
+
+			var needsWork = false;
+			var flagCount = 0;
+			var coveredCount = 0;
+			for (var j = 0; j < adjTiles.length; j++) {
+				var adjTile = adjTiles[j];
+				if (adjTile.isCovered() && !adjTile.isFlagged()) {
+					needsWork = true;
+				}
+				if (adjTile.isFlagged()) {
+					flagCount++;
+				} else if (adjTile.isCovered()) {
+					coveredCount++;
+                }
+			}
+
+			if (needsWork) {  // the witness still has some unrevealed adjacent tiles
+				if (tile.getValue() == flagCount) {  // can clear around here
+					for (var j = 0; j < adjTiles.length; j++) {
+						var adjTile = adjTiles[j];
+						if (adjTile.isCovered() && !adjTile.isFlagged()) {
+							result.set(adjTile.index, new Action(adjTile.getX(), adjTile.getY(), 1, ACTION_CLEAR));
+						}
+					}			
+
+				} else if (tile.getValue() == flagCount + coveredCount) { // can place all flags
+					for (var j = 0; j < adjTiles.length; j++) {
+						var adjTile = adjTiles[j];
+						if (adjTile.isCovered() && !adjTile.isFlagged()) { // if covered and isn't flagged
+							result.set(adjTile.index, new Action(adjTile.getX(), adjTile.getY(), 0, ACTION_FLAG));
+						}
+					}			
+                }
+			}
+
+		}	
+
+		// send it back as an array
+		return Array.from(result.values());
+
+    } 
+
 }

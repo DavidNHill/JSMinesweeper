@@ -19,45 +19,52 @@
             <label><input type="checkbox" class="checkbox" id="analysismode" onclick="setAnalysis()" /> <span>Analysis mode</span></label>
         </div>
 
-        <div id="play0">
+        <div id="play0" style="margin-top: 15px;">
             <div class="checkboxes">
-                <label style="margin-top: 0.2em;"><input type="checkbox" class="checkbox" id="useSeed" /> <span>Use seed</span></label>
+                <label><input type="checkbox" class="checkbox" id="useSeed" /> <span>Use seed</span></label>
             </div>
             <div>
                 <input id="seed" type="text" style="width: 150px" />
             </div>
 
-            <div style="margin-top: 0.2em;" class="checkboxes">
+            <div class="checkboxes">
                 <label><input type="checkbox" class="checkbox" id="gameTypeZero" checked /> <span>Opening on start</span></label>
             </div>
 
-            <!--
-            <div style="margin-top: 1em;" class="radioButtons">
-                <label><input id="gameTypeSafe" type="radio" class="radioButton" name="gameType" value="safe"><span>Safe start</span></label>
-                <label><input id="gameTypeZero" type="radio" class="radioButton" name="gameType" value="zero" checked><span>Zero start</span></label>
+            <div class="checkboxes">
+                <label><input type="checkbox" class="checkbox" id="fastPlay"/> <span>Fast mode</span></label>
             </div>
-            -->
+
+            <!--
+    <div style="margin-top: 1em;" class="radioButtons">
+        <label><input id="gameTypeSafe" type="radio" class="radioButton" name="gameType" value="safe"><span>Safe start</span></label>
+        <label><input id="gameTypeZero" type="radio" class="radioButton" name="gameType" value="zero" checked><span>Zero start</span></label>
+    </div>
+    -->
         </div>
 
-        <div class="radioButtons">
-            <label style="margin-top: 0.5em;"><input id="beginner" type="radio" class="radioButton" name="boardSize" value="0"><span>Beginner</span></label>
+        <div class="radioButtons" style="margin-top: 15px;">
+            <label><input id="beginner" type="radio" class="radioButton" name="boardSize" value="0"><span>Beginner</span></label>
             <label><input id="intermediate" type="radio" class="radioButton" name="boardSize" value="1"><span>Intermediate</span></label>
             <label><input id="expert" type="radio" class="radioButton" name="boardSize" value="2" checked><span>Expert</span></label>
             <label style="margin-bottom: 0.5em;"><input id="custom" type="radio" class="radioButton" name="boardSize" value="3"><span>Custom</span></label>
         </div>
 
-        <div class="block">
-            <label>Width:</label>
-            <input id="width" onkeypress="makeCustom()" type="text" />
+        <div style="margin-top: 10px;">
+            <div class="block">
+                <label>Width:</label>
+                <input id="width" onkeypress="makeCustom()" type="text" />
+            </div>
+            <div class="block">
+                <label>Height:</label>
+                <input id="height" onkeypress="makeCustom()" type="text" />
+            </div>
+            <div class="block">
+                <label>Mines:</label>
+                <input id="mines" onkeypress="makeCustom()" type="text" />
+            </div>
         </div>
-        <div class="block">
-            <label>Height:</label>
-            <input id="height" onkeypress="makeCustom()" type="text" />
-        </div>
-        <div class="block">
-            <label>Mines:</label>
-            <input id="mines" onkeypress="makeCustom()" type="text" />
-        </div>
+
 
         <div style="margin-top: 1em; display: none;" class="radioButtons" id="analysis0">
             <label><input id="buildHidden" type="radio" class="radioButton" name="buildType" value="hidden"><span>Build all hidden</span></label>
@@ -67,7 +74,7 @@
 
         <button style="margin-top: 1em;" id="NewGame" onclick="apply()">New game</button>
 
-        <div style="margin-top: 1em;">
+        <div style="margin-top: 10px;">
             <label>Style:</label>
             <select id="playstyle">
                 <option value="flag">Flagging</option>
@@ -76,7 +83,7 @@
             </select>
         </div>
 
-        <div style="margin-top: 1em;">
+        <div style="margin-top: 10px;">
             <label>Tile size:</label>
             <select id="tilesize">
                 <option value="12">12 pixels</option>
@@ -90,8 +97,9 @@
 
         <div style="margin-top: 1em;" class="checkboxes" id="play1">
             <label><input type="checkbox" class="checkbox" id="showhints" checked /> <span>Show hints</span></label>
-            <label><input type="checkbox" class="checkbox" id="autoplay" checked /> <span>Auto play</span></label>
+            <label><input type="checkbox" class="checkbox" id="autoplay" /> <span>Auto play</span></label>
             <label><input type="checkbox" class="checkbox" id="acceptguesses" /> <span>Accept guesses</span></label>
+
         </div>
 
         <div style="margin-top: 1em; display: none;" class="checkboxes" id="analysis1">
@@ -169,8 +177,8 @@
                 return;
             }
 
-            const MAX_WIDTH = 100;
-            const MAX_HEIGHT = 100;
+            const MAX_WIDTH = 200;
+            const MAX_HEIGHT = 200;
 
             var widthX = document.getElementById("width").value;
             var heightX = document.getElementById("height").value;

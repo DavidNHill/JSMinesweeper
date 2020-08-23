@@ -136,18 +136,38 @@ function solver(board, playStyle) {
             // if we are playing for efficiency and a mine wasn't found then go on to do the probability engine - this gets use all the possible clears and mines
             //return new EfficiencyHelper(board, witnesses, noFlagResult).process();
         } else {
-            return result;
+            var cleanResult = [];
+            for (var i = 0; i < result.length; i++) {
+
+                var action = result[i];
+                if (action.action == ACTION_FLAG) {
+                    var tile = board.getTileXY(action.x, action.y);
+
+                    if (!tile.isFlagged()) {   // if the newly found mine is already flagged then don't do it
+                        cleanResult.push(action);
+                    }
+                } else {
+                    cleanResult.push(action);
+                }
+ 
+            }
+            return cleanResult;
         }
  
     }
-    
-    var peStart = Date.now();
+
+    //var peStart = Date.now();
  
 	var pe = new ProbabilityEngine(board, witnesses, witnessed, squaresLeft, minesLeft, playStyle);
 
     pe.process();
 
-    console.log("probability Engine took " + (Date.now() - peStart) + " milliseconds to complete");
+    console.log("probability Engine took " + pe.duration + " milliseconds to complete");
+
+    if (pe.finalSolutionCount == 0) {
+        showMessage("The board is in an illegal state");
+        return result;
+    }
 
     // if the tiles off the edge are definitely safe then clear them all
     var offEdgeAllSafe = false;
@@ -364,7 +384,9 @@ function solver(board, playStyle) {
             result = new EfficiencyHelper(board, witnesses, result, playStyle).process();
         } else {
             showMessage("The solver has found the best guess on the edge using the probability engine." + formatSolutions(pe.finalSolutionsCount));
-            result = tieBreak(pe, result);
+            if (pe.duration < 50) {  // if the probability engine didn't take long then use some tie-break logic
+                result = tieBreak(pe, result);
+            }
         }
 
     } else {  // otherwise look for a guess with the least number of adjacent covered tiles (hunting zeros)
@@ -412,25 +434,6 @@ function tieBreak(pe, actions) {
         }
 
     }
-
-    /*
-    for (var i = 0; i < actions.length; i++) {
-
-        if (best != null) {
-            if (actions[i].prob * (1 + PROGRESS_CONTRIBUTION) < best.weight) {
-                console.log("(" + actions[i].x + "," + actions[i].y + ") is ignored because it can never do better than the best");
-                continue;
-            }
-        }
-
-        fullAnalysis(pe, board, actions[i]);  // updates variables in the Action class
-
-        if (best == null || best.weight < actions[i].weight) {
-            best = actions[i];
-        }
-
-    }
-    */
 
     if (board.isHighDensity()) {
         actions.sort(function (a, b) {
@@ -508,10 +511,13 @@ function trivial_actions(board, witnesses) {
         if (tile.getValue() == flags + covered && covered > 0) {
 			for (var j=0; j < adjTiles.length; j++) {
                 var adjTile = adjTiles[j];
-                if (adjTile.isCovered() && !adjTile.isSolverFoundBomb() && !adjTile.isFlagged()) { // if covered, not already a known mine and isn't flagged
+                if (adjTile.isCovered() && !adjTile.isSolverFoundBomb()) { // if covered, not already a known mine and isn't flagged
                     adjTile.setProbability(0);  // definite mine
                     adjTile.setFoundBomb()
+                    //if (!adjTile.isFlagged()) {  // if not already flagged then flag it
                     result.set(adjTile.index, new Action(adjTile.getX(), adjTile.getY(), 0, ACTION_FLAG));
+                    //}
+
  				}
 			}			
 		}
@@ -683,6 +689,8 @@ function getOffEdgeCandidates(board, pe, witnesses, allCoveredTiles) {
 
 function fullAnalysis(pe, board, action) {
 
+    var start = Date.now();
+
     var tile = board.getTileXY(action.x, action.y);
 
     var adjFlags = board.adjacentFlagsCount(tile);
@@ -721,6 +729,7 @@ function fullAnalysis(pe, board, action) {
 
     tile.setProbability(action.prob, action.progress);
 
+    console.log("Full analysis took " + (Date.now() - start) + " milliseconds to complete");
     console.log(tile.asText() + " progress = " + action.progress + " weight = " + action.weight + " expected clears = " + action.expectedClears);
 
 }
@@ -813,6 +822,7 @@ function combination(mines, squares) {
 
 }    
 
+/*
 function combination(mines, squares) {
 
     //var start = Date.now();
@@ -835,6 +845,7 @@ function combination(mines, squares) {
     return result;
 
 }    
+*/
 
 function formatSolutions(count) {
 
