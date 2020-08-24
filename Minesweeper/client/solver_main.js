@@ -513,7 +513,7 @@ function trivial_actions(board, witnesses) {
                 var adjTile = adjTiles[j];
                 if (adjTile.isCovered() && !adjTile.isSolverFoundBomb()) { // if covered, not already a known mine and isn't flagged
                     adjTile.setProbability(0);  // definite mine
-                    adjTile.setFoundBomb()
+                    adjTile.setFoundBomb();
                     //if (!adjTile.isFlagged()) {  // if not already flagged then flag it
                     result.set(adjTile.index, new Action(adjTile.getX(), adjTile.getY(), 0, ACTION_FLAG));
                     //}

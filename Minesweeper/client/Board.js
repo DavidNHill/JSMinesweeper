@@ -317,6 +317,7 @@ class Board {
 					for (var j = 0; j < adjTiles.length; j++) {
 						var adjTile = adjTiles[j];
 						if (adjTile.isCovered() && !adjTile.isFlagged()) { // if covered and isn't flagged
+							adjTile.setFoundBomb();   // Must be a bomb
 							result.set(adjTile.index, new Action(adjTile.getX(), adjTile.getY(), 0, ACTION_FLAG));
 						}
 					}			

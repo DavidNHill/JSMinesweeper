@@ -467,6 +467,9 @@ function doAnalysis() {
 
     console.log("Doing analysis");
 
+    // this will set all the obvious mines which makes the solution counter a lot more efficient on very large boards
+    board.findAutoMove();
+
     var solutionCounter = countSolutions(board);
 
     if (solutionCounter.finalSolutionsCount != 0) {
