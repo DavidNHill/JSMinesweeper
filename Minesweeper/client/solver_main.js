@@ -16,11 +16,51 @@ const PLAY_STYLE_EFFICIENCY = 3;
 //const NO_FLAGS = true;
 //const PLAY_FOR_EFFICIENCY = true;
 
+
+// solver entry point
 function solver(board, playStyle) {
 
     if (playStyle == null) {
+        console.log("WARN: playstyle parameter not received by the solver");
         playStyle = PLAY_STYLE_FLAGS;
     }
+
+    var noMoves = 0;
+    var cleanActions = [];
+
+    // allow the solver to bring back no moves 5 times. No moves is possible when playing no-flags 
+    while (noMoves < 5 && cleanActions.length == 0) {
+        noMoves++;
+        var actions = doSolve(board, playStyle);  // look for solutions
+
+        if (playStyle == PLAY_STYLE_EFFICIENCY) {
+            cleanActions = actions;
+        } else {
+            var cleanActions = [];
+            for (var i = 0; i < actions.length; i++) {
+
+                var action = actions[i];
+
+                if (action.action == ACTION_FLAG) {   // if a request to flag
+                    if (playStyle == PLAY_STYLE_FLAGS) {  // if we are flagging
+                        var tile = board.getTileXY(action.x, action.y);  
+                        if (!tile.isFlagged()) {   // only accept the flag action if the tile isn't already flagged
+                            cleanActions.push(action);
+                        }
+                    }
+                } else {
+                    cleanActions.push(action);
+                }
+            }
+        }
+    }
+
+    return cleanActions;
+
+}
+
+// this finds the best moves 
+function doSolve(board, playStyle) {
 
 	// find all the tiles which are revealed and have un-revealed / un-flagged adjacent squares
     var allCoveredTiles = [];
@@ -104,13 +144,13 @@ function solver(board, playStyle) {
         }
         showMessage("No mines left to find all remaining tiles are safe");
         return new EfficiencyHelper(board, witnesses, result, playStyle).process();
-        //return result;
     }
 
     var oldMineCount = result.length;
 
     // add any trivial moves we've found
-	result.push(...trivial_actions(board, witnesses));
+    result.push(...trivial_actions(board, witnesses));
+  
 
     if (result.length > oldMineCount) {
         showMessage("The solver found " + result.length + " trivial safe moves");
@@ -133,27 +173,11 @@ function solver(board, playStyle) {
             } else if (mineFound) { // if we are playing for efficiency and a mine was found then we can't continue. send nothing and try again
                 return [];
             }
-            // if we are playing for efficiency and a mine wasn't found then go on to do the probability engine - this gets use all the possible clears and mines
+            // if we are playing for efficiency and a mine wasn't found then go on to do the probability engine - this gets us all the possible clears and mines
             //return new EfficiencyHelper(board, witnesses, noFlagResult).process();
         } else {
-            var cleanResult = [];
-            for (var i = 0; i < result.length; i++) {
-
-                var action = result[i];
-                if (action.action == ACTION_FLAG) {
-                    var tile = board.getTileXY(action.x, action.y);
-
-                    if (!tile.isFlagged()) {   // if the newly found mine is already flagged then don't do it
-                        cleanResult.push(action);
-                    }
-                } else {
-                    cleanResult.push(action);
-                }
- 
-            }
-            return cleanResult;
+            return result;
         }
- 
     }
 
     //var peStart = Date.now();
@@ -208,7 +232,7 @@ function solver(board, playStyle) {
             }
         }
 
-        showMessage("The probability engine has found " + pe.localClears.length + " safe clears");
+        showMessage("The probability engine has found " + pe.localClears.length + " safe clears and " + pe.minesFound.length + " mines");
         return new EfficiencyHelper(board, witnesses, result, playStyle).process();
     }
 
@@ -262,7 +286,7 @@ function solver(board, playStyle) {
 
             // identify the dead tiles
             for (var tile of deadTiles) {   // show all dead tiles 
-                if (playStyle == PLAY_STYLE_FLAGS || tile.probability != 0) {
+                if (tile.probability != 0) {
                     var action = new Action(tile.getX(), tile.getY(), tile.probability);
                     action.dead = true;
                     result.push(action);

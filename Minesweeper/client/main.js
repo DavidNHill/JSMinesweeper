@@ -482,14 +482,7 @@ function doAnalysis() {
             var playStyle = PLAY_STYLE_EFFICIENCY;
         } 
 
-        var noMoves = 0;
-        var hints = [];
-
-        // allow the solver to bring back no moves 5 times. No moves is possible when playing no-flags 
-        while (noMoves < 5 && hints.length == 0) {
-            noMoves++;
-            hints = solver(board, playStyle);  // look for solutions
-        }
+         var hints = solver(board, playStyle);  // look for solutions
 
         board.resetForAnalysis();
         window.requestAnimationFrame(() => renderHints(hints));
@@ -988,6 +981,8 @@ async function sendActionsMessage(message) {
         return;
     }
 
+    var solverStart = Date.now();
+
     var assistedPlay = docFastPlay.checked;
     var assistedPlayHints;
     if (assistedPlay) {
@@ -1002,11 +997,7 @@ async function sendActionsMessage(message) {
     // do we want to show hints
     if (showHintsCheckBox.checked || autoPlayCheckBox.checked || assistedPlayHints.length != 0) {
 
-        var solverStart = Date.now();
         document.getElementById("canvas").style.cursor = "wait";
-
-        var noMoves = 0;
-        var hints = assistedPlayHints;
 
         if (docPlayStyle.value == "flag") {
             var playStyle = PLAY_STYLE_FLAGS;
@@ -1016,9 +1007,10 @@ async function sendActionsMessage(message) {
             var playStyle = PLAY_STYLE_EFFICIENCY;
         } 
 
-        // allow the solver to bring baxck no moves 5 times. No moves is possible when playing no-flags 
-        while (noMoves < 5 && hints.length == 0) {
-            noMoves++;
+        var hints;
+        if (assistedPlay) {
+            hints = assistedPlayHints;
+        } else {
             hints = solver(board, playStyle);  // look for solutions
         }
 
