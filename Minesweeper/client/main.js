@@ -282,15 +282,7 @@ function renderTiles(tiles) {
 function updateMineCount(minesLeft) {
 
     var work = minesLeft;
-    var digits = 3;
-
-    if (minesLeft < 1000) {
-        digits = 3;
-    } else if (minesLeft < 10000) {
-        digits = 4;
-    } else {
-        digits = 5;
-    }
+    var digits = getDigitCount(minesLeft);
 
     var position = digits - 1;
 
@@ -306,7 +298,20 @@ function updateMineCount(minesLeft) {
         position--;
     }
 
+}
 
+function getDigitCount(mines) {
+
+    var digits;
+    if (mines < 1000) {
+        digits = 3;
+    } else if (mines < 10000) {
+        digits = 4;
+    } else {
+        digits = 5;
+    }
+
+    return digits;
 }
 
 async function newGame(width, height, mines, seed) {
@@ -798,11 +803,14 @@ function on_mouseWheel_minesLeft(event) {
     console.log("Mousewheel event at X=" + event.offsetX + ", Y=" + event.offsetY + ", digit=" + digit);
 
     var newCount = board.bombs_left;
-    if (digit == 3) {
+
+    var digits = getDigitCount(newCount);
+
+    if (digit == digits - 1) {
         newCount = newCount + delta; 
-    } else if (digit == 2) {
+    } else if (digit == digits - 2) {
         newCount = newCount + delta * 10;
-    } else if (digit == 1 || digit == 0) {
+    } else {
         newCount = newCount + delta * 10;
     }
 

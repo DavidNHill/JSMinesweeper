@@ -749,7 +749,8 @@ class gameDescription {
 function shuffle(a, rng) {
     var j, x, i;
     for (i = a.length - 1; i > 0; i--) {
-        j = Math.floor(rng() * (i + 1));
+		j = Math.floor(rng() * (i + 1));
+		//console.log(j);
         //j = Math.floor(Math.random() * (i + 1));
         x = a[i];
         a[i] = a[j];
@@ -764,7 +765,8 @@ function JSF(seed) {
         var e = s[0] - (s[1] << 27 | s[1] >>> 5);
         s[0] = s[1] ^ (s[2] << 17 | s[2] >>> 15),
             s[1] = s[2] + s[3],
-            s[2] = s[3] + e, s[3] = s[0] + e;
+			s[2] = s[3] + e, s[3] = s[0] + e;
+		//console.log(e + " " + s[0] + " " + s[1] + " " + s[2] + " " + s[3]);
         return (s[3] >>> 0) / 4294967296; // 2^32
     }
     seed >>>= 0;
