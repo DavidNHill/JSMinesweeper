@@ -430,10 +430,6 @@ class LivingLocation {
  */
 class Node {
 
-    //private Node() {
-    //    position = new Position();
-    //}
-
     constructor (position) {
 
         this.position;   // representation of the position we are analysing / have reached
@@ -511,7 +507,13 @@ class Node {
             return 0;
         }
 
-        var notMines = this.getSolutionSize() - move.mineCount;
+        var notMines = this.getSolutionSize() - move.mineCount;   // number of solutions (at this node) which don't have a mine at this location 
+
+        // if the max possible winning lines is less than the current cutoff then no point doing the analysis
+        if (PRUNE_BF_ANALYSIS && (result + notMines <= cutoff)) {
+            move.pruned = true;
+            return 0;
+        }
 
         move.buildChildNodes(this);
 
@@ -522,15 +524,6 @@ class Node {
             if (child == null) {
                 continue;  // continue the loop but ignore this entry
             }
-
-            var maxWinningLines = result + notMines;
-
-            // if the max possible winning lines is less than the current cutoff then no point doing the analysis
-            if (PRUNE_BF_ANALYSIS && maxWinningLines <= cutoff) {
-                move.pruned = true;
-                return 0;
-            }
-
 
             if (child.fromCache) {  // nothing more to do, since we did it before
                 this.work++;
@@ -595,6 +588,12 @@ class Node {
             result = result + child.winningLines;
 
             notMines = notMines - child.getSolutionSize();  // reduce the number of not mines
+
+            // if the max possible winning lines is less than the current cutoff then no point doing the analysis
+            if (PRUNE_BF_ANALYSIS && (result + notMines <= cutoff)) {
+                move.pruned = true;
+                return 0;
+            }
 
         }
 

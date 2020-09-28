@@ -7,7 +7,7 @@ class Board {
 	
 	constructor(id, width, height, num_bombs, seed, gameType) {
 		
-		console.log("Creating a new board with id=" + id + " ...");
+		//console.log("Creating a new board with id=" + id + " ...");
 
 		this.MAX = 4294967295;
 
@@ -29,7 +29,7 @@ class Board {
 
 		this.highDensity = false;
 
-		console.log("... board created");
+		//console.log("... board created");
 
 	}
 
@@ -214,7 +214,7 @@ class Board {
 			}
 		}
 		
-		console.log(this.tiles.length + " tiles added to board");
+		//console.log(this.tiles.length + " tiles added to board");
 	}
 
 	setAllZero() {

@@ -44,6 +44,8 @@ var ctxHints = canvasHints.getContext('2d');
 var currentGameDescription;
 var board;
 
+var oldrng = false;
+
 docMinesLeft.width = DIGIT_WIDTH * DIGITS;
 docMinesLeft.height = DIGIT_HEIGHT;
 
@@ -105,6 +107,12 @@ async function startup() {
         localStorageButton.style.display = "none";
     }
 
+    const rngParm = urlParams.get('rng');
+    if (rngParm == "old") {
+        oldrng = true;
+        console.log("Using old rng");
+    }
+
     BINOMIAL = new Binomial(50000, 200);
 
     /*
@@ -130,6 +138,9 @@ async function startup() {
     docMinesLeft.addEventListener('wheel', (event) => on_mouseWheel_minesLeft(event));
 
     currentGameDescription = localStorage.getItem(GAME_DESCRIPTION_KEY);
+
+    // initialise the solver
+    solver();
 
     if (currentGameDescription != null) {
         var gameDescription = JSON.parse(currentGameDescription);
@@ -473,23 +484,25 @@ function doAnalysis() {
     console.log("Doing analysis");
 
     // this will set all the obvious mines which makes the solution counter a lot more efficient on very large boards
+    board.resetForAnalysis();
     board.findAutoMove();
-
-    var solutionCounter = countSolutions(board);
+ 
+    var solutionCounter = solver.countSolutions(board);
 
     if (solutionCounter.finalSolutionsCount != 0) {
 
+        var options = {};
         if (docPlayStyle.value == "flag") {
-            var playStyle = PLAY_STYLE_FLAGS;
+            options.playStyle = PLAY_STYLE_FLAGS;
         } else if (docPlayStyle.value == "noflag") {
-            var playStyle = PLAY_STYLE_NOFLAGS;
+            options.playStyle = PLAY_STYLE_NOFLAGS;
         } else {
-            var playStyle = PLAY_STYLE_EFFICIENCY;
+            options.playStyle = PLAY_STYLE_EFFICIENCY;
         } 
 
-         var hints = solver(board, playStyle);  // look for solutions
+        var hints = solver(board, options).actions;  // look for solutions
 
-        board.resetForAnalysis();
+
         window.requestAnimationFrame(() => renderHints(hints));
     } else {
         showMessage("The board is in an invalid state");
@@ -586,7 +599,7 @@ function on_mouseLeave(e) {
 // stuff to do when we click on the board
 function on_click(event) {
 
-    console.log("Click event at X=" + event.offsetX + ", Y=" + event.offsetY);
+    //console.log("Click event at X=" + event.offsetX + ", Y=" + event.offsetY);
 
     if (board.isGameover()) {
         console.log("The game is over - no action to take");
@@ -601,7 +614,7 @@ function on_click(event) {
     var row = Math.floor(event.offsetY / TILE_SIZE);
     var col = Math.floor(event.offsetX / TILE_SIZE);
 
-    console.log("Resolved to Col=" + col + ", row=" + row);
+    //console.log("Resolved to Col=" + col + ", row=" + row);
 
     var message;
 
@@ -759,12 +772,12 @@ function on_mouseWheel(event) {
 
     //board.resetForAnalysis();
 
-    console.log("Mousewheel event at X=" + event.offsetX + ", Y=" + event.offsetY);
+    //console.log("Mousewheel event at X=" + event.offsetX + ", Y=" + event.offsetY);
 
     var row = Math.floor(event.offsetY / TILE_SIZE);
     var col = Math.floor(event.offsetX / TILE_SIZE);
 
-    console.log("Resolved to Col=" + col + ", row=" + row);
+    //console.log("Resolved to Col=" + col + ", row=" + row);
 
     var delta = Math.sign(event.deltaY);
 
@@ -794,13 +807,13 @@ function on_mouseWheel_minesLeft(event) {
         return;
     }
 
-    console.log("Mousewheel event at X=" + event.offsetX + ", Y=" + event.offsetY);
+    //console.log("Mousewheel event at X=" + event.offsetX + ", Y=" + event.offsetY);
 
     var delta = Math.sign(event.deltaY);
 
     var digit = Math.floor(event.offsetX / DIGIT_WIDTH);
 
-    console.log("Mousewheel event at X=" + event.offsetX + ", Y=" + event.offsetY + ", digit=" + digit);
+    //console.log("Mousewheel event at X=" + event.offsetX + ", Y=" + event.offsetY + ", digit=" + digit);
 
     var newCount = board.bombs_left;
 
@@ -864,7 +877,7 @@ async function sendActionsMessage(message) {
 
     console.log("==> " + outbound);
 
-    // either play logcally or send to server
+    // either play locally or send to server
     if (PLAY_CLIENT_SIDE) {
         var reply = handleActions(message);
     } else {
@@ -1007,19 +1020,20 @@ async function sendActionsMessage(message) {
 
         document.getElementById("canvas").style.cursor = "wait";
 
+        var options = {};
         if (docPlayStyle.value == "flag") {
-            var playStyle = PLAY_STYLE_FLAGS;
+            options.playStyle = PLAY_STYLE_FLAGS;
         } else if (docPlayStyle.value == "noflag") {
-            var playStyle = PLAY_STYLE_NOFLAGS;
+            options.playStyle = PLAY_STYLE_NOFLAGS;
         } else {
-            var playStyle = PLAY_STYLE_EFFICIENCY;
+            options.playStyle = PLAY_STYLE_EFFICIENCY;
         } 
 
         var hints;
         if (assistedPlay) {
             hints = assistedPlayHints;
         } else {
-            hints = solver(board, playStyle);  // look for solutions
+            hints = solver(board, options).actions;  // look for solutions
         }
 
         var solverDuration = Date.now() - solverStart;
@@ -1030,7 +1044,8 @@ async function sendActionsMessage(message) {
             return;
         }
 
-        window.requestAnimationFrame(() => renderHints(hints));
+        setTimeout(function () { window.requestAnimationFrame(() => renderHints(hints)) }, 10);  // wait 10 milliseconds to prevent a clash with the renderTiles redraw
+        //window.requestAnimationFrame(() => renderHints(hints));
 
         if (autoPlayCheckBox.checked || assistedPlay) {
             if (hints.length > 0 && (hints[0].prob == 1 || hints[0].prob == 0)) {

@@ -57,7 +57,7 @@ class SolutionCounter {
         for (var i = 0; i < allWitnesses.length; i++) {
             var wit = allWitnesses[i];
 
-            var boxWit = new BoxWitness(wit);
+            var boxWit = new BoxWitness(this.board, wit);
 
             // if the witness is a duplicate then don't store it
             var duplicate = false;
@@ -575,7 +575,7 @@ class SolutionCounter {
 
         var result = [];
 
-        var adjLocs = board.getAdjacent(loc);
+        var adjLocs = this.board.getAdjacent(loc);
 
          // get each adjacent location
         for (var i = 0; i < adjLocs.length; i++) {

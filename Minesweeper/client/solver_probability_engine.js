@@ -5,12 +5,14 @@
 "use strict";
 
 class ProbabilityEngine {
-	constructor(board, allWitnesses, allWitnessed, squaresLeft, minesLeft, playStyle) {
+	constructor(board, allWitnesses, allWitnessed, squaresLeft, minesLeft, options) {
 
        	this.SMALL_COMBINATIONS = [ [ 1 ], [ 1, 1 ], [ 1, 2, 1 ], [ 1, 3, 3, 1 ], [ 1, 4, 6, 4, 1 ], [ 1, 5, 10, 10, 5, 1 ], [ 1, 6, 15, 20, 15, 6, 1 ], [ 1, 7, 21, 35, 35, 21, 7, 1 ], [ 1, 8, 28, 56, 70, 56, 28, 8, 1 ] ];
 
         this.board = board;
-        this.playStyle = playStyle;
+        this.options = options;
+        this.playStyle = options.playStyle;
+        this.verbose = options.verbose;
 
 		//this.witnesses = allWitnesses;
 		this.witnessed = allWitnessed;
@@ -63,7 +65,7 @@ class ProbabilityEngine {
         for (var i = 0; i < allWitnesses.length; i++) {
             var wit = allWitnesses[i];
 
-            var boxWit = new BoxWitness(wit);
+            var boxWit = new BoxWitness(this.board, wit);
 
             // if the witness is a duplicate then don't store it
             var duplicate = false;
@@ -87,8 +89,8 @@ class ProbabilityEngine {
             }
             this.boxWitnesses.push(boxWit);  // all witnesses are needed for the probability engine
         }
-        console.log("Pruned " + pruned + " witnesses as duplicates");
-        console.log("There are " + this.boxWitnesses.length + " Box witnesses");
+        this.writeToConsole("Pruned " + pruned + " witnesses as duplicates");
+        this.writeToConsole("There are " + this.boxWitnesses.length + " Box witnesses");
 
 		// allocate each of the witnessed squares to a box
 		var uid = 0;
@@ -381,7 +383,7 @@ class ProbabilityEngine {
         //this.checkCandidateDeadLocations();
 
         if (this.workingProbs.length == 0) {
-        	console.log("working probabilites list is empty!!");
+            this.writeToConsole("working probabilites list is empty!!", true);
         	return;
         } 
 
@@ -512,7 +514,7 @@ class ProbabilityEngine {
         result.push(current);
         //}	
 
-        console.log(target.length + " Probability Lines compressed to " + result.length); 
+        this.writeToConsole(target.length + " Probability Lines compressed to " + result.length); 
 
         return result;
 
@@ -589,7 +591,7 @@ class ProbabilityEngine {
         if (bestWitness != null) {
             return new NextWitness(bestWitness);
         } else {
-            console.log("Ending independent edge");
+            this.writeToConsole("Ending independent edge");
         }
 
         // if we are down here then there is no witness which is on the boundary, so we have processed a complete set of independent witnesses 
@@ -615,7 +617,7 @@ class ProbabilityEngine {
 
                             var tile = this.boxes[i].tiles[j];
 
-                            console.log(tile.asText() + " has been determined to be locally clear");
+                            this.writeToConsole(tile.asText() + " has been determined to be locally clear");
                             tile.setProbability(1);
                             this.localClears.push(tile);
                         }
@@ -635,7 +637,7 @@ class ProbabilityEngine {
 
                             var tile = this.boxes[i].tiles[j];
 
-                            console.log(tile.asText() + " has been determined to be locally a mine");
+                            this.writeToConsole(tile.asText() + " has been determined to be locally a mine");
                             tile.setProbability(0);
                             this.minesFound.push(tile);
                         }
@@ -668,7 +670,7 @@ class ProbabilityEngine {
         // get an unprocessed witness
         var nw = this.findFirstWitness();
         if (nw != null) {
-            console.log("Starting a new independent edge");
+            this.writeToConsole("Starting a new independent edge");
         }
 
         // only crunch it down for non-trivial probability lines unless it is the last set - this is an efficiency decision
@@ -702,13 +704,13 @@ class ProbabilityEngine {
                 }
             }
             if (completeScan) {
-                console.log("This is a complete scan");
+                this.writeToConsole("This is a complete scan");
             } else {
-                console.log("This is not a complete scan");
+                this.writeToConsole("This is not a complete scan");
             }
         } else {
             completeScan = false;
-            console.log("This is not a complete scan because there are squares off the edge");
+            this.writeToConsole("This is not a complete scan because there are squares off the edge");
         }
 
 
@@ -737,14 +739,14 @@ class ProbabilityEngine {
             if (boxesInScope == 0) {
                 continue;
             } else if (boxesInScope != dc.goodBoxes.length + dc.badBoxes.length) {
-                console.log("Location " + dc.candidate.asText() + " has some boxes in scope and some out of scope so assumed alive");
+                this.writeToConsole("Location " + dc.candidate.asText() + " has some boxes in scope and some out of scope so assumed alive");
                 dc.isAlive = true;
                 continue;
             }
 
             //if we can't do the check because the edge has been compressed mid process then assume alive
             if (!checkPossible) {
-                console.log("Location " + dc.candidate.asText() + " was on compressed edge so assumed alive");
+                this.writeToConsole("Location " + dc.candidate.asText() + " was on compressed edge so assumed alive");
                 dc.isAlive = true;
                 continue;
             }
@@ -779,7 +781,7 @@ class ProbabilityEngine {
 
                     // a bad box must have either no mines or all mines
                     if (pl.mineBoxCount[b.uid] != 0 && pl.mineBoxCount[b.uid] != neededMines) {
-                        console.log("Location " + dc.candidate.asText() + " is not dead because a bad box has neither zero or all mines: " + pl.mineBoxCount[b.uid] + "/" + neededMines);
+                        this.writeToConsole("Location " + dc.candidate.asText() + " is not dead because a bad box has neither zero or all mines: " + pl.mineBoxCount[b.uid] + "/" + neededMines);
                         okay = false;
                         break line;
                     }
@@ -797,7 +799,7 @@ class ProbabilityEngine {
                     dc.firstCheck = false;
                 } else {
                     if (dc.total != tally) {
-                        console.log("Location " + dc.candidate.asText() + " is not dead because the sum of mines in good boxes is not constant. Was "
+                        this.writeToConsole("Location " + dc.candidate.asText() + " is not dead because the sum of mines in good boxes is not constant. Was "
                             + dc.total + " now " + tally + ". Mines in probability line " + pl.mineCount);
                         okay = false;
                         break;
@@ -856,7 +858,7 @@ class ProbabilityEngine {
             }
 
             if (dc.goodBoxes.length == 0 && dc.badBoxes.length == 0) {
-                console.log(dc.candidate.asText() + " is lonely since it has no open tiles around it");
+                this.writeToConsole(dc.candidate.asText() + " is lonely since it has no open tiles around it");
                 this.lonelyTiles.push(dc);
             } else {
                 this.deadCandidates.push(dc);
@@ -867,7 +869,7 @@ class ProbabilityEngine {
 
         for (var i = 0; i < this.deadCandidates.length; i++) {
             var dc = this.deadCandidates[i];
-            console.log(dc.candidate.asText() + " is candidate dead with " + dc.goodBoxes.length + " good boxes and " + dc.badBoxes.length + " bad boxes");
+            this.writeToConsole(dc.candidate.asText() + " is candidate dead with " + dc.goodBoxes.length + " good boxes and " + dc.badBoxes.length + " bad boxes");
         }
 
     }
@@ -881,7 +883,7 @@ class ProbabilityEngine {
             }
         }
 
-        console.log("ERROR - tile " + tile.asText() + " doesn't belong to a box");
+        this.writeToConsole("ERROR - tile " + tile.asText() + " doesn't belong to a box", true);
 
         return null;
     }
@@ -891,7 +893,7 @@ class ProbabilityEngine {
 
         var result = [];
 
-        var adjLocs = board.getAdjacent(loc);
+        var adjLocs = this.board.getAdjacent(loc);
 
          // get each adjacent location
         for (var i = 0; i < adjLocs.length; i++) {
@@ -972,12 +974,12 @@ class ProbabilityEngine {
 
         // if this edge is everything then it isn't an isolated edge
         if (everything) {
-            console.log("Not isolated because the edge is everything");
+            this.writeToConsole("Not isolated because the edge is everything");
             return false;
         }
 
         if (this.isolatedEdgeBruteForce != null && edgeTiles.size >= this.isolatedEdgeBruteForce.tiles.length) {
-            console.log("Already found an isolated edge of smaller size");
+            this.writeToConsole("Already found an isolated edge of smaller size");
         }
 
         // check whether every tile adjacent to the tiles on the edge is itself on the edge
@@ -989,7 +991,7 @@ class ProbabilityEngine {
                     for (var k = 0; k < adjTiles.length; k++) {
                         var adjTile = adjTiles[k];
                         if (adjTile.isCovered() && !adjTile.isSolverFoundBomb() && !edgeTiles.has(adjTile)) {
-                            console.log("Not isolated because a tile's adjacent tiles isn't on the edge: " + tile.asText() + " ==> " + adjTile.asText());
+                            this.writeToConsole("Not isolated because a tile's adjacent tiles isn't on the edge: " + tile.asText() + " ==> " + adjTile.asText());
                             return false;
                         }
                     }
@@ -997,13 +999,13 @@ class ProbabilityEngine {
             }
         }
 
-        console.log("*** Isolated Edge found ***");
+        this.writeToConsole("*** Isolated Edge found ***");
 
         var tiles = [...edgeTiles];
         var witnesses = [...edgeWitnesses];
         var mines = this.workingProbs[0].mineCount;
         // build a web of the isolated edge and use it to build a brute force
-        var isolatedEdge = new ProbabilityEngine(this.board, witnesses, tiles, tiles.length, mines);
+        var isolatedEdge = new ProbabilityEngine(this.board, witnesses, tiles, tiles.length, mines, this.options);
         isolatedEdge.generateIndependentWitnesses();
         var iterator = new WitnessWebIterator(isolatedEdge, tiles, -1);
 
@@ -1052,7 +1054,7 @@ class ProbabilityEngine {
             }
         }
 
-        console.log("Calculated " + this.independentWitnesses.length + " independent witnesses");
+        this.writeToConsole("Calculated " + this.independentWitnesses.length + " independent witnesses");
 
     }
 
@@ -1144,7 +1146,7 @@ class ProbabilityEngine {
         for (var i = 0; i < this.lonelyTiles.length; i++) {
             var dc = this.lonelyTiles[i];
             if (this.boxProb[dc.myBox.uid] != 0 && this.boxProb[dc.myBox.uid] != 1) {   // a lonely tile is dead if not a definite mine or safe
-                console.log("PE found Lonely tile " + dc.candidate.asText() + " is dead with value +" + dc.total);
+                this.writeToConsole("PE found Lonely tile " + dc.candidate.asText() + " is dead with value +" + dc.total);
                 this.deadTiles.push(dc.candidate);
             }
         }
@@ -1153,7 +1155,7 @@ class ProbabilityEngine {
         for (var i = 0; i < this.deadCandidates.length; i++) {
             var dc = this.deadCandidates[i];
             if (!dc.isAlive && this.boxProb[dc.myBox.uid] != 0 && this.boxProb[dc.myBox.uid] != 1) {   // if it is dead and not a definite mine or safe
-                console.log("PE found " + dc.candidate.asText() + " to be dead with value +" + dc.total);
+                this.writeToConsole("PE found " + dc.candidate.asText() + " to be dead with value +" + dc.total);
                 this.deadTiles.push(dc.candidate);
             }
         }
@@ -1211,19 +1213,12 @@ class ProbabilityEngine {
 
         this.bestProbability = Math.max(this.bestOnEdgeProbability, this.offEdgeProbability);            ;
 
-        //if (bestProbability.compareTo(BigDecimal.ONE) == 0) {
-        //    cutoffProbability = BigDecimal.ONE;
-        //} else {
-        //    cutoffProbability = bestProbability.multiply(Solver.PROB_ENGINE_TOLERENCE);
-        //}
+        this.writeToConsole("Off edge probability is " + this.offEdgeProbability);
+        this.writeToConsole("Best on edge probability is " + this.bestOnEdgeProbability);
+        this.writeToConsole("Best probability is " + this.bestProbability);
+        this.writeToConsole("Game has  " + this.finalSolutionsCount + " candidate solutions" );
 
-        console.log("Off edge probability is " + this.offEdgeProbability);
-        console.log("Best on edge probability is " + this.bestOnEdgeProbability);
-        console.log("Best probability is " + this.bestProbability);
-        console.log("Game has  " + this.finalSolutionsCount + " candidate solutions" );
-
-        //solver.display("probability off web is " + outsideProb);
-
+ 
     }
 
     getBestCandidates(freshhold) {
@@ -1246,7 +1241,7 @@ class ProbabilityEngine {
             test = this.bestProbability * freshhold;
         }
 
-        console.log("Best probability is " + this.bestProbability + " freshhold is " + test);
+        this.writeToConsole("Best probability is " + this.bestProbability + " freshhold is " + test);
 
         for (var i = 0; i < this.boxProb.length; i++) {
             if (this.boxProb[i] >= test) {
@@ -1266,7 +1261,7 @@ class ProbabilityEngine {
                     if (!dead || this.boxProb[i] == 1) {   // if not dead or 100% safe then use the tile
                         best.push(new Action(squ.x, squ.y, this.boxProb[i], ACTION_CLEAR));
                     } else {
-                        console.log("Tile " + squ.asText() + " is ignored because it is dead");
+                        this.writeToConsole("Tile " + squ.asText() + " is ignored because it is dead");
                     }
  
                 }
@@ -1284,6 +1279,18 @@ class ProbabilityEngine {
     getDeadTiles() {
 
          return this.deadTiles;
+    }
+
+    writeToConsole(text, always) {
+
+        if (always == null) {
+            always = false;
+        }
+
+        if (this.verbose || always) {
+            console.log(text);
+        }
+
     }
 
 }
@@ -1380,7 +1387,7 @@ class NextWitness {
 
 // holds a witness and all the Boxes adjacent to it
 class BoxWitness {
-	constructor(tile) {
+	constructor(board, tile) {
 
         this.tile = tile;
 
