@@ -527,7 +527,7 @@ function checkBoard() {
 
     console.log("Checking board with hash " + currentBoardHash);
 
-    var solutionCounter = countSolutions(board);
+    var solutionCounter = solver.countSolutions(board);
 
     if (solutionCounter.finalSolutionsCount != 0) {
         analysisButton.disabled = false;
@@ -1044,8 +1044,9 @@ async function sendActionsMessage(message) {
             return;
         }
 
-        setTimeout(function () { window.requestAnimationFrame(() => renderHints(hints)) }, 10);  // wait 10 milliseconds to prevent a clash with the renderTiles redraw
-        //window.requestAnimationFrame(() => renderHints(hints));
+        //console.log("Rendering " + hints.length + " hints");
+        //setTimeout(function () { window.requestAnimationFrame(() => renderHints(hints)) }, 10);  // wait 10 milliseconds to prevent a clash with the renderTiles redraw
+        window.requestAnimationFrame(() => renderHints(hints));
 
         if (autoPlayCheckBox.checked || assistedPlay) {
             if (hints.length > 0 && (hints[0].prob == 1 || hints[0].prob == 0)) {
