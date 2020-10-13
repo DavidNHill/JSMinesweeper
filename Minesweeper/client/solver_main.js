@@ -905,7 +905,7 @@ function solver(board, options) {
 
     }
 
-    // when looking to fix a board to be no-guess then look for witnesses which can have mines added or removed to make then no longer guesses
+    // when looking to fix a board to be no-guess, look for witnesses which can have mines added or removed to make then no longer guesses
     function findBalancingCorrections(pe) {
 
         var started = false;
@@ -915,6 +915,17 @@ function solver(board, options) {
 
         //var adders = [...pe.prunedWitnesses];
         //adders.sort((a, b) => adderSort(a, b));
+
+        for (var i = 0; i < pe.prunedWitnesses.length; i++) {
+
+            var boxWitness = pe.prunedWitnesses[i];
+
+            var minesToFind = boxWitness.minesToFind;
+            var spacesLeft = boxWitness.tiles.length;
+
+            console.log(boxWitness.tile.asText() + " add " + (spacesLeft - minesToFind) + " remove " + minesToFind);
+
+        }
 
         for (var i = 0; i < pe.prunedWitnesses.length; i++) {
 
@@ -957,6 +968,7 @@ function solver(board, options) {
         }
 
         if (!started || difference != 0) {
+            writeToConsole("*** NOT Balanced ***", true);
             fillerTiles = [];
         }
         

@@ -72,6 +72,8 @@ var localStorageSelection = document.getElementById("localStorageSelection");
 
 var analysisMode = false;
 var previousBoardHash = 0;
+var justPressedAnalyse = false;
+
 // add a listener for when the client exists the page
 
 
@@ -113,6 +115,16 @@ async function startup() {
         console.log("Using old rng");
     }
 
+    var seed = urlParams.get('seed');
+    if (seed == null) {
+        seed = 0;
+    } else {
+        seedText.value = seed;
+    }
+
+    var start = urlParams.get('start');
+
+
     BINOMIAL = new Binomial(50000, 200);
 
     /*
@@ -148,10 +160,18 @@ async function startup() {
         await newGame(gameDescription.width, gameDescription.height, gameDescription.mines, gameDescription.seed);
 
     } else {
-        await newGame(30, 16, 99, 0); // default to a new expert game
+        await newGame(30, 16, 99, seed); // default to a new expert game
     }
 
     setInterval(checkBoard, 1000);
+
+    if (start != null) {
+        showHintsCheckBox.checked = false;
+        var tile = board.getTile(start);
+        var message = buildMessageFromActions([new Action(tile.x, tile.y, 1, ACTION_CLEAR)], true);
+        await sendActionsMessage(message);
+        board.setStarted();
+    }
 
     showMessage("Welcome to minesweeper solver dedicated to Annie");
 }
@@ -502,6 +522,7 @@ function doAnalysis() {
 
         var hints = solver(board, options).actions;  // look for solutions
 
+        justPressedAnalyse = true;
 
         window.requestAnimationFrame(() => renderHints(hints));
     } else {
@@ -558,7 +579,7 @@ function draw(x, y, tileType) {
 function followCursor(e) {
 
     // if not showing hints don't show tooltip
-    if (!showHintsCheckBox.checked && !analysisMode) {
+    if (!showHintsCheckBox.checked && !analysisMode && !justPressedAnalyse) {
         tooltip.innerText = "";
         return;
     }
@@ -758,6 +779,8 @@ function on_click(event) {
         } else {
             canvasLocked = true;
         }
+
+        justPressedAnalyse = false;
 
         var reply = sendActionsMessage(message);
     }
