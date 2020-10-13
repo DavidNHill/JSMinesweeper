@@ -100,7 +100,7 @@ class EfficiencyHelper {
                     if (reward > 0) {
 
                         tile.setValue(adjMines);
-                        var counter = countSolutions(board);
+                        var counter = solver.countSolutions(board);
                         tile.setCovered(true);
 
                         var current = counter.finalSolutionsCount * BigInt(reward);
