@@ -540,8 +540,7 @@ function checkBoard() {
 
     // this will set all the obvious mines which makes the solution counter a lot more efficient on very large boards
     board.resetForAnalysis();
-    board.findAutoMove();
-
+ 
     var currentBoardHash = board.getHashValue();
 
     if (currentBoardHash == previousBoardHash) {
@@ -552,7 +551,9 @@ function checkBoard() {
 
     console.log("Checking board with hash " + currentBoardHash);
 
+    board.findAutoMove();
     var solutionCounter = solver.countSolutions(board);
+    board.resetForAnalysis();
 
     if (solutionCounter.finalSolutionsCount != 0) {
         analysisButton.disabled = false;
