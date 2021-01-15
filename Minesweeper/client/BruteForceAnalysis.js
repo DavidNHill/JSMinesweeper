@@ -63,15 +63,18 @@ class BruteForceAnalysis {
 
             var winningLines = top.getWinningLinesStart(move);  // calculate the number of winning lines if this move is played
 
-            if (best < winningLines || (top.bestLiving != null && best == winningLines && top.bestLiving.mineCount < move.mineCount)) {
-                best = winningLines;
-                top.bestLiving = move;
+            // if the move wasn't pruned is it a better move
+            if (!move.pruned) {
+                if (best < winningLines || (top.bestLiving != null && best == winningLines && top.bestLiving.mineCount < move.mineCount)) {
+                    best = winningLines;
+                    top.bestLiving = move;
+                }
             }
 
             var singleProb = (allSolutions.size() - move.mineCount) / allSolutions.size();
 
             if (move.pruned) {
-                console.log(move.index + " " + allTiles[move.index].asText() + " is living with " + move.count + " possible values and probability " + this.percentage(singleProb) + ", this location was pruned");
+                console.log(move.index + " " + allTiles[move.index].asText() + " is living with " + move.count + " possible values and probability " + this.percentage(singleProb) + ", this location was pruned (max winning lines " + winningLines + ")");
             } else {
                 console.log(move.index + " " + allTiles[move.index].asText() + " is living with " + move.count + " possible values and probability " + this.percentage(singleProb) + ", winning lines " + winningLines);
             }
@@ -477,9 +480,9 @@ class Node {
     getWinningLinesStart(move) {  // move is class LivingLocation 
 
         //if we can never exceed the cutoff then no point continuing
-        if (PRUNE_BF_ANALYSIS && this.getSolutionSize() - move.mineCount <= this.winningLines) {
+        if (PRUNE_BF_ANALYSIS && (this.getSolutionSize() - move.mineCount <= this.winningLines)) {
             move.pruned = true;
-            return 0;
+            return this.getSolutionSize() - move.mineCount;
         }
 
         var winningLines = this.getWinningLines(1, move, this.winningLines);
@@ -512,7 +515,7 @@ class Node {
         // if the max possible winning lines is less than the current cutoff then no point doing the analysis
         if (PRUNE_BF_ANALYSIS && (result + notMines <= cutoff)) {
             move.pruned = true;
-            return 0;
+            return result + notMines;
         }
 
         move.buildChildNodes(this);
@@ -592,7 +595,7 @@ class Node {
             // if the max possible winning lines is less than the current cutoff then no point doing the analysis
             if (PRUNE_BF_ANALYSIS && (result + notMines <= cutoff)) {
                 move.pruned = true;
-                return 0;
+                return result + notMines;
             }
 
         }
