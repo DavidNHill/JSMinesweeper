@@ -141,6 +141,55 @@ class ProbabilityEngine {
 
  	}
 
+    checkForUnavoidableGuess() {
+
+        for (var i = 0; i < this.prunedWitnesses.length; i++) {
+            var witness = this.prunedWitnesses[i];
+            if (witness.minesToFind == 1 && witness.tiles.length == 2) {
+                //console.log("Witness " + witness.tile.asText() + " is a possible unavoidable guess witness");
+                var unavoidable = true;
+                // if every monitoring tile also monitors all the other tiles then it can't provide any information
+                check: for (var j = 0; j < witness.tiles.length; j++) {
+                    var tile = witness.tiles[j];
+
+                    // get the witnesses monitoring this tile
+                    for (var adjTile of this.board.getAdjacent(tile)) {
+
+                        // ignore tiles which are mines
+                        if (adjTile.isSolverFoundBomb()) {
+                            continue;
+                        }
+
+                        // are we one of the tiles other tiles, if so then no need to check
+                        var toCheck = true;
+                        for (var otherTile of witness.tiles) {
+                            if (otherTile.isEqual(adjTile)) {
+                                toCheck = false;
+                                break;
+                            }
+                        }
+
+                        // if we are monitoring and not a mine then see if we are also monitoring all the other mines
+                        if (toCheck) {
+                            for (var otherTile of witness.tiles) {
+                                if (!adjTile.isAdjacent(otherTile)) {
+                                    //console.log("Tile " + adjTile.asText() + " is not monitoring all the other witnessed tiles");
+                                    unavoidable = false;
+                                    break check;
+                                }
+                            }
+                        }
+                    }
+                }
+                if (unavoidable) {
+                    this.writeToConsole("Tile " + witness.tile.asText() + " is an unavoidable guess");
+                    return witness.tiles[0];
+                } 
+            }
+        }
+
+        return null;
+    }
 
     // calculate a probability for each un-revealed tile on the board
 	process() {

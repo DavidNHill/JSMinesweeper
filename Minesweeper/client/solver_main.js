@@ -205,6 +205,15 @@ function solver(board, options) {
 
         var pe = new ProbabilityEngine(board, witnesses, witnessed, squaresLeft, minesLeft, options);
 
+        // before we do the analysis see if there are any unavoidable guesses
+        var unavoidable5050 = pe.checkForUnavoidableGuess();
+        if (unavoidable5050 != null) {
+            result.push(new Action(unavoidable5050.getX(), unavoidable5050.getY(), 0.5, ACTION_CLEAR));
+            showMessage(unavoidable5050.asText() + " is an unavoidable 50/50 guess. No point delaying guessing.");
+            return result;
+        }
+
+
         pe.process();
 
         writeToConsole("probability Engine took " + pe.duration + " milliseconds to complete");
@@ -491,6 +500,7 @@ function solver(board, options) {
         }
 
         if (board.isHighDensity()) {
+            writeToConsole("Board is high density prioritise minimising solutions space");
             actions.sort(function (a, b) {
 
                 var c = b.prob - a.prob;
