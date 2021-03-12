@@ -195,24 +195,14 @@ function solver(board, options) {
                     return [];
                 }
                 // if we are playing for efficiency and a mine wasn't found then go on to do the probability engine - this gets us all the possible clears and mines
+                result = [];  // clear down any actions we found  trivially
                 //return new EfficiencyHelper(board, witnesses, noFlagResult).process();
             } else {
                 return result;
             }
         }
 
-        //var peStart = Date.now();
-
         var pe = new ProbabilityEngine(board, witnesses, witnessed, squaresLeft, minesLeft, options);
-
-        // before we do the analysis see if there are any unavoidable guesses
-        var unavoidable5050 = pe.checkForUnavoidableGuess();
-        if (unavoidable5050 != null) {
-            result.push(new Action(unavoidable5050.getX(), unavoidable5050.getY(), 0.5, ACTION_CLEAR));
-            showMessage(unavoidable5050.asText() + " is an unavoidable 50/50 guess. No point delaying guessing.");
-            return result;
-        }
-
 
         pe.process();
 
@@ -293,6 +283,27 @@ function solver(board, options) {
 
             return result;
         }
+
+        // if we don't have a certain guess then look for ...
+        if (pe.bestOnEdgeProbability != 1 && minesLeft > 1) {
+
+            // See if there are any unavoidable 50/50 guesses 
+            var unavoidable5050 = pe.checkForUnavoidableGuess();
+            if (unavoidable5050 != null) {
+                result.push(new Action(unavoidable5050.getX(), unavoidable5050.getY(), unavoidable5050.probability, ACTION_CLEAR));
+                showMessage(unavoidable5050.asText() + " is an unavoidable 50/50 guess");
+                return result;
+            }
+
+            // look for any 50/50 or safe guesses 
+            var unavoidable5050 = new FiftyFiftyHelper(board, pe.minesFound, options).process();
+            if (unavoidable5050 != null) {
+                result.push(new Action(unavoidable5050.getX(), unavoidable5050.getY(), unavoidable5050.probability, ACTION_CLEAR));
+                showMessage(unavoidable5050.asText() + " is an unavoidable 50/50 guess or safe");
+                return result;
+            }
+        }
+
 
         // if we have an isolated edge process that
         if (pe.bestProbability < 1 && pe.isolatedEdgeBruteForce != null) {
@@ -410,7 +421,6 @@ function solver(board, options) {
 
         result.push(...pe.getBestCandidates(HARD_CUT_OFF));  // get best options within this ratio of the best value
 
-
         // if the off edge tiles are within tolerance then add them to the candidates to consider as long as we don't have certain clears
         if (pe.bestOnEdgeProbability != 1 && pe.offEdgeProbability > pe.bestOnEdgeProbability * OFF_EDGE_THRESHOLD) {
             result.push(...getOffEdgeCandidates(board, pe, witnesses, allCoveredTiles));
@@ -423,7 +433,6 @@ function solver(board, options) {
                 var tile = deadTiles[i];
 
                 writeToConsole("Tile " + tile.asText() + " is dead");
-                var found = false;
                 for (var j = 0; j < result.length; j++) {
                     if (result[j].x == tile.x && result[j].y == tile.y) {
                         result[j].dead = true;
@@ -437,7 +446,7 @@ function solver(board, options) {
             if (pe.bestProbability == 1) {
                 showMessage("The solver has found some certain moves using the probability engine." + formatSolutions(pe.finalSolutionsCount));
 
-                // identify where the bombs are
+                 // identify where the bombs are
                 for (var tile of pe.minesFound) {
                     tile.setFoundBomb();
                     if (options.playStyle == PLAY_STYLE_FLAGS) {
@@ -445,6 +454,7 @@ function solver(board, options) {
                         result.push(action);
                     }
                 }
+ 
                 result = new EfficiencyHelper(board, witnesses, result, options.playStyle).process();
             } else {
                 showMessage("The solver has found the best guess on the edge using the probability engine." + formatSolutions(pe.finalSolutionsCount));
@@ -768,7 +778,7 @@ function solver(board, options) {
 
         var tile = board.getTileXY(action.x, action.y);
 
-        var adjFlags = board.adjacentFlagsCount(tile);
+        var adjFlags = board.adjacentFoundMineCount(tile);
         var adjCovered = board.adjacentCoveredCount(tile);
 
         var solutions = BigInt(0);
@@ -834,8 +844,6 @@ function solver(board, options) {
         var minesLeft = board.num_bombs;
         var squaresLeft = 0;
 
-        var deadTiles = [];  // used to hold the tiles which have been determined to be dead by either the probability engine or deep analysis
-
         var work = new Set();  // use a map to deduplicate the witnessed tiles
 
         for (var i = 0; i < board.tiles.length; i++) {
@@ -854,15 +862,19 @@ function solver(board, options) {
             var adjTiles = board.getAdjacent(tile);
 
             var needsWork = false;
+            var minesFound = 0;
             for (var j = 0; j < adjTiles.length; j++) {
                 var adjTile = adjTiles[j];
-                if (adjTile.isCovered() && !adjTile.isSolverFoundBomb()) {
+                if (adjTile.isSolverFoundBomb()) {
+                    minesFound++;
+                } else if (adjTile.isCovered()) {
                     needsWork = true;
                     work.add(adjTile.index);
                 }
             }
 
-            if (needsWork) {
+            // if a witness needs work (still has hidden adjacent tiles) or is broken then add it to the mix
+            if (needsWork || minesFound > tile.getValue()) {
                 witnesses.push(tile);
             }
 

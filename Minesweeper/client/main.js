@@ -669,7 +669,7 @@ function on_click(event) {
             }
 
             if (tile.isCovered()) {
-                var flagCount = board.adjacentFlagsCount(tile);
+                var flagCount = board.adjacentFoundMineCount(tile);
                 tile.setValue(flagCount);
             } else {
                 tile.setCovered(true);
@@ -811,7 +811,7 @@ function on_mouseWheel(event) {
 
     var tile = board.getTileXY(col, row);
 
-    var flagCount = board.adjacentFlagsCount(tile);
+    var flagCount = board.adjacentFoundMineCount(tile);
     var covered = board.adjacentCoveredCount(tile);
 
     var newValue = tile.getValue() + delta;

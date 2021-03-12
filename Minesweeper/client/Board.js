@@ -87,8 +87,6 @@ class Board {
 		
 		var index = this.xy_to_index(x,y);
 		
-		//console.log("X=" + x + ", Y=" + y + " gives index=" + index);
-		
 		return this.tiles[index];
 		
 	}
@@ -119,11 +117,10 @@ class Board {
 	}
 
     // return number of confirmed mines adjacent to this tile
-    adjacentFlagsCount(tile) {
+    adjacentFoundMineCount(tile) {
 
         var mineCount = 0;
         for (var adjTile of this.getAdjacent(tile)) {
-			//if (adjTile.isFlagged()) {
 			if (adjTile.isSolverFoundBomb()) {
                 mineCount++;
             }

@@ -149,6 +149,11 @@ class Tile {
 		this.foundBomb = true;
 	}
 
+	// this is used when a tile is speculatively set to a mine to see if the board is still valid
+	unsetFoundBomb() {
+		this.foundBomb = false;
+	}
+
 	isSolverFoundBomb() {
 		return this.foundBomb;
     }

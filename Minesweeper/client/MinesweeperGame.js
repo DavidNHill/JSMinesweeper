@@ -37,7 +37,7 @@ var gamesWon = 0;
 var gamesLost = 0;
 var gamesAbandoned = 0;
 
-const FIND_3BV = -1;     // 1 for high 3BV, -1 for low
+const FIND_3BV = 1;     // 1 for high 3BV, -1 for low
 const FIND_3BV_CYCLES = 0;
 
 // provides the next game id

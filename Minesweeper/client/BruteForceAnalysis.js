@@ -30,7 +30,7 @@ class BruteForceAnalysis {
         this.currentNode;
         this.expectedMove;
 
-        this.maxSolutionSize = size;
+        //this.maxSolutionSize = size;
         this.completed = false;
 
         // reset the globals
@@ -552,9 +552,11 @@ class Node {
 
                         // now calculate the winning lines for each of these children
                         var winningLines = child.getWinningLines(depth + 1, childMove, child.winningLines);
-                        if (child.winningLines < winningLines || (child.bestLiving != null && child.winningLines == winningLines && child.bestLiving.mineCount < childMove.mineCount)) {
-                            child.winningLines = winningLines;
-                            child.bestLiving = childMove;
+                        if (!childMove.pruned) {
+                            if (child.winningLines < winningLines || (child.bestLiving != null && child.winningLines == winningLines && child.bestLiving.mineCount < childMove.mineCount)) {
+                                child.winningLines = winningLines;
+                                child.bestLiving = childMove;
+                            }
                         }
 
                         // if there are no mines then this is a 100% safe move, so skip any further analysis since it can't be any better

@@ -18,13 +18,13 @@ class Cruncher {
         // determine how many flags are currently next to each tile
         this.currentFlagsTiles = [];
         for (var i = 0; i < this.tiles.length; i++) {
-            this.currentFlagsTiles.push(board.adjacentFlagsCount(this.tiles[i]));
+            this.currentFlagsTiles.push(board.adjacentFoundMineCount(this.tiles[i]));
         }
 
         // determine how many flags are currently next to each witness
         this.currentFlagsWitnesses = [];
         for (var i = 0; i < this.witnesses.length; i++) {
-            this.currentFlagsWitnesses.push(board.adjacentFlagsCount(this.witnesses[i].tile));
+            this.currentFlagsWitnesses.push(board.adjacentFoundMineCount(this.witnesses[i].tile));
         }
 
     }

@@ -27,30 +27,20 @@ class SolutionCounter {
         this.boxWitnesses = [];
         this.mask = [];
 
-        // list of 'DeadCandidate' which are potentially dead
-        //this.deadCandidates = [];
-        //this.deadTiles = [];
-
-        //this.boxProb = [];  // the probabilities end up here
 		this.workingProbs = []; 
         this.heldProbs = [];
-        //this.bestProbability = 0;  // best probability of being safe
-        //this.offEdgeProbability = 0;
         this.finalSolutionsCount = BigInt(0);
         this.clearCount = 0;
-
-        // details about independent witnesses
-        //this.independentWitnesses = [];
-        //this.dependentWitnesses = [];
-        //this.independentMines = 0;
-        //this.independentIterations = BigInt(1);
-        //this.remainingSquares = 0;
-
         this.localClears = [];
 
-        //this.canDoDeadTileAnalysis = true;
+        this.validWeb = true;
 
-        //this.isolatedEdgeBruteForce;
+        // can't have less than zero mines
+        if (minesLeft < 0) {
+            this.validWeb = false;
+            return;
+        }
+
 
         // generate a BoxWitness for each witness tile and also create a list of pruned witnesses for the brute force search
         var pruned = 0;
@@ -58,6 +48,11 @@ class SolutionCounter {
             var wit = allWitnesses[i];
 
             var boxWit = new BoxWitness(this.board, wit);
+
+            // can't have too many or too few mines 
+            if (boxWit.minesToFind < 0 || boxWit.mineToFind > boxWit.tiles.length) {
+                this.validWeb = false;
+            }
 
             // if the witness is a duplicate then don't store it
             var duplicate = false;
@@ -132,6 +127,13 @@ class SolutionCounter {
 
     // calculate a probability for each un-revealed tile on the board
 	process() {
+
+        // if the board isn't valid then solution count is zero
+        if (!this.validWeb) {
+            this.finalSolutionsCount = BigInt(0);
+            this.clearCount = 0;
+            return;
+        }
 
         // create an array showing which boxes have been procesed this iteration - none have to start with
         this.mask = Array(this.boxes.length).fill(false);

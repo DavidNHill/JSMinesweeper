@@ -145,7 +145,9 @@ class ProbabilityEngine {
 
         for (var i = 0; i < this.prunedWitnesses.length; i++) {
             var witness = this.prunedWitnesses[i];
+
             if (witness.minesToFind == 1 && witness.tiles.length == 2) {
+
                 //console.log("Witness " + witness.tile.asText() + " is a possible unavoidable guess witness");
                 var unavoidable = true;
                 // if every monitoring tile also monitors all the other tiles then it can't provide any information
@@ -173,6 +175,7 @@ class ProbabilityEngine {
                         if (toCheck) {
                             for (var otherTile of witness.tiles) {
                                 if (!adjTile.isAdjacent(otherTile)) {
+
                                     //console.log("Tile " + adjTile.asText() + " is not monitoring all the other witnessed tiles");
                                     unavoidable = false;
                                     break check;
