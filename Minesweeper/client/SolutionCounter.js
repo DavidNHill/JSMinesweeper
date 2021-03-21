@@ -556,76 +556,6 @@ class SolutionCounter {
 
     }
 
-
-    /*
-    // get the box containing this tile
-    getBox(tile) {
-
-        for (var i = 0; i < this.boxes.length; i++) {
-            if (this.boxes[i].contains(tile)) {
-                return this.boxes[i];
-            }
-        }
-
-        console.log("ERROR - tile " + tile.asText() + " doesn't belong to a box");
-
-        return null;
-    }
-
-    // return all the boxes adjacent to this tile
-    getAdjacentBoxes(loc) {
-
-        var result = [];
-
-        var adjLocs = this.board.getAdjacent(loc);
-
-         // get each adjacent location
-        for (var i = 0; i < adjLocs.length; i++) {
-
-            var adjLoc = adjLocs[i];
-
-            // we only want adjacent tile which are un-revealed
-            if (!adjLoc.isCovered() || adjLoc.isFlagged()) {
-                continue;
-            }
-
-            // find the box it is in
-            var boxFound = false;
-            for (var j = 0; j < this.boxes.length; j++) {
-
-                var box = this.boxes[j];
-
-                if (box.contains(adjLoc)) {
-                    boxFound = true;
-                    // is the box already included?
-                    var found = false;
-                    for (var k = 0; k < result.length; k++) {
-
-                        if (box.uid == result[k].uid) {
-                            found = true;
-                            break;
-                        }
-                    }
-                    // if not add it
-                    if (!found) {
-                        result.push(box);
-                        //sizeOfBoxes = box.getSquares().size();
-                    }
-                }
-            }
-
-            // if a box can't be found for the adjacent square then the location can't be dead
-            if (!boxFound) {
-                return null;
-            }
-
-        }
-
-        return result;
-
-    }
-    */
-
     // here we expand the localised solution to one across the whole board and
     // sum them together to create a definitive probability for each box
     calculateBoxProbabilities() {
@@ -680,6 +610,34 @@ class SolutionCounter {
 
          //console.log("Game has  " + this.finalSolutionsCount + " candidate solutions and " + this.clearCount + " clears");
 
+    }
+
+    // forces a box to contain a tile which isn't a mine.  If the location isn't in a box false is returned.
+    setMustBeEmpty(tile) {
+
+        var box = this.getBox(tile);
+
+        if (box == null) {
+            this.validWeb = false;
+            return false;
+        } else {
+            box.incrementEmptyTiles();
+        }
+
+        return true;
+
+    }
+
+    // get the box containing this tile
+    getBox(tile) {
+
+        for (var i = 0; i < this.boxes.length; i++) {
+            if (this.boxes[i].contains(tile)) {
+                return this.boxes[i];
+            }
+        }
+
+        return null;
     }
 
     getLocalClears() {

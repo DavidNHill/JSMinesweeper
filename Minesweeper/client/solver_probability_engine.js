@@ -1554,8 +1554,10 @@ class Box {
         this.minMines;
         this.maxMines;
 
-		this.tiles = [tile];
-		//this.tiles.push(tile);
+        this.tiles = [tile];
+
+        // this is used to indicate how many tiles in the box must not contain mine.
+        this.emptyTiles = 0;
 		
 		this.boxWitnesses = [];
 		
@@ -1605,6 +1607,14 @@ class Box {
             }
         }		
 
+    }
+
+    incrementEmptyTiles() {
+
+        this.emptyTiles++;
+        if (this.maxMines > this.tiles.length - this.emptyTiles) {
+            this.maxMines = this.tiles.length - this.emptyTiles;
+        }
     }
 
 	// add a new tile to the box

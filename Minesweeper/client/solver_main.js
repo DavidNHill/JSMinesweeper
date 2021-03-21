@@ -287,20 +287,20 @@ function solver(board, options) {
         // if we don't have a certain guess then look for ...
         if (pe.bestOnEdgeProbability != 1 && minesLeft > 1) {
 
-            // See if there are any unavoidable 50/50 guesses 
+            // See if there are any unavoidable 2 tile 50/50 guesses 
             var unavoidable5050 = pe.checkForUnavoidableGuess();
             if (unavoidable5050 != null) {
                 result.push(new Action(unavoidable5050.getX(), unavoidable5050.getY(), unavoidable5050.probability, ACTION_CLEAR));
                 showMessage(unavoidable5050.asText() + " is an unavoidable 50/50 guess");
-                return result;
+                return addDeadTiles(result, pe.getDeadTiles());
             }
 
             // look for any 50/50 or safe guesses 
-            var unavoidable5050 = new FiftyFiftyHelper(board, pe.minesFound, options).process();
+            var unavoidable5050 = new FiftyFiftyHelper(board, pe.minesFound, options, pe.getDeadTiles(), witnessed, minesLeft).process();
             if (unavoidable5050 != null) {
                 result.push(new Action(unavoidable5050.getX(), unavoidable5050.getY(), unavoidable5050.probability, ACTION_CLEAR));
-                showMessage(unavoidable5050.asText() + " is an unavoidable 50/50 guess or safe");
-                return result;
+                showMessage(unavoidable5050.asText() + " is an unavoidable 50/50 guess, or safe");
+                return addDeadTiles(result, pe.getDeadTiles());
             }
         }
 
@@ -339,15 +339,15 @@ function solver(board, options) {
                 }
 
                 // identify the dead tiles
-                for (var tile of deadTiles) {   // show all dead tiles 
-                    if (tile.probability != 0) {
-                        var action = new Action(tile.getX(), tile.getY(), tile.probability);
-                        action.dead = true;
-                        result.push(action);
-                    }
-                }
+                //for (var tile of deadTiles) {   // show all dead tiles 
+                //   if (tile.probability != 0) {
+                //        var action = new Action(tile.getX(), tile.getY(), tile.probability);
+                //        action.dead = true;
+                //        result.push(action);
+                //    }
+                //}
 
-                return result;
+                return addDeadTiles(result, deadTiles);
             }
 
         }
@@ -400,15 +400,15 @@ function solver(board, options) {
                 }
 
                 // identify the dead tiles
-                for (var tile of deadTiles) {   // show all dead tiles 
-                    if (tile.probability != 0) {   // a mine isn't dead
-                        var action = new Action(tile.getX(), tile.getY(), tile.probability);
-                        action.dead = true;
-                        result.push(action);
-                    }
-                }
+                //for (var tile of deadTiles) {   // show all dead tiles 
+                //   if (tile.probability != 0) {   // a mine isn't dead
+                //        var action = new Action(tile.getX(), tile.getY(), tile.probability);
+                //        action.dead = true;
+                //        result.push(action);
+                //    }
+                //}
 
-                return result;
+                return addDeadTiles(result, deadTiles);
             } else {
                 deadTiles = pe.getDeadTiles();  // use the dead tiles from the probability engine
             }
@@ -473,8 +473,24 @@ function solver(board, options) {
         }
 
         // identify the dead tiles
+        //for (var tile of deadTiles) {   // show all dead tiles 
+        //    if (tile.probability != 0 & tile.probability != 1) {  // a definite mine or clear isn't considered dead
+        //        var action = new Action(tile.getX(), tile.getY(), tile.probability);
+        //        action.dead = true;
+        //        result.push(action);
+        //    }
+        //}
+
+        return addDeadTiles(result, pe.getDeadTiles());;
+
+    }
+
+    // used to add the dead tiles to the results
+    function addDeadTiles(result, deadTiles) {
+
+        // identify the dead tiles
         for (var tile of deadTiles) {   // show all dead tiles 
-            if (tile.probability != 0 & tile.probability != 1) {  // a definite mine or clear isn't considered dead
+            if (tile.probability != 0) {
                 var action = new Action(tile.getX(), tile.getY(), tile.probability);
                 action.dead = true;
                 result.push(action);
@@ -792,7 +808,7 @@ function solver(board, options) {
 
             tile.setValue(value);
 
-            var work = countSolutions(board);
+            var work = countSolutions(board, null);
 
             if (work.finalSolutionsCount > 0) {  // if this is a valid board state
                 if (commonClears == null) {
@@ -834,7 +850,7 @@ function solver(board, options) {
 
     }
 
-    function countSolutions(board) {
+    function countSolutions(board, notMines) {
 
         // find all the tiles which are revealed and have un-revealed / un-flagged adjacent squares
         var allCoveredTiles = [];
@@ -895,6 +911,13 @@ function solver(board, options) {
         var start = Date.now();
 
         var solutionCounter = new SolutionCounter(board, witnesses, witnessed, squaresLeft, minesLeft);
+
+        // let the solution counter know which tiles mustn't contain mines
+        if (notMines != null) {
+            for (var tile of notMines) {
+                solutionCounter.setMustBeEmpty(tile);
+            }
+        }
 
         solutionCounter.process();
 

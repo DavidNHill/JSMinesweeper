@@ -374,6 +374,7 @@ async function newGame(width, height, mines, seed) {
     if (analysisModeButton.checked) {
         title.innerHTML = "Minesweeper analyser";
         analysisMode = true;
+        lockMineCount.checked = false;  // dom't lock the mine count when the board is reset
     } else {
         title.innerHTML = "Minesweeper player";
         analysisMode = false;
