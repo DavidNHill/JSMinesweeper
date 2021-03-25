@@ -288,10 +288,10 @@ function solver(board, options) {
         if (pe.bestOnEdgeProbability != 1 && minesLeft > 1) {
 
             // See if there are any unavoidable 2 tile 50/50 guesses 
-            var unavoidable5050 = pe.checkForUnavoidableGuess();
+            var unavoidable5050 = pe.checkForUnavoidable5050();
             if (unavoidable5050 != null) {
                 result.push(new Action(unavoidable5050.getX(), unavoidable5050.getY(), unavoidable5050.probability, ACTION_CLEAR));
-                showMessage(unavoidable5050.asText() + " is an unavoidable 50/50 guess");
+                showMessage(unavoidable5050.asText() + " is an unavoidable 50/50 guess." + formatSolutions(pe.finalSolutionsCount));
                 return addDeadTiles(result, pe.getDeadTiles());
             }
 
@@ -299,7 +299,7 @@ function solver(board, options) {
             var unavoidable5050 = new FiftyFiftyHelper(board, pe.minesFound, options, pe.getDeadTiles(), witnessed, minesLeft).process();
             if (unavoidable5050 != null) {
                 result.push(new Action(unavoidable5050.getX(), unavoidable5050.getY(), unavoidable5050.probability, ACTION_CLEAR));
-                showMessage(unavoidable5050.asText() + " is an unavoidable 50/50 guess, or safe");
+                showMessage(unavoidable5050.asText() + " is an unavoidable 50/50 guess, or safe." + formatSolutions(pe.finalSolutionsCount));
                 return addDeadTiles(result, pe.getDeadTiles());
             }
         }
@@ -1063,7 +1063,18 @@ function solver(board, options) {
     function formatSolutions(count) {
 
         if (count > maxSolutionsDisplay) {
-            return "";
+            var work = count;
+            var index = 3;
+            var power = 0;
+            while (work > power10n[index * 2]) {
+                work = work / power10n[index];
+                power = power + index;
+            }
+
+            var value = divideBigInt(work, power10n[index], 3);
+            power = power + 3;
+
+            return " Approximately " + value + " * 10<sup>" + power + "</sup> possible solutions remain.";
         } else {
             return " " + count.toLocaleString() + " possible solutions remain.";
         }

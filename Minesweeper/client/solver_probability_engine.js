@@ -194,6 +194,186 @@ class ProbabilityEngine {
         return null;
     }
 
+
+    checkForUnavoidable5050() {
+
+        var links = [];
+
+        for (var i = 0; i < this.prunedWitnesses.length; i++) {
+            var witness = this.prunedWitnesses[i];
+
+            if (witness.minesToFind == 1 && witness.tiles.length == 2) {
+
+                // create a new link
+                var link = new Link();
+                link.tile1 = witness.tiles[0];
+                link.tile2 = witness.tiles[1];
+
+                //console.log("Witness " + witness.tile.asText() + " is a possible unavoidable guess witness");
+                var unavoidable = true;
+                // if every monitoring tile also monitors all the other tiles then it can't provide any information
+                for (var j = 0; j < witness.tiles.length; j++) {
+                    var tile = witness.tiles[j];
+
+                    // get the witnesses monitoring this tile
+                    for (var adjTile of this.board.getAdjacent(tile)) {
+
+                        // ignore tiles which are mines
+                        if (adjTile.isSolverFoundBomb()) {
+                            continue;
+                        }
+
+                        // are we one of the tiles other tiles, if so then no need to check
+                        var toCheck = true;
+                        for (var otherTile of witness.tiles) {
+                            if (otherTile.isEqual(adjTile)) {
+                                toCheck = false;
+                                break;
+                            }
+                        }
+
+                        // if we are monitoring and not a mine then see if we are also monitoring all the other mines
+                        if (toCheck) {
+                            for (var otherTile of witness.tiles) {
+                                if (!adjTile.isAdjacent(otherTile)) {
+
+                                    //console.log("Tile " + adjTile.asText() + " is not monitoring all the other witnessed tiles");
+                                    link.trouble.push(adjTile);
+                                    if (tile.isEqual(link.tile1)) {
+                                        link.closed1 = false;
+                                    } else {
+                                        link.closed2 = false;
+                                    }
+
+                                    unavoidable = false;
+                                    //break check;
+                                }
+                            }
+                        }
+                    }
+                }
+                if (unavoidable) {
+                    this.writeToConsole("Tile " + witness.tile.asText() + " is an unavoidable guess");
+                    return witness.tiles[0];
+                }
+
+                links.push(link);
+            }
+        }
+
+        // this is the area the 50/50 spans
+        var area5050 = [];
+
+        // try and connect 2 or links together to form an unavoidable 50/50
+        for (var link of links) {
+            if (!link.processed && (link.closed1 && !link.closed2 || !link.closed1 && link.closed2)) {  // this is the XOR operator, so 1 and only 1 of these is closed 
+
+                var openTile;
+                var extensions = 0;
+                if (!link.closed1) {
+                    openTile = link.tile1;
+                } else {
+                    openTile = link.tile2;
+                }
+
+                area5050 = [link.tile1, link.tile2];
+
+                link.processed = true;
+
+                var noMatch = false;
+                while (openTile != null && !noMatch) {
+
+                    noMatch = true;
+                    for (var extension of links) {
+                        if (!extension.processed) {
+
+                            if (extension.tile1.isEqual(openTile)) {
+                                extensions++;
+                                extension.processed = true;
+                                noMatch = false;
+
+                                // accumulate the trouble tiles as we progress;
+                                link.trouble.push(...extension.trouble);
+                                area5050.push(extension.tile2);   // tile2 is the new tile
+
+                                if (extension.closed2) {
+                                    if (extensions % 2 == 0 && this.noTrouble(link, area5050)) {
+                                        this.writeToConsole("Tile " + openTile.asText() + " is an unavoidable guess, with " + extensions + " extensions");
+                                        return area5050[0];
+                                    } else {
+                                        this.writeToConsole("Tile " + openTile.asText() + " is a closed extension with " + (extensions + 1) + " parts");
+                                        openTile = null;
+                                    }
+                                } else {  // found an open extension, now look for an extension for this
+                                    openTile = extension.tile2;
+                                }
+                                break;
+                            }
+                            if (extension.tile2.isEqual(openTile)) {
+                                extensions++;
+                                extension.processed = true;
+                                noMatch = false;
+
+                                // accumulate the trouble tiles as we progress;
+                                link.trouble.push(...extension.trouble);
+                                area5050.push(extension.tile1);   // tile 1 is the new tile
+
+                                if (extension.closed1) {
+                                    if (extensions % 2 == 0 && this.noTrouble(link, area5050)) {
+                                        this.writeToConsole("Tile " + openTile.asText() + " is an unavoidable guess, with " + extensions + " extensions");
+                                        return area5050[0];
+                                    } else {
+                                        this.writeToConsole("Tile " + openTile.asText() + " is a closed extension with " + (extensions + 1) + " parts");
+                                        openTile = null;
+                                    }
+
+                                } else {  // found an open extension, now look for an extension for this
+                                    openTile = extension.tile1;
+                                }
+
+                                break;
+                            }
+
+                        }
+
+                    }
+
+                }
+
+            }
+        }
+
+        return null;
+    }
+
+    noTrouble(link, area) {
+
+        // each trouble location must be adjacent to 2 tiles in the extended 50/50
+        top: for (var tile of link.trouble) {
+
+            for (var tile5050 of area) {
+                if (tile.isEqual(tile5050)) {
+                    continue top;    //if a trouble tile is part of the 50/50 it isn't trouble
+                }
+            }
+
+
+            var adjCount = 0;
+            for (var tile5050 of area) {
+                if (tile.isAdjacent(tile5050)) {
+                    adjCount++;
+                }
+            }
+            if (adjCount % 2 !=0) {
+                this.writeToConsole("Trouble Tile " + tile.asText() + " isn't adjacent to an even number of tiles in the extended candidate 50/50, adjacent " + adjCount + " of " + area.length);
+                return false;
+            }
+        }
+
+        return true;
+
+    }
+
     // calculate a probability for each un-revealed tile on the board
 	process() {
 
@@ -1633,6 +1813,23 @@ class Box {
 
         return false;
 
+    }
+
+}
+
+// Links which when joined together might form a 50/50 chain
+class Link {
+
+    constructor() {
+
+        this.tile1;
+        this.closed1 = true;
+        this.tile2;
+        this.closed2 = true;
+
+        this.processed = false;
+
+        this.trouble = [];
     }
 
 }

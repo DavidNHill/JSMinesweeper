@@ -21,6 +21,15 @@ class FiftyFiftyHelper {
 
     }
 
+	lookFor5050() {
+
+
+
+
+
+    }
+
+
     // this process looks for positions which are either 50/50 guesses or safe.  In which case they should be guessed as soon as possible
     process() {
 

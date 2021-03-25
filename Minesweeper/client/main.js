@@ -1186,4 +1186,5 @@ function load_images() {
 
 function showMessage(text) {
     messageLine.innerText = text;
+    messageLine.innerHTML = text;
 }
