@@ -13,7 +13,7 @@ The solver has a 40.5% win rate on classic expert (30x16/99 safe start in a corn
 
 The landing screen provides access to the Minesweeper player.  
 
-Basic Option:
+Basic Options:
 - Opening on start: Determines whether the first click is a guaranteed opening or only guaranteed safe.
 - Beginner:  9x9/10.
 - Intermediate: 16x16/40.
@@ -25,6 +25,7 @@ Advanced options:
 - Style - Flagging: Put a flag on mines when the solver discovers them.
 - Style - No Flagging: Never place flags.
 - Style - Efficiency: This option allows the solver to use chording and flags are only placed in an attempt to minimize the number of clicks required to solve the game. **This mode seriously impacts performance.**
+- Tile size: use this to select the tile size best suited.  Will take affect next time the game starts or the board is reset.
 - Show hints: The solver will shadow your play and highlight safe plays and (if necessary) what it considers the best guess
 - Auto play: The solver will play the game for you until a guess is required. The solver will show what it considers the best guess, but you must make the final decision.
 - Accept guesses: The solver will play the game until it is won or lost.
@@ -48,10 +49,61 @@ From here you can construct the position you wish to analyse. This is best done 
 
 If the board is valid the **Analyse** button will be enabled and pressing this (or the 'a' hotkey) will start the analyser. 
 
-The safe tiles are shown in green and the mines in red. If no certain move is available then the solver will highlight the move it considers best in yellow with a green centre.  Other moves it consider but rejected are shown in yellow. Tiles in highlighted in grey can have only one possible value and it is nver correct to play these when there are other moves available.
+The safe tiles are shown in green and the mines in red. If no certain move is available then the solver will highlight the move it considers best in yellow with a green centre.  Other moves it considered but rejected are shown in yellow. Tiles highlighted in grey can have only one possible value and it is never correct to play these when there are other moves available.
 
-If you are playing a game and using the analyser to provide assistance then you can keep the mine count in step by selecting "Locak mine count".  Now every time a flag is placed the mine counter is reduced by one.
+If you are playing a game and using the analyser to provide assistance then you can keep the mine count in step by selecting "Lock mine count".  Now every time a flag is placed the mine counter is reduced by one.
 
 ## What the solver does
 
-TBC
+The solver has a number of techniques it uses to solve the board:
+- Trivial analysis
+- Probability engine
+- 50/50 and pseudo-50/50 detection
+- Tie break logic
+- Brute force analysis
+
+The solver looks for the best moves and then displays them (or plays them).  It isn't necessarily true that all possible moves are found.
+
+## Trivial Analysis
+
+This is used to quickly find any moves which are trivially discovered:
+- A satisfied tile has it's remaining adjacent tiles cleared
+- A tile with space only for the remaining mines has the mines identified. Depending on the play style they may not be flagged.
+
+If plays are discovered then processing ends at this stage.  Further analysis might find other options, but equally they might be found trivially in the next iteration of the solver.
+
+## Probability engine
+
+The probability engine calculates the chance that a tile is a mine for every hidden tile on the board.  The calculation is 100% accurate, but this comes at the price of exponential processing cost based on the number of revealed tiles which can be strung together.  This means as the board gets larger and has a higher mine density performance suffers. For example 50x50/500 should be fine, 100x100/2500 might struggle.
+
+As part of the probability engine some tiles can be discovered that are either mines or have only one possible value. These are refered to as **dead tiles** and it is never correct to choose a dead tile unless all the tiles left in the game are dead. In which case the game has no more information to be discovered and the result is down to luck.
+
+## 50/50 and pseudo-50/50 detection
+
+A 2-tile 50/50 is a pair of tiles where one of the tiles can never receive information without the other tile also receiving the same information.  In this situation there is no way to differentiate between the two tiles and they must be (and always will be) an unavoidable guess with 50% chance of being correct.  Since the 50/50 will never change it is always correct to guess these at the earliest possible moment, since they might provide information to their neighbouring tiles. In practice this processing has a dependency on the probability engine and so the solver can only find these after that has run.
+
+The solver can discover:
+- arbitrarily extended 2-tile 50/50s.  
+- Enclosed 2x2/2 boxes
+
+A *pseudo-50/50* is a situation where a set of tiles is either safe or part of a 50/50. If it is part of a 50/50 then it is correct to guess immediately. If it is safe it is correct to guess immediately. 
+
+The solver can discover
+- 2-tile pseuso-50/50s
+- 4-tile 2x2 pseudo-50/50s
+
+It is unable to discover extended pseudo-50/50s.
+
+## Tie break logic
+
+If the probabilty engine has run and there are no certain plays and no 50/50s then a guess has to be made which isn't a 50/50 punt. At this stage the solver's tie break logic is used.
+
+Each tile within 10% of the safest guess (e.g. safest is 80%, then the cutoff is 80% * 90% = 72%) is analysed to determine how likely the move is to result in certain clears for the next move, this is known as **Progress percentage**.  This is then blended into the **Safety percentage** to create a final score. The idea here is that a tile with 90% safety and 10% progress isn't as good as a move with 85% safety and 85% progress.  This method is not perfect but has been emperically shown to provide better results than picking the safest tile.
+
+An interesting statistic is that to win a classic expert game of minesweeper the solver is required, on average, to make 3.3 guesses.  From this we can see that once the game has opened up it is common to be a able to make significant progress before a guess is needed again. For higher density boards the number of guesses required goes up and the value of looking for progress diminishes. When the mine density reaches a certain point the tie break switches to choosing the tile which has the best chance of reducing the solution space the most.
+
+
+## Brute force analysis
+
+The brute force analysis takes a board and (conceptionally) plays every combination of move against every combination of mines and determines the best way to play to maximise the chance of winning.  This algorithm finds a perfect path to play the game, but is hugely processor intensive.  The solver will attempt to use this method when the number of solutions remaining is 750 or less.  If it is successful then we can be certain that the solver has played (one of) the best paths to victory. It also allows the solver to say precisely how likely the game is to be won with best play.
+
