@@ -1060,6 +1060,7 @@ function solver(board, options) {
 
     }
 
+    /*
     function formatSolutions(count) {
 
         if (count > maxSolutionsDisplay) {
@@ -1080,6 +1081,7 @@ function solver(board, options) {
         }
 
     }
+    */
 
     function writeToConsole(text, always) {
 
@@ -1096,6 +1098,28 @@ function solver(board, options) {
 }
 
 // shared functions
+
+function formatSolutions(count) {
+
+    if (count > maxSolutionsDisplay) {
+        var work = count;
+        var index = 3;
+        var power = 0;
+        while (work > power10n[index * 2]) {
+            work = work / power10n[index];
+            power = power + index;
+        }
+
+        var value = divideBigInt(work, power10n[index], 3);
+        power = power + 3;
+
+        return " Approximately " + value + " * 10<sup>" + power + "</sup> possible solutions remain.";
+    } else {
+        return " " + count.toLocaleString() + " possible solutions remain.";
+    }
+
+}
+
 
 function combination(mines, squares) {
 

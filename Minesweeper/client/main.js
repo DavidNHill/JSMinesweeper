@@ -73,6 +73,10 @@ var localStorageSelection = document.getElementById("localStorageSelection");
 var analysisMode = false;
 var previousBoardHash = 0;
 var justPressedAnalyse = false;
+var dragging = false;  //whether we are dragging the cursor
+var dragTile;          // the last tile dragged over
+var analysing = false;  // try and prevent the analyser running twice if pressed more than once
+
 
 // add a listener for when the client exists the page
 
@@ -142,12 +146,17 @@ async function startup() {
 
     // add a listener for mouse clicks on the canvas
     canvas.addEventListener("mousedown", (event) => on_click(event));
-    canvas.addEventListener('mousemove', followCursor, false);
+    canvas.addEventListener("mouseup", (event) => mouseUpEvent(event));
+    //canvas.addEventListener('mousemove', followCursor, false);
+    canvas.addEventListener('mousemove', (event) => followCursor(event));
     canvas.addEventListener('wheel', (event) => on_mouseWheel(event));
     canvas.addEventListener('mouseenter', (event) => on_mouseEnter(event));
     canvas.addEventListener('mouseleave', (event) => on_mouseLeave(event));
 
     docMinesLeft.addEventListener('wheel', (event) => on_mouseWheel_minesLeft(event));
+
+    // add some hot key 
+    document.addEventListener('keyup', event => { keyPressedEvent(event) });
 
     currentGameDescription = localStorage.getItem(GAME_DESCRIPTION_KEY);
 
@@ -500,9 +509,39 @@ function browserResized() {
 
 }
 
-function doAnalysis() {
+function keyPressedEvent(e) {
 
-    console.log("Doing analysis");
+    console.log("Key pressed: " + e.key);
+    if (e.key == 'a') {
+         if (!analysisButton.disabled) {  // don't allow the hotkey if the button is disabled
+            doAnalysis();
+        }
+        
+    } else if (e.key == 'l') {
+        if (analysisMode) {
+            lockMineCount.checked = !lockMineCount.checked;
+        }
+    }
+
+}
+
+async function sleep(msec) {
+    return new Promise(resolve => setTimeout(resolve, msec));
+}
+
+async function doAnalysis() {
+
+    if (canvasLocked) {
+        console.log("Already analysing... request rejected");
+        return;
+    } else {
+        console.log("Doing analysis");
+        canvasLocked = true;
+    }
+
+    // put out a message and wait long enough for the ui to update
+    showMessage("Analysing...");
+    await sleep(1);
 
     // this will set all the obvious mines which makes the solution counter a lot more efficient on very large boards
     board.resetForAnalysis();
@@ -521,7 +560,10 @@ function doAnalysis() {
             options.playStyle = PLAY_STYLE_EFFICIENCY;
         } 
 
-        var hints = solver(board, options).actions;  // look for solutions
+        //var hints = solver(board, options).actions;  // look for solutions
+
+        var solve = solver(board, options);  // look for solutions
+        var hints = solve.actions;
 
         justPressedAnalyse = true;
 
@@ -530,6 +572,10 @@ function doAnalysis() {
         showMessage("The board is in an invalid state");
         window.requestAnimationFrame(() => renderHints([]));
     }
+
+    // by delaying removing the logical lock we absorb any secondary clicking of the button / hot key
+    setTimeout(function () { canvasLocked = false; }, 200);
+    //canvasLocked = false;
 
 }
 
@@ -558,7 +604,9 @@ function checkBoard() {
 
     if (solutionCounter.finalSolutionsCount != 0) {
         analysisButton.disabled = false;
-        showMessage("The board has " + solutionCounter.finalSolutionsCount + " possible solutions");
+        //showMessage("The board has" + solutionCounter.finalSolutionsCount + " possible solutions");
+        showMessage("The board is valid." + formatSolutions(solutionCounter.finalSolutionsCount));
+        
     } else {
         analysisButton.disabled = true;
         showMessage("The board is in an invalid state");
@@ -598,6 +646,27 @@ function followCursor(e) {
     var row = Math.floor(event.offsetY / TILE_SIZE);
     var col = Math.floor(event.offsetX / TILE_SIZE);
 
+    if (dragging && analysisMode) {
+
+        var tile = board.getTileXY(col, row);
+
+        if (!tile.isEqual(dragTile)) {
+
+            dragTile = tile;  // remember the latest tile
+
+            if (tile.isCovered()) {
+                var flagCount = board.adjacentFoundMineCount(tile);
+                tile.setValue(flagCount);
+            } else {
+                tile.setCovered(true);
+            }
+
+            // update the graphical board
+            window.requestAnimationFrame(() => renderTiles([tile]));
+        }
+
+    }
+
     if (row >= board.height || row < 0 || col >= board.width || col < 0) {
         //console.log("outside of game boundaries!!");
         tooltip.innerText = "";
@@ -611,15 +680,27 @@ function followCursor(e) {
 
 }
 
+function mouseUpEvent(e) {
+    if (dragging && e.which == 1) {
+        console.log("Dragging stopped due to  mouse up event");
+        dragging = false;
+    }
+}
+
 function on_mouseEnter(e) {
 
     tooltip.style.display = "inline-block";
-
+ 
 }
 
 function on_mouseLeave(e) {
 
     tooltip.style.display = "none";
+
+    if (dragging) {
+        console.log("Dragging stopped due to mouse off canvas");
+        dragging = false;
+    }
 
 }
 
@@ -648,9 +729,8 @@ function on_click(event) {
     if (row >= board.height || row < 0 || col >= board.width || col < 0) {
         console.log("Click outside of game boundaries!!");
         return;
-    } else if (analysisMode) {  // analysis mode
 
-        //board.resetForAnalysis();
+    } else if (analysisMode) {  // analysis mode
 
         var button = event.which
 
@@ -668,6 +748,10 @@ function on_click(event) {
             if (!board.isStarted()) {
                  board.setStarted();
             }
+
+            // allow for dragging and remember the tile we just changed
+            dragging = true;
+            dragTile = tile;
 
             if (tile.isCovered()) {
                 var flagCount = board.adjacentFoundMineCount(tile);
@@ -1062,7 +1146,8 @@ async function sendActionsMessage(message) {
         if (assistedPlay) {
             hints = assistedPlayHints;
         } else {
-            hints = solver(board, options).actions;  // look for solutions
+            var solve = await solver(board, options);  // look for solutions
+            hints = solve.actions;
         }
 
         var solverDuration = Date.now() - solverStart;
