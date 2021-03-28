@@ -13,6 +13,8 @@ The solver has a 40.5% win rate on classic expert (30x16/99 safe start in a corn
 
 The landing screen provides access to the Minesweeper player.  
 
+![Landing screen](resources/ReadmeImages/LandingScreen.jpg)
+
 Basic Options:
 - Opening on start: Determines whether the first click is a guaranteed opening or only guaranteed safe.
 - Beginner:  9x9/10.
@@ -37,6 +39,8 @@ The analysis button can be used to force the solver to analyse the current games
 
 To access the analyser toggle select the 'Analysis mode' switch and press the *Reset board* button which has replaced the *New Game* button.
 
+![Empty Analysis screen](resources/ReadmeImages/AnalysisEmpty.jpg)
+
 To start you are presented with a blank board which is either all *zeros* or all *hidden* depending on the option you have selected.
 
 From here you can construct the position you wish to analyse. This is best done in the following order:
@@ -48,6 +52,8 @@ From here you can construct the position you wish to analyse. This is best done 
 6. Use the mousewheel to adjust the mine count showing how many mines left to find.  The value can be adjusted by 10s or 1s depending on which digit the mouse is over
 
 If the board is valid the **Analyse** button will be enabled and pressing this (or the 'a' hotkey) will start the analyser. 
+
+![Analysis screen](resources/ReadmeImages/AnalysisScreen.jpg)
 
 The safe tiles are shown in green and the mines in red. If no certain move is available then the solver will highlight the move it considers best in yellow with a green centre.  Other moves it considered but rejected are shown in yellow. Tiles highlighted in grey can have only one possible value and it is never correct to play these when there are other moves available.
 
@@ -78,6 +84,8 @@ The probability engine calculates the chance that a tile is a mine for every hid
 
 As part of the probability engine some tiles can be discovered that are either mines or have only one possible value. These are refered to as **dead tiles** and it is never correct to choose a dead tile unless all the tiles left in the game are dead. In which case the game has no more information to be discovered and the result is down to luck.
 
+![Probability engine](resources/ReadmeImages/SolverPE.jpg)
+
 ## 50/50 and pseudo-50/50 detection
 
 A 2-tile 50/50 is a pair of tiles which share 1 mine where one of the tiles can never receive information without the other tile also receiving the same information.  In this situation there is no way to differentiate between the two tiles and they must be (and always will be) an unavoidable guess with 50% chance of being correct.  Since the 50/50 will never change it is always correct to guess these at the earliest possible moment, since they might provide information to their neighbouring tiles. In practice this processing has a dependency on the probability engine and so the solver can only find these after that has run.
@@ -91,6 +99,8 @@ A *pseudo-50/50* is a situation where a set of tiles is either safe or part of a
 The solver can discover
 - 2-tile pseuso-50/50s
 - 4-tile 2x2 pseudo-50/50s
+
+![Solver 50/50](resources/ReadmeImages/Solver5050.jpg)
 
 It is unable to discover extended pseudo-50/50s.
 
@@ -106,4 +116,6 @@ An interesting statistic is that to win a classic expert game of minesweeper the
 ## Brute force analysis
 
 The brute force analysis takes a board and (conceptionally) plays every combination of move against every combination of mines and determines the best way to play to maximise the chance of winning.  This algorithm finds a perfect path to play the game, but is hugely processor intensive.  The solver will attempt to use this method when the number of solutions remaining is 750 or less.  If it is successful then we can be certain that the solver has played (one of) the best paths to victory. It also allows the solver to say precisely how likely the game is to be won with best play.
+
+![Brute force screen](resources/ReadmeImages/SolverBFDA.jpg)
 
