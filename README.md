@@ -80,7 +80,7 @@ As part of the probability engine some tiles can be discovered that are either m
 
 ## 50/50 and pseudo-50/50 detection
 
-A 2-tile 50/50 is a pair of tiles where one of the tiles can never receive information without the other tile also receiving the same information.  In this situation there is no way to differentiate between the two tiles and they must be (and always will be) an unavoidable guess with 50% chance of being correct.  Since the 50/50 will never change it is always correct to guess these at the earliest possible moment, since they might provide information to their neighbouring tiles. In practice this processing has a dependency on the probability engine and so the solver can only find these after that has run.
+A 2-tile 50/50 is a pair of tiles which share 1 mine where one of the tiles can never receive information without the other tile also receiving the same information.  In this situation there is no way to differentiate between the two tiles and they must be (and always will be) an unavoidable guess with 50% chance of being correct.  Since the 50/50 will never change it is always correct to guess these at the earliest possible moment, since they might provide information to their neighbouring tiles. In practice this processing has a dependency on the probability engine and so the solver can only find these after that has run.
 
 The solver can discover:
 - arbitrarily extended 2-tile 50/50s.  
