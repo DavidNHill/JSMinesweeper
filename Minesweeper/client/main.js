@@ -70,11 +70,15 @@ var localStorageButton = document.getElementById("localStorageButton");
 var localStorageModal = document.getElementById("localStorage");
 var localStorageSelection = document.getElementById("localStorageSelection");
 
+//properties panel
+var propertiesPanel = document.getElementById("properties");
+
 var analysisMode = false;
 var previousBoardHash = 0;
 var justPressedAnalyse = false;
 var dragging = false;  //whether we are dragging the cursor
 var dragTile;          // the last tile dragged over
+var hoverTile;         // tile the mouse last moved over
 var analysing = false;  // try and prevent the analyser running twice if pressed more than once
 
 
@@ -147,8 +151,7 @@ async function startup() {
     // add a listener for mouse clicks on the canvas
     canvas.addEventListener("mousedown", (event) => on_click(event));
     canvas.addEventListener("mouseup", (event) => mouseUpEvent(event));
-    //canvas.addEventListener('mousemove', followCursor, false);
-    canvas.addEventListener('mousemove', (event) => followCursor(event));
+     canvas.addEventListener('mousemove', (event) => followCursor(event));
     canvas.addEventListener('wheel', (event) => on_mouseWheel(event));
     canvas.addEventListener('mouseenter', (event) => on_mouseEnter(event));
     canvas.addEventListener('mouseleave', (event) => on_mouseLeave(event));
@@ -159,6 +162,10 @@ async function startup() {
     document.addEventListener('keyup', event => { keyPressedEvent(event) });
 
     currentGameDescription = localStorage.getItem(GAME_DESCRIPTION_KEY);
+
+    // make the properties div draggable
+    dragElement(propertiesPanel);
+    propertiesClose();
 
     // initialise the solver
     solver();
@@ -240,6 +247,13 @@ function fetchLocalStorage() {
 
 }
 
+function propertiesClose() {
+    propertiesPanel.style.display = "none";
+}
+
+function propertiesOpen() {
+    propertiesPanel.style.display = "block";
+}
 
 
 // render an array of tiles to the canvas
@@ -512,16 +526,68 @@ function browserResized() {
 function keyPressedEvent(e) {
 
     console.log("Key pressed: " + e.key);
+    var newValue = null;
     if (e.key == 'a') {
-         if (!analysisButton.disabled) {  // don't allow the hotkey if the button is disabled
+        if (!analysisButton.disabled) {  // don't allow the hotkey if the button is disabled
             doAnalysis();
         }
-        
-    } else if (e.key == 'l') {
-        if (analysisMode) {
+
+    } else if (analysisMode) {
+        if (e.key == 'l') {   // 'L'
             lockMineCount.checked = !lockMineCount.checked;
+        } else if (e.key == '0') {  
+            newValue = 0;
+        } else if (e.key == '1') {  // '1'
+            newValue = 1;
+        } else if (e.key == '2') {  
+            newValue = 2;
+        } else if (e.key == '3') {  
+            newValue = 3;
+        } else if (e.key == '4') {  
+            newValue = 4;
+        } else if (e.key == '5') {  
+            newValue = 5;
+        } else if (e.key == '6') {  
+            newValue = 6;
+        } else if (e.key == '7') {  
+            newValue = 7;
+        } else if (e.key == '8') {  
+            newValue = 8;
+        } else if (e.key == 'h') {
+            var tile = hoverTile;
+            tile.setCovered(true);
+            window.requestAnimationFrame(() => renderTiles([tile]));
+        } else if (e.key == 'f') {
+            var tile = hoverTile;
+            var tilesToUpdate = analysis_toggle_flag(tile);
+            window.requestAnimationFrame(() => renderTiles(tilesToUpdate));
         }
     }
+
+    if (newValue == null) {
+        return;
+    }
+
+    var tile = hoverTile;
+
+    console.log('tile is' + tile);
+    // can't replace a flag
+    if (tile == null || tile.isFlagged()) {
+        return;
+    }
+
+    var flagCount = board.adjacentFoundMineCount(tile);
+    var covered = board.adjacentCoveredCount(tile);
+
+    // check it is a legal value
+    if (newValue < flagCount || newValue > flagCount + covered) {
+        return;
+    }
+
+    tile.setValue(newValue);
+
+    // update the graphical board
+    window.requestAnimationFrame(() => renderTiles([tile]));
 
 }
 
@@ -632,6 +698,11 @@ function draw(x, y, tileType) {
 // have the tooltip follow the mouse
 function followCursor(e) {
 
+    // get the tile we're over
+    var row = Math.floor(event.offsetY / TILE_SIZE);
+    var col = Math.floor(event.offsetX / TILE_SIZE);
+    hoverTile = board.getTileXY(col, row);
+
     // if not showing hints don't show tooltip
     if (!showHintsCheckBox.checked && !analysisMode && !justPressedAnalyse) {
         tooltip.innerText = "";
@@ -643,12 +714,9 @@ function followCursor(e) {
     tooltip.style.left = (TILE_SIZE + e.clientX - 220) + 'px';
     tooltip.style.top = (e.clientY - TILE_SIZE * 1.5 - 70) + 'px';
 
-    var row = Math.floor(event.offsetY / TILE_SIZE);
-    var col = Math.floor(event.offsetX / TILE_SIZE);
-
     if (dragging && analysisMode) {
 
-        var tile = board.getTileXY(col, row);
+        var tile = hoverTile;
 
         if (!tile.isEqual(dragTile)) {
 
@@ -694,6 +762,8 @@ function on_mouseEnter(e) {
 }
 
 function on_mouseLeave(e) {
+
+    hoverTile = null;
 
     tooltip.style.display = "none";
 
@@ -764,6 +834,10 @@ function on_click(event) {
 
         } else if (button == 3) {  // right mouse button
 
+            // toggle the flag and return the tiles which need to be redisplayed
+            tiles = analysis_toggle_flag(tile);
+
+            /*
             if (!tile.isCovered()) {
                 tile.setCovered(true);
             }
@@ -801,9 +875,9 @@ function on_click(event) {
                     tiles.push(adjTile);
                 }
             }
-
             tile.toggleFlag();
-            tiles.push(tile);
+
+            */
 
             console.log("Number of bombs " + board.num_bombs + "  bombs left to find " + board.bombs_left);
         }
@@ -877,6 +951,59 @@ function on_click(event) {
 
 }
 
+/**
+ * toggle the flag and update any adjacent tiles
+ * Return the tiles which need to be redisplayed
+ */
+function analysis_toggle_flag(tile) {
+
+    var tiles = [];
+
+    if (!tile.isCovered()) {
+        tile.setCovered(true);
+    }
+
+    var delta;
+    if (tile.isFlagged()) {
+        delta = -1;
+        tile.foundBomb = false;  // in analysis mode we believe the flags are mines
+    } else {
+        delta = 1;
+        tile.foundBomb = true;  // in analysis mode we believe the flags are mines
+    }
+
+    // if we have locked the mine count then adjust the bombs left 
+    if (lockMineCount.checked) {
+        if (delta == 1 && board.bombs_left == 0) {
+            showMessage("Can't reduce mines to find to below zero whilst the mine count is locked");
+            return tiles;
+        }
+        board.bombs_left = board.bombs_left - delta;
+        window.requestAnimationFrame(() => updateMineCount(board.bombs_left));
+
+    } else {   // otherwise adjust the total number of bombs
+        var tally = board.getFlagsPlaced();
+        board.num_bombs = tally + board.bombs_left + delta;
+    }
+
+    // if the adjacent tiles values are in step then keep them in step
+    var adjTiles = board.getAdjacent(tile);
+    for (var i = 0; i < adjTiles.length; i++) {
+        var adjTile = adjTiles[i];
+        var adjFlagCount = board.adjacentFlagsPlaced(adjTile);
+        if (adjTile.getValue() == adjFlagCount) {
+            adjTile.setValueOnly(adjFlagCount + delta);
+            tiles.push(adjTile);
+        }
+    }
+
+    tile.toggleFlag();
+    tiles.push(tile);
+
+    return tiles;
+}
+
+
 function on_mouseWheel(event) {
 
     if (!analysisMode) {
@@ -899,7 +1026,11 @@ function on_mouseWheel(event) {
     var flagCount = board.adjacentFoundMineCount(tile);
     var covered = board.adjacentCoveredCount(tile);
 
-    var newValue = tile.getValue() + delta;
+    if (tile.isCovered()) {
+        newValue = flagCount;
+    } else {
+        var newValue = tile.getValue() + delta;
+    }
  
     if (newValue < flagCount) {
         newValue = flagCount + covered;
@@ -1228,6 +1359,50 @@ async function callKillGame(id) {
 
     console.log("<== " + JSON.stringify(reply));
 
+}
+
+// generic function to make a div dragable (https://www.w3schools.com/howto/howto_js_draggable.asp)
+function dragElement(elmnt) {
+    var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+    if (document.getElementById(elmnt.id + "Header")) {
+        // if present, the header is where you move the DIV from:
+        document.getElementById(elmnt.id + "Header").onmousedown = dragMouseDown;
+    } else {
+        // otherwise, move the DIV from anywhere inside the DIV:
+        elmnt.onmousedown = dragMouseDown;
+    }
+
+    function dragMouseDown(e) {
+        e = e || window.event;
+        e.preventDefault();
+        // get the mouse cursor position at startup:
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+        //console.log("Pos3=" + pos3 + ", Pos4=" + pos4);
+        document.onmouseup = closeDragElement;
+        // call a function whenever the cursor moves:
+        document.onmousemove = elementDrag;
+    }
+
+    function elementDrag(e) {
+        e = e || window.event;
+        e.preventDefault();
+        // calculate the new cursor position:
+        pos1 = pos3 - e.clientX;
+        pos2 = pos4 - e.clientY;
+        //console.log("Pos1=" + pos1 + ", Pos2=" + pos2);
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+        // set the element's new position:
+        elmnt.style.top = (elmnt.offsetTop - pos2 - 25) + "px";
+        elmnt.style.left = (elmnt.offsetLeft - pos1 - 5) + "px";
+    }
+
+    function closeDragElement() {
+        // stop moving when mouse button is released:
+        document.onmouseup = null;
+        document.onmousemove = null;
+    }
 }
 
 // load an image 

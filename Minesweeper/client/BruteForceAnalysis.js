@@ -1,7 +1,7 @@
 "use strict";
 
 // constants used in this processing
-const BRUTE_FORCE_ANALYSIS_MAX_NODES = 500000;
+const BRUTE_FORCE_ANALYSIS_MAX_NODES = 1000000;
 const PRUNE_BF_ANALYSIS = true;
 const BRUTE_FORCE_ANALYSIS_TREE_DEPTH = 4;
 

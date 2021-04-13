@@ -231,3 +231,32 @@ button:hover {
     border-width: 5px;
     box-shadow: rgba(0, 0, 0, 0.6) 10px 10px 6px;
 }
+
+#properties {
+    position: absolute;
+    display:none;
+    z-index: 9;
+    left: 80%;
+    top: 40px;
+    margin: 20px auto; /* 15% from the top and centered */
+    padding: 0px;
+    background-color: #ccc;
+    border-color: #eee;
+    border-style: ridge;
+    border-width: 5px;
+    box-shadow: rgba(0, 0, 0, 0.6) 10px 10px 6px;
+}
+
+#propertiesHeader {
+    padding: 10px;
+    cursor: move;
+    z-index: 10;
+    border-color: #eee;
+    border-style: ridge;
+    border-top-width: 0px;
+    border-left-width: 0px;
+    border-bottom-width: 5px;
+    border-right-width: 0px;
+}
+
+

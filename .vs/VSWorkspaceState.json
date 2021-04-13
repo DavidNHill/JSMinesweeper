@@ -3,8 +3,10 @@
     "",
     "\\Minesweeper",
     "\\Minesweeper\\client",
-    "\\Minesweeper\\Utility"
+    "\\Minesweeper\\Utility",
+    "\\resources",
+    "\\resources\\ReadmeImages"
   ],
-  "SelectedNode": "\\README.md",
+  "SelectedNode": "\\resources\\ReadmeImages\\Solver5050.jpg",
   "PreviewInSolutionExplorer": false
 }

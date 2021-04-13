@@ -130,6 +130,7 @@ class SolutionCounter {
 
         // if the board isn't valid then solution count is zero
         if (!this.validWeb) {
+            console.log("Web is invalid");
             this.finalSolutionsCount = BigInt(0);
             this.clearCount = 0;
             return;

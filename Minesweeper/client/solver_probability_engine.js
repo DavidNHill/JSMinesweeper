@@ -52,6 +52,7 @@ class ProbabilityEngine {
         this.independentIterations = BigInt(1);
         this.remainingSquares = 0;
 
+        this.clearCount = 0;
         this.localClears = [];
 
         this.minesFound = [];  // discovered mines are stored in here
@@ -60,12 +61,25 @@ class ProbabilityEngine {
 
         this.isolatedEdgeBruteForce;
 
+        this.validWeb = true;
+
+        // can't have less than zero mines
+        if (minesLeft < 0) {
+            this.validWeb = false;
+            return;
+        }
+
         // generate a BoxWitness for each witness tile and also create a list of pruned witnesses for the brute force search
         var pruned = 0;
         for (var i = 0; i < allWitnesses.length; i++) {
             var wit = allWitnesses[i];
 
             var boxWit = new BoxWitness(this.board, wit);
+
+            // can't have too many or too few mines 
+            if (boxWit.minesToFind < 0 || boxWit.mineToFind > boxWit.tiles.length) {
+                this.validWeb = false;
+            }
 
             // if the witness is a duplicate then don't store it
             var duplicate = false;
@@ -377,6 +391,13 @@ class ProbabilityEngine {
     // calculate a probability for each un-revealed tile on the board
 	process() {
 
+        // if the board isn't valid then solution count is zero
+        if (!this.validWeb) {
+            this.finalSolutionsCount = BigInt(0);
+            this.clearCount = 0;
+            return;
+        }
+
         var peStart = Date.now();
 
         // create an array showing which boxes have been procesed this iteration - none have to start with
@@ -415,6 +436,8 @@ class ProbabilityEngine {
         // if we don't have any local clears then do a full probability determination
         if (this.localClears.length == 0) {
             this.calculateBoxProbabilities();
+        } else {
+            this.bestProbability = 1;
         }
 
         this.duration = Date.now() - peStart;
@@ -615,7 +638,8 @@ class ProbabilityEngine {
         //this.checkCandidateDeadLocations();
 
         if (this.workingProbs.length == 0) {
-            this.writeToConsole("working probabilites list is empty!!", true);
+            //this.writeToConsole("working probabilites list is empty!!", true);
+            this.heldProbs = [];
         	return;
         } 
 
@@ -850,7 +874,7 @@ class ProbabilityEngine {
                             var tile = this.boxes[i].tiles[j];
 
                             this.writeToConsole(tile.asText() + " has been determined to be locally clear");
-                            tile.setProbability(1);
+                            //tile.setProbability(1);
                             this.localClears.push(tile);
                         }
                     }
@@ -870,7 +894,7 @@ class ProbabilityEngine {
                             var tile = this.boxes[i].tiles[j];
 
                             this.writeToConsole(tile.asText() + " has been determined to be locally a mine");
-                            tile.setProbability(0);
+                            //tile.setProbability(0);
                             this.minesFound.push(tile);
                         }
                     }
@@ -1362,7 +1386,7 @@ class ProbabilityEngine {
             // for each tile in the box allocate a probability to it
             for (var j = 0; j < this.boxes[i].tiles.length; j++) {
                 //console.log(this.boxes[i].tiles[j].asText() + " set to probability " + this.boxProb[i]);
-                this.boxes[i].tiles[j].setProbability(this.boxProb[i]);
+                //this.boxes[i].tiles[j].setProbability(this.boxProb[i]);
 
                 if (this.boxProb[i] == 0) {
                     //console.log(this.boxes[i].tiles[j].asText() + " set to mine");
@@ -1402,6 +1426,18 @@ class ProbabilityEngine {
 
         this.finalSolutionsCount = totalTally;
 
+
+        // count how many clears we have
+        this.localClears = [];
+        if (totalTally > 0) {
+            for (var i = 0; i < this.boxes.length; i++) {
+                if (tally[i] == 0) {
+                    this.clearCount = this.clearCount + this.boxes[i].tiles.length;
+                    this.localClears.push(...this.boxes[i].tiles);
+                }
+            }
+        }
+
         // see if we can find a guess which is better than outside the boxes
         var hwm = 0;
 
@@ -1435,7 +1471,7 @@ class ProbabilityEngine {
             var prob = this.boxProb[b.uid];
             if (boxLiving || prob == 1) {   // if living or 100% safe then consider this probability
 
-                if (hwm <= prob) {
+                if (hwm < prob) {
                      hwm = prob;
                 }
             }

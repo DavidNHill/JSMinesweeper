@@ -146,11 +146,13 @@ class Tile {
 
 	// this is set when the solver discovers a bomb - trying to separate the discovery of a bomb from the flagging of a tile
 	setFoundBomb() {
+		//console.log(this.asText() + " set to Found Bomb");
 		this.foundBomb = true;
 	}
 
 	// this is used when a tile is speculatively set to a mine to see if the board is still valid
 	unsetFoundBomb() {
+		//console.log(this.asText() + " set to not Found Bomb");
 		this.foundBomb = false;
 	}
 

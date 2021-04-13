@@ -239,11 +239,13 @@ function solver(board, options) {
         // have we found any local clears which we can use or everything off the edge is safe
         if (pe.localClears.length > 0) {
             for (var tile of pe.localClears) {   // place each local clear into an action
+                tile.setProbability(1);
                 var action = new Action(tile.getX(), tile.getY(), 1, ACTION_CLEAR);
                 result.push(action);
             }
 
             for (var tile of pe.minesFound) {   // place each found flag
+                tile.setProbability(0);
                 tile.setFoundBomb();
                 if (options.playStyle == PLAY_STYLE_FLAGS) {
                     var action = new Action(tile.getX(), tile.getY(), 0, ACTION_FLAG);
@@ -253,6 +255,13 @@ function solver(board, options) {
 
             showMessage("The probability engine has found " + pe.localClears.length + " safe clears and " + pe.minesFound.length + " mines");
             return new EfficiencyHelper(board, witnesses, result, options.playStyle).process();
+        }
+
+        // Set the probability for each tile on the edge 
+        for (var i = 0; i < pe.boxes.length; i++) {
+            for (var j = 0; j < pe.boxes[i].tiles.length; j++) {
+                 pe.boxes[i].tiles[j].setProbability(pe.boxProb[i]);
+            }
         }
 
         // set all off edge probabilities
@@ -384,12 +393,6 @@ function solver(board, options) {
                     var nextmove = bfda.getNextMove();
                     result.push(nextmove);
 
-                    //for (var tile of bfda.deadTiles) {   // show all dead tiles when deep analysis is happening
-                    //    var action = new Action(tile.getX(), tile.getY(), tile.probability);
-                    //    action.dead = true;
-                    //    result.push(action);
-                    //}
-
                     deadTiles = bfda.deadTiles;
                     var winChanceText = (bfda.winChance * 100).toFixed(2);
                     showMessage("The solver has calculated the best move has a " + winChanceText + "% chance to win the game." + formatSolutions(pe.finalSolutionsCount));
@@ -398,15 +401,6 @@ function solver(board, options) {
                     showMessage("The solver has calculated that all the remaining tiles are dead." + formatSolutions(pe.finalSolutionsCount));
                     deadTiles = allCoveredTiles;   // all the tiles are dead
                 }
-
-                // identify the dead tiles
-                //for (var tile of deadTiles) {   // show all dead tiles 
-                //   if (tile.probability != 0) {   // a mine isn't dead
-                //        var action = new Action(tile.getX(), tile.getY(), tile.probability);
-                //        action.dead = true;
-                //        result.push(action);
-                //    }
-                //}
 
                 return addDeadTiles(result, deadTiles);
             } else {
@@ -503,6 +497,8 @@ function solver(board, options) {
 
     function tieBreak(pe, actions) {
 
+        var start = Date.now();
+
         var best;
         for (var action of actions) {
 
@@ -510,14 +506,16 @@ function solver(board, options) {
                 continue;
             }
 
-            if (best != null) {
-                if (action.prob * (1 + PROGRESS_CONTRIBUTION) < best.weight) {
-                    writeToConsole("(" + action.x + "," + action.y + ") is ignored because it can never do better than the best");
-                    continue;
-                }
-            }
+            //if (best != null) {
+            //   if (action.prob * (1 + PROGRESS_CONTRIBUTION) < best.weight) {
+            //        writeToConsole("(" + action.x + "," + action.y + ") is ignored because it can never do better than the best");
+            //        continue;
+            //    }
+            //}
 
-            fullAnalysis(pe, board, action);  // updates variables in the Action class
+            //fullAnalysis(pe, board, action, best);  // updates variables in the Action class
+
+            secondarySafetyAnalysis(pe, board, action, best) // updates variables in the Action class
 
             if (best == null || best.weight < action.weight) {
                 best = action;
@@ -559,6 +557,8 @@ function solver(board, options) {
 
         writeToConsole("Solver recommends (" + actions[0].x + "," + actions[0].y + ")", true);
 
+        writeToConsole("Best Guess analysis took " + (Date.now() - start) + " milliseconds to complete");
+
         return actions;
 
     }
@@ -576,7 +576,7 @@ function solver(board, options) {
             if (alt.prob - action.prob > 0.001) {  // the alternative move is at least a bit safe than the current move
                 for (var tile of action.commonClears) {  // see if the move is in the list of common safe tiles
                     if (alt.x == tile.x && alt.y == tile.y) {
-                        writeToConsole("Replacing " + action.asText() + " with " + alt.asText());
+                        writeToConsole("Replacing " + action.asText() + " with " + alt.asText() + " because it dominates");
 
                         actions[0] = alt;
                         actions[i] = action;
@@ -788,11 +788,10 @@ function solver(board, options) {
 
     }
 
-    function fullAnalysis(pe, board, action) {
+    function fullAnalysis(pe, board, action, best) {
 
-        var start = Date.now();
-
-        var tile = board.getTileXY(action.x, action.y);
+         var tile = board.getTileXY(action.x, action.y);
+        //var box = pe.getBox(tile);
 
         var adjFlags = board.adjacentFoundMineCount(tile);
         var adjCovered = board.adjacentCoveredCount(tile);
@@ -801,10 +800,26 @@ function solver(board, options) {
         var expectedClears = BigInt(0);
         var maxSolutions = BigInt(0);
 
+        var probThisTile = action.prob;
+        var probThisTileLeft = action.prob;  // this is used to calculate when we can prune this action
+
         // this is used to hold the tiles which are clears for all the possible values
         var commonClears = null;
 
         for (var value = adjFlags; value <= adjCovered + adjFlags; value++) {
+
+            var progress = divideBigInt(solutions, pe.finalSolutionsCount, 6);
+            var bonus = 1 + (progress + probThisTileLeft) * PROGRESS_CONTRIBUTION;
+            var weight = probThisTile * bonus;
+
+            if (best != null && weight < best.weight) {
+                writeToConsole("(" + action.x + "," + action.y + ") is being pruned");
+                action.weight = weight;
+                action.pruned = true;
+
+                tile.setCovered(true);   // make sure we recover the tile
+                return;
+            }
 
             tile.setValue(value);
 
@@ -816,6 +831,10 @@ function solver(board, options) {
                 } else {
                     commonClears = andClearTiles(commonClears, work.getLocalClears());
                 }
+
+                var probThisTileValue = divideBigInt(work.finalSolutionsCount, pe.finalSolutionsCount, 6);
+                probThisTileLeft = probThisTileLeft - probThisTileValue;
+
             }
 
 
@@ -845,7 +864,6 @@ function solver(board, options) {
 
         tile.setProbability(action.prob, action.progress);
 
-        writeToConsole("Full analysis took " + (Date.now() - start) + " milliseconds to complete");
         writeToConsole(tile.asText() + ", progress = " + action.progress + ", weight = " + action.weight + ", expected clears = " + action.expectedClears + ", common clears = " + commonClears.length);
 
     }
@@ -924,6 +942,167 @@ function solver(board, options) {
         //console.log("solution counter took " + (Date.now() - start) + " milliseconds to complete, clears " + solutionCounter.clearCount);
 
         return solutionCounter;
+
+    }
+
+    function secondarySafetyAnalysis(pe, board, action, best) {
+
+        var tile = board.getTileXY(action.x, action.y);
+
+        var adjFlags = board.adjacentFoundMineCount(tile);
+        var adjCovered = board.adjacentCoveredCount(tile);
+
+        var solutionsWithProgess = BigInt(0);
+        var expectedClears = BigInt(0);
+        var maxSolutions = BigInt(0);
+
+        var secondarySafety = 0;
+        var probThisTileLeft = action.prob;  // this is used to calculate when we can prune this action
+
+        // this is used to hold the tiles which are clears for all the possible values
+        var commonClears = null;
+
+        for (var value = adjFlags; value <= adjCovered + adjFlags; value++) {
+
+            var progress = divideBigInt(solutionsWithProgess, pe.finalSolutionsCount, 6);
+            var bonus = 1 + (progress + probThisTileLeft) * 0.1;
+            var weight = (secondarySafety + probThisTileLeft) * bonus;
+
+            if (best != null && weight < best.weight) {
+                writeToConsole("(" + action.x + "," + action.y + ") is being pruned");
+                action.weight = weight;
+                action.pruned = true;
+
+                tile.setCovered(true);   // make sure we recover the tile
+                return;
+            }
+
+            tile.setValue(value);
+
+            var work = runProbabilityEngine(board, null);
+
+            if (work.finalSolutionsCount > 0) {  // if this is a valid board state
+                if (commonClears == null) {
+                    commonClears = work.localClears;
+                } else {
+                    commonClears = andClearTiles(commonClears, work.localClears);
+                }
+
+                var probThisTileValue = divideBigInt(work.finalSolutionsCount, pe.finalSolutionsCount, 6);
+                secondarySafety = secondarySafety + probThisTileValue * work.bestProbability;
+
+                writeToConsole(tile.asText() + " with value " + value + " has probability " + probThisTileValue + ", secondary safety " + work.bestProbability + ", clears " + work.clearCount);
+
+                probThisTileLeft = probThisTileLeft - probThisTileValue;
+             }
+
+            //totalSolutions = totalSolutions + work.finalSolutionsCount;
+            if (work.clearCount > 0) {
+                expectedClears = expectedClears + work.finalSolutionsCount * BigInt(work.clearCount);
+                solutionsWithProgess = solutionsWithProgess + work.finalSolutionsCount;
+            }
+
+            if (work.finalSolutionsCount > maxSolutions) {
+                maxSolutions = work.finalSolutionsCount;
+            }
+
+        }
+
+        tile.setCovered(true);
+
+        action.expectedClears = divideBigInt(expectedClears, pe.finalSolutionsCount, 6);
+
+        var progress = divideBigInt(solutionsWithProgess, pe.finalSolutionsCount, 6);
+
+        action.progress = progress;
+
+        action.weight = secondarySafety * (1 + progress * 0.1);
+        action.maxSolutions = maxSolutions;
+        action.commonClears = commonClears;
+
+        tile.setProbability(action.prob, action.progress);
+        writeToConsole("Tile " + tile.asText() + ", secondary safety = " + secondarySafety + ",  progress = " + action.progress + ", weight = " + action.weight + ", expected clears = " + action.expectedClears + ", common clears = " + commonClears.length);
+
+    }
+
+    function runProbabilityEngine(board, notMines) {
+
+        // find all the tiles which are revealed and have un-revealed / un-flagged adjacent squares
+        var allCoveredTiles = [];
+        var witnesses = [];
+        var witnessed = [];
+
+        var minesLeft = board.num_bombs;
+        var squaresLeft = 0;
+
+        var work = new Set();  // use a map to deduplicate the witnessed tiles
+
+        for (var i = 0; i < board.tiles.length; i++) {
+
+            var tile = board.getTile(i);
+
+            if (tile.isSolverFoundBomb()) {
+                minesLeft--;
+                continue;  // if the tile is a flag then nothing to consider
+            } else if (tile.isCovered()) {
+                squaresLeft++;
+                allCoveredTiles.push(tile);
+                continue;  // if the tile hasn't been revealed yet then nothing to consider
+            }
+
+            var adjTiles = board.getAdjacent(tile);
+
+            var needsWork = false;
+            var minesFound = 0;
+            for (var j = 0; j < adjTiles.length; j++) {
+                var adjTile = adjTiles[j];
+                if (adjTile.isSolverFoundBomb()) {
+                    minesFound++;
+                } else if (adjTile.isCovered()) {
+                    needsWork = true;
+                    work.add(adjTile.index);
+                }
+            }
+
+            // if a witness needs work (still has hidden adjacent tiles) or is broken then add it to the mix
+            if (needsWork || minesFound > tile.getValue()) {
+                witnesses.push(tile);
+            }
+
+        }
+
+        // generate an array of tiles from the map
+        for (var index of work) {
+            var tile = board.getTile(index);
+            tile.setOnEdge(true);
+            witnessed.push(tile);
+        }
+
+        //console.log("tiles left = " + squaresLeft);
+        //console.log("mines left = " + minesLeft);
+        //console.log("Witnesses  = " + witnesses.length);
+        //console.log("Witnessed  = " + witnessed.length);
+
+        var start = Date.now();
+
+        var options = {};
+        options.verbose = false;
+        options.playStyle = PLAY_STYLE_EFFICIENCY;  // this forces the pe to do a complete run even if local clears are found
+
+        var pe = new ProbabilityEngine(board, witnesses, witnessed, squaresLeft, minesLeft, options);
+
+        // let the solution counter know which tiles mustn't contain mines
+        if (notMines != null) {
+            for (var tile of notMines) {
+                pe.setMustBeEmpty(tile);
+            }
+        }
+
+        pe.process();
+
+        //console.log("solution counter took " + (Date.now() - start) + " milliseconds to complete, clears " + solutionCounter.clearCount);
+
+        return pe;
 
     }
 
@@ -1148,6 +1327,7 @@ class Action {
         this.prob = prob;
         this.action = action;
         this.dead = false;
+        this.pruned = false;
 
         // part of full analysis output, until then assume worst case 
         this.progress = 0;
