@@ -99,7 +99,7 @@ The solver can discover:
 - Arbitrarily extended 2-tile 50/50s.  
 - Enclosed 2x2/2 boxes
 
-![Solver 50/50](resources/ReadmeImages/Solver5050-1.jpg)
+![Solver 50/50](resources/ReadmeImages/Solver5050-2.jpg)
 
 A *pseudo-50/50* is a situation where a set of tiles is either safe or part of a 50/50. If it is part of a 50/50 then it is correct to guess immediately. If it is safe it is correct to guess immediately. 
 
@@ -107,7 +107,7 @@ The solver can discover
 - 2-tile pseuso-50/50s
 - 4-tile 2x2 pseudo-50/50s
 
-![Solver pseudo 50/50](resources/ReadmeImages/Pseudo-5050.jpg)
+![Solver pseudo 50/50](resources/ReadmeImages/Solver_pseudo-5050.jpg)
 
 It is unable to discover extended pseudo-50/50s.
 
