@@ -29,7 +29,7 @@ Advanced options:
 - Style - Efficiency: This option allows the solver to use chording and flags are only placed in an attempt to minimize the number of clicks required to solve the game. **This mode seriously impacts performance.**
 - Tile size: use this to select the tile size best suited.  Will take affect next time the game starts or the board is reset.
 - Show hints: The solver will shadow your play and highlight safe plays and (if necessary) what it considers the best guess
-- Auto play: The solver will play the game for you until a guess is required. The solver will show what it considers the best guess, but you must make the final decision.
+- Auto play: The solver will play the game for you until a guess is required.
 - Accept guesses: The solver will play the game until it is won or lost.
 
 The analysis button can be used to force the solver to analyse the current games position.  This is useful if you have turned off all the solver options.
