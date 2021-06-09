@@ -4,9 +4,7 @@
     "\\Minesweeper",
     "\\Minesweeper\\client",
     "\\Minesweeper\\Utility",
-    "\\resources",
-    "\\resources\\ReadmeImages"
+    "\\resources"
   ],
-  "SelectedNode": "\\resources\\ReadmeImages\\Solver5050.jpg",
   "PreviewInSolutionExplorer": false
 }

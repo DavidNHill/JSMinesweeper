@@ -837,48 +837,6 @@ function on_click(event) {
             // toggle the flag and return the tiles which need to be redisplayed
             tiles = analysis_toggle_flag(tile);
 
-            /*
-            if (!tile.isCovered()) {
-                tile.setCovered(true);
-            }
-
-            var delta;
-            if (tile.isFlagged()) {
-                delta = -1;
-                tile.foundBomb = false;  // in analysis mode we believe the flags are mines
-            } else {
-                delta = 1;
-                tile.foundBomb = true;  // in analysis mode we believe the flags are mines
-            }
-
-            // if we have locked the mine count then adjust the bombs left 
-            if (lockMineCount.checked) {
-                if (delta == 1 && board.bombs_left == 0) {
-                    showMessage("Can't reduce mines to find to below zero whilst the mine count is locked");
-                    return;
-                }
-                board.bombs_left = board.bombs_left - delta;
-                window.requestAnimationFrame(() => updateMineCount(board.bombs_left));
-
-            } else {   // otherwise adjust the total number of bombs
-                var tally = board.getFlagsPlaced();
-                board.num_bombs = tally + board.bombs_left + delta;
-            }
-
-            // if the adjacent tiles values are in step then keep them in step
-            var adjTiles = board.getAdjacent(tile);
-            for (var i = 0; i < adjTiles.length; i++) {
-                var adjTile = adjTiles[i];
-                var adjFlagCount = board.adjacentFlagsPlaced(adjTile);
-                if (adjTile.getValue() == adjFlagCount) {
-                    adjTile.setValueOnly(adjFlagCount + delta);
-                    tiles.push(adjTile);
-                }
-            }
-            tile.toggleFlag();
-
-            */
-
             console.log("Number of bombs " + board.num_bombs + "  bombs left to find " + board.bombs_left);
         }
 
@@ -1291,7 +1249,14 @@ async function sendActionsMessage(message) {
 
         //console.log("Rendering " + hints.length + " hints");
         //setTimeout(function () { window.requestAnimationFrame(() => renderHints(hints)) }, 10);  // wait 10 milliseconds to prevent a clash with the renderTiles redraw
-        window.requestAnimationFrame(() => renderHints(hints));
+
+        // only show the hints if the hint box is checked
+        if (showHintsCheckBox.checked) {
+            window.requestAnimationFrame(() => renderHints(hints));
+        } else {
+            window.requestAnimationFrame(() => renderHints([]));  // clear the hints overlay
+            showMessage("Press the 'Analyse' button to see the solvers suggested move.");
+        }
 
         if (autoPlayCheckBox.checked || assistedPlay) {
             if (hints.length > 0 && (hints[0].prob == 1 || hints[0].prob == 0)) {
@@ -1327,7 +1292,7 @@ async function sendActionsMessage(message) {
         canvasLocked = false;
         window.requestAnimationFrame(() => renderHints([]));  // clear the hints overlay
         document.getElementById("canvas").style.cursor = "default";
-        showMessage("The solver is not running.");
+        showMessage("The solver is not running. Press the 'Analyse' button to see the solvers suggested move.");
         currentGameDescription = reply.header;
     }
  
