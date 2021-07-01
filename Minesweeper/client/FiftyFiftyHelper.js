@@ -44,12 +44,12 @@ class FiftyFiftyHelper {
 			for (var j = 0; j < this.board.height; j++) {
 
                 var tile1 = this.board.getTileXY(i, j);
-                if (!tile1.isCovered()) {
+				if (!tile1.isCovered() || tile1.isSolverFoundBomb()) {  // cleared or a known mine
                     continue;
                 }
 
                 var tile2 = this.board.getTileXY(i + 1, j);
-                if (!tile2.isCovered()) {
+				if (!tile2.isCovered() || tile2.isSolverFoundBomb()) {  // cleared or a known mine
                     continue;
                 }
 
@@ -80,12 +80,12 @@ class FiftyFiftyHelper {
             for (var j = 0; j < this.board.height - 1; j++) {
 
                 var tile1 = this.board.getTileXY(i, j);
-                if (!tile1.isCovered()) {
+				if (!tile1.isCovered() || tile1.isSolverFoundBomb()) {  // cleared or a known mine
                     continue;
                 }
 
                 var tile2 = this.board.getTileXY(i, j + 1);
-                if (!tile2.isCovered()) {
+				if (!tile2.isCovered() || tile2.isSolverFoundBomb()) {  // cleared or a known mine
                     continue;
                 }
 

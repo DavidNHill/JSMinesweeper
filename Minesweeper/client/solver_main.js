@@ -1008,6 +1008,11 @@ function solver(board, options) {
 
         }
 
+        // if the common clears list hasn't been initialised then do so hear, to prevent a null error later
+        //if (commonClears == null) {
+        //    commonClears = [];
+        //}
+
         tile.setCovered(true);
 
         action.expectedClears = divideBigInt(expectedClears, pe.finalSolutionsCount, 6);

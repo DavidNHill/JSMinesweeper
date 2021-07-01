@@ -1255,7 +1255,7 @@ async function sendActionsMessage(message) {
             window.requestAnimationFrame(() => renderHints(hints));
         } else {
             window.requestAnimationFrame(() => renderHints([]));  // clear the hints overlay
-            showMessage("Press the 'Analyse' button to see the solvers suggested move.");
+            showMessage("Press the 'Analyse' button to see the solver's suggested move.");
         }
 
         if (autoPlayCheckBox.checked || assistedPlay) {
@@ -1292,7 +1292,7 @@ async function sendActionsMessage(message) {
         canvasLocked = false;
         window.requestAnimationFrame(() => renderHints([]));  // clear the hints overlay
         document.getElementById("canvas").style.cursor = "default";
-        showMessage("The solver is not running. Press the 'Analyse' button to see the solvers suggested move.");
+        showMessage("The solver is not running. Press the 'Analyse' button to see the solver's suggested move.");
         currentGameDescription = reply.header;
     }
  
