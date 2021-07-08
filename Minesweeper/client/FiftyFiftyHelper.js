@@ -122,22 +122,22 @@ class FiftyFiftyHelper {
 
 				// need 4 hidden tiles
 				tiles[0] = this.board.getTileXY(i, j);
-				if (!tiles[0].isCovered()) {
+				if (!tiles[0].isCovered() || tiles[0].isSolverFoundBomb()) {
 					continue;
 				}
 
 				tiles[1] = this.board.getTileXY(i + 1, j);
-				if (!tiles[1].isCovered()) {
+				if (!tiles[1].isCovered() || tiles[1].isSolverFoundBomb()) {
 					continue;
 				}
 
 				tiles[2] = this.board.getTileXY(i, j + 1);
-				if (!tiles[2].isCovered()) {
+				if (!tiles[2].isCovered() || tiles[2].isSolverFoundBomb()) {
 					continue;
 				}
 
 				tiles[3] = this.board.getTileXY(i + 1, j + 1);
-				if (!tiles[3].isCovered()) {
+				if (!tiles[3].isCovered() || tiles[3].isSolverFoundBomb()) {
 					continue;
 				}
 
