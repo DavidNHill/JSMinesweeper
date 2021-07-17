@@ -30,7 +30,7 @@ class EfficiencyHelper {
 
                 // how many hidden tiles are next to the mine(s) we would have flagged, the more the better
                 // this favours flags with many neighbours over flags buried against cleared tiles.
-                var hiddenMineNeighbours = 0;  
+                var hiddenMineNeighbours = new Set();  
                 for (var adjMine of board.getAdjacent(tile)) {
 
                     if (!adjMine.isSolverFoundBomb()) {
@@ -38,7 +38,7 @@ class EfficiencyHelper {
                     }
                     for (var adjTile of board.getAdjacent(adjMine)) {
                         if (!adjTile.isSolverFoundBomb() && adjTile.isCovered()) {
-                            hiddenMineNeighbours++;
+                            hiddenMineNeighbours.add(adjTile.index);
                         }
                     }                       
                 }
@@ -49,10 +49,10 @@ class EfficiencyHelper {
                     cost++;
                 }
 
-                // either we have a net gain, or we introduce more flags at zero cost. more flags means more chance to get a cheaper cord later
+                // either we have a net gain, or we introduce more flags at zero cost. more flags means more chance to get a cheaper chord later
                 if (benefit >= cost) {
-                    console.log("Chord " + tile.asText() + " has reward " + (benefit - cost) + " and exposed hidden tiles " + hiddenMineNeighbours);
-                    chordLocations.push(new ChordLocation(tile, benefit, cost, hiddenMineNeighbours));
+                    console.log("Chord " + tile.asText() + " has reward " + (benefit - cost) + " and tiles adjacent to new flags " + hiddenMineNeighbours.size);
+                    chordLocations.push(new ChordLocation(tile, benefit, cost, hiddenMineNeighbours.size));
                 }
 
             }
@@ -93,7 +93,7 @@ class EfficiencyHelper {
         }
 
         if (bestChord != null) {
-            console.log(bestChord.tile.asText() + " has best reward from witness " + bestChord.netBenefit);
+            console.log("Chord " + bestChord.tile.asText() + " has best reward of " + bestChord.netBenefit);
         } else {
             console.log("No chord with net benefit > 0");
         }
@@ -169,6 +169,9 @@ class EfficiencyHelper {
                         var prob = divideBigInt(counter.finalSolutionsCount, currSolnCount.finalSolutionsCount, 4);
                         var expected = prob * reward;
 
+                        // set this information on the tile, so we can display it in the tooltip
+                        tile.setValueProbability(adjMines, prob);
+
                         console.log("considering Clear (" + act.x + "," + act.y + ") with value " + adjMines + " and reward " + reward + " ( H=" + hidden + " M=" + adjMines + " F=" + adjFlags + " Chord=" + chord
                             + " Prob=" + prob + "), expected benefit " + expected);
 
@@ -205,7 +208,7 @@ class EfficiencyHelper {
   
                         }
                     } else {
-                        console.log("not considering " + act.x + "," + act.y + " with value " + adjMines + " and reward " + reward + " ( H=" + hidden + " M=" + adjMines + " F=" + adjFlags + " Chord=" + chord + ")");
+                        console.log("not considering (" + act.x + "," + act.y + ") with value " + adjMines + " and reward " + reward + " ( H=" + hidden + " M=" + adjMines + " F=" + adjFlags + " Chord=" + chord + ")");
                     }
                 }
 
@@ -276,7 +279,7 @@ class EfficiencyHelper {
 
         var expected = failedBenefit + divideBigInt(occurs, total, 6) * secondBenefit;
 
-        console.log("Chord " + chord1Tile.asText() + " followed by Chord " + chord2Tile.asText() + ": Chord 1 benefit " + chord1.netBenefit + ", Chord2 H=" + clearable + ", to Flag=" + needsFlag + ", Chord=" + chordClick
+        console.log("Chord " + chord1Tile.asText() + " followed by Chord " + chord2Tile.asText() + ": Chord 1: benefit " + chord1.netBenefit + ", Chord2: H=" + clearable + ", to F=" + needsFlag + ", Chord=" + chordClick
             + ", Benefit=" + secondBenefit + " ==> expected benefit " + expected);
 
         var score = BigInt(failedBenefit) * total + BigInt(secondBenefit) * occurs;

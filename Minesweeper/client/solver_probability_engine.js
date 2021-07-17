@@ -54,6 +54,7 @@ class ProbabilityEngine {
 
         this.clearCount = 0;
         this.localClears = [];
+        this.fullAnalysis = false;  // unless we are playing efficiency mode we'll stop after we find some safe tiles
 
         this.minesFound = [];  // discovered mines are stored in here
 
@@ -440,6 +441,12 @@ class ProbabilityEngine {
             this.bestProbability = 1;
         }
 
+        if (this.fullAnalysis) {
+            this.writeToConsole("The probability engine did a full analysis - probability data is available")
+        } else {
+            this.writeToConsole("The probability engine did a truncated analysis - probability data is not available")
+        }
+
         this.duration = Date.now() - peStart;
 
 		
@@ -716,25 +723,6 @@ class ProbabilityEngine {
         }
 
         this.heldProbs.push(npl);
-
-        //if (this.heldProbs.length > 10) {
-        //    console.log("Items in the held array = " + this.heldProbs.length);
-        //}
-
-		/*
-		for (Box b: boxes) {
-			System.out.print(b.getSquares().size() + " ");
-		}
-		System.out.println("");
-		for (ProbabilityLine pl: heldProbs) {
-			System.out.print("Mines = " + pl.mineCount + " solutions = " + pl.solutionCount + " boxes: ");
-			for (int i=0; i < pl.mineBoxCount.length; i++) {
-				System.out.print(" " + pl.mineBoxCount[i]);
-			}
-			System.out.println("");
-		}
-		*/
-
 
     }
 
@@ -1486,6 +1474,7 @@ class ProbabilityEngine {
         this.writeToConsole("Best probability is " + this.bestProbability);
         this.writeToConsole("Game has  " + this.finalSolutionsCount + " candidate solutions" );
 
+        this.fullAnalysis = true;
  
     }
 

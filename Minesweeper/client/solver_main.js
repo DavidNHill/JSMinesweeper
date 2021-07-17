@@ -12,6 +12,8 @@ const HARD_CUT_OFF = 0.90;        // cutoff for considering on edge possibilitie
 const OFF_EDGE_THRESHOLD = 0.95;  // when to include possibilities off the edge
 const PROGRESS_CONTRIBUTION = 0.2;  // how much progress counts towards the final score
 
+const USE_HIGH_DENSITY_STRATEGY = false;  // I think "secondary safety" generally works better than "solution space reduction"
+
 const PLAY_STYLE_FLAGS = 1;
 const PLAY_STYLE_NOFLAGS = 2;
 const PLAY_STYLE_EFFICIENCY = 3;
@@ -236,6 +238,32 @@ function solver(board, options) {
             }
         }
 
+        // If we have a full analysis then set the probabilities on the tile tooltips
+        if (pe.fullAnalysis) {
+
+             // Set the probability for each tile on the edge 
+            for (var i = 0; i < pe.boxes.length; i++) {
+                for (var j = 0; j < pe.boxes[i].tiles.length; j++) {
+                    pe.boxes[i].tiles[j].setProbability(pe.boxProb[i]);
+                }
+            }
+
+            // set all off edge probabilities
+            for (var i = 0; i < board.tiles.length; i++) {
+
+                var tile = board.getTile(i);
+
+                if (tile.isSolverFoundBomb()) {
+                    if (!tile.isFlagged()) {
+                        tile.setProbability(0);
+                    }
+                } else if (tile.isCovered() && !tile.onEdge) {
+                    tile.setProbability(pe.offEdgeProbability);
+                }
+            }
+        }
+
+
         // have we found any local clears which we can use or everything off the edge is safe
         if (pe.localClears.length > 0) {
             for (var tile of pe.localClears) {   // place each local clear into an action
@@ -255,29 +283,10 @@ function solver(board, options) {
 
             showMessage("The probability engine has found " + pe.localClears.length + " safe clears and " + pe.minesFound.length + " mines");
             return new EfficiencyHelper(board, witnesses, result, options.playStyle).process();
-        }
+        } 
 
-        // Set the probability for each tile on the edge 
-        for (var i = 0; i < pe.boxes.length; i++) {
-            for (var j = 0; j < pe.boxes[i].tiles.length; j++) {
-                 pe.boxes[i].tiles[j].setProbability(pe.boxProb[i]);
-            }
-        }
 
-        // set all off edge probabilities
-        for (var i = 0; i < board.tiles.length; i++) {
-
-            var tile = board.getTile(i);
-
-            if (tile.isSolverFoundBomb()) {
-                if (!tile.isFlagged()) {
-                    tile.setProbability(0);
-                }
-            } else if (tile.isCovered() && !tile.onEdge) {
-                tile.setProbability(pe.offEdgeProbability);
-            }
-        }
-
+        // this is part of the no-guessing board creation logic - wip
         if (pe.bestProbability < 1 && !options.advancedGuessing) {
             if (pe.bestOnEdgeProbability >= pe.offEdgeProbability) {
                 result.push(pe.getBestCandidates(1));  // get best options
@@ -523,7 +532,7 @@ function solver(board, options) {
 
         }
 
-        if (board.isHighDensity()) {
+        if (USE_HIGH_DENSITY_STRATEGY && board.isHighDensity() ) {
             writeToConsole("Board is high density prioritise minimising solutions space");
             actions.sort(function (a, b) {
 

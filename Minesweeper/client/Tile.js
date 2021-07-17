@@ -18,7 +18,12 @@ class Tile {
         this.onEdge = false;
         this.hint = false;
         this.probability;
-        this.hintText = "";
+		this.hintText = "";
+
+		this.efficiencyValue;   // the value we need to be to be chordable
+		this.efficiencyProbability;  // the probability of being that value
+		this.efficiencyText = "";  
+
 	}
 
 	//reveal() {
@@ -66,8 +71,8 @@ class Tile {
 
         if (!this.hasHint) {
             return "";
-        } else {
-            return this.hintText;
+		} else {
+			return this.hintText + this.efficiencyText;
         }
 
     }
@@ -86,7 +91,14 @@ class Tile {
 			this.hintText = "\n" + (prob * 100).toFixed(2) + "% safe" + "\n" + (progress * 100).toFixed(2) + "% progress"
         }
 
-    }
+	}
+
+	setValueProbability(value, probability) {
+		this.efficiencyValue = value;
+		this.efficiencyProbability = probability;
+
+		this.efficiencyText = "\n" + (probability * 100).toFixed(2) + "% value '" + value + "'"
+	}
 
     //getProbability() {
     //    return this.probability;
@@ -95,7 +107,10 @@ class Tile {
     clearHint() {
         this.onEdge = false;
         this.hasHint = false;
-        this.hintText = "";
+		this.hintText = "";
+		this.efficiencyValue = null;
+		this.efficiencyProbability = 0;
+		this.efficiencyText = "";
     }
 
     setOnEdge() {
