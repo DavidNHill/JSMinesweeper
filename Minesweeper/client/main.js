@@ -257,11 +257,15 @@ function propertiesOpen() {
 
 
 // render an array of tiles to the canvas
-function renderHints(hints) {
+function renderHints(hints, otherActions) {
 
     //console.log(hints.length + " hints to render");
 
     ctxHints.clearRect(0, 0, canvasHints.width, canvasHints.height);
+
+    if (hints == null) {
+        return;
+    }
 
     var firstGuess = 0;  // used to identify the first (best) guess, subsequent guesses are just for info 
     for (var i = 0; i < hints.length; i++) {
@@ -293,6 +297,21 @@ function renderHints(hints) {
             firstGuess = 2;
         }
 
+    }
+
+    if (otherActions == null) {
+        return;
+    }
+
+    ctxHints.globalAlpha = 1;
+    // these are from the efficiency play style and are the known moves which haven't been made
+    for (var action of otherActions) {
+        if (action.action == ACTION_CLEAR) {
+            ctxHints.fillStyle = "#00FF00";
+        } else {
+            ctxHints.fillStyle = "#FF0000";
+        }
+        ctxHints.fillRect((action.x + 0.35) * TILE_SIZE, (action.y + 0.35) * TILE_SIZE, 0.3 * TILE_SIZE, 0.3 * TILE_SIZE);
     }
 
 
@@ -633,10 +652,10 @@ async function doAnalysis() {
 
         justPressedAnalyse = true;
 
-        window.requestAnimationFrame(() => renderHints(hints));
+        window.requestAnimationFrame(() => renderHints(hints, solve.other));
     } else {
         showMessage("The board is in an invalid state");
-        window.requestAnimationFrame(() => renderHints([]));
+        window.requestAnimationFrame(() => renderHints([], []));
     }
 
     // by delaying removing the logical lock we absorb any secondary clicking of the button / hot key
@@ -1184,7 +1203,7 @@ async function sendActionsMessage(message) {
     if (board.isGameover()) {
         console.log("Game is over according to the server");
         canvasLocked = false;
-        window.requestAnimationFrame(() => renderHints([]));  // clear the hints overlay
+        window.requestAnimationFrame(() => renderHints([], []));  // clear the hints overlay
 
         var value3BV = reply.header.value3BV;
         var actionsMade = reply.header.actions;
@@ -1232,11 +1251,14 @@ async function sendActionsMessage(message) {
         } 
 
         var hints;
+        var other;
         if (assistedPlay) {
             hints = assistedPlayHints;
+            other = [];
         } else {
             var solve = await solver(board, options);  // look for solutions
             hints = solve.actions;
+            other = solve.other;
         }
 
         var solverDuration = Date.now() - solverStart;
@@ -1252,9 +1274,9 @@ async function sendActionsMessage(message) {
 
         // only show the hints if the hint box is checked
         if (showHintsCheckBox.checked) {
-            window.requestAnimationFrame(() => renderHints(hints));
+            window.requestAnimationFrame(() => renderHints(hints, other));
         } else {
-            window.requestAnimationFrame(() => renderHints([]));  // clear the hints overlay
+            window.requestAnimationFrame(() => renderHints([], []));  // clear the hints overlay
             showMessage("Press the 'Analyse' button to see the solver's suggested move.");
         }
 
@@ -1290,7 +1312,7 @@ async function sendActionsMessage(message) {
 
     } else {
         canvasLocked = false;
-        window.requestAnimationFrame(() => renderHints([]));  // clear the hints overlay
+        window.requestAnimationFrame(() => renderHints([], []));  // clear the hints overlay
         document.getElementById("canvas").style.cursor = "default";
         showMessage("The solver is not running. Press the 'Analyse' button to see the solver's suggested move.");
         currentGameDescription = reply.header;

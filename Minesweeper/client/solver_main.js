@@ -45,16 +45,41 @@ function solver(board, options) {
 
     var noMoves = 0;
     var reply = {};
-    var cleanActions = [];
-    var fillerTiles = [];
+    var cleanActions = [];  // these are the actions to take
+    var fillerTiles = [];   // this is used by the no-guess board generator 
+    //var otherActions = [];    // this is other Actions of interest
 
     // allow the solver to bring back no moves 5 times. No moves is possible when playing no-flags 
     while (noMoves < 5 && cleanActions.length == 0) {
         noMoves++;
         var actions = doSolve(board, options);  // look for solutions
 
+        var otherActions = [];    // this is other Actions of interest
+
         if (options.playStyle == PLAY_STYLE_EFFICIENCY) {
             cleanActions = actions;
+
+            // find all the other actions which could be played
+            top: for (var tile of board.tiles) {
+                if (!tile.isCovered()) {
+                    continue;
+                }
+
+                // ignore actions which are the primary actions
+                for (var action of actions) {
+                    if (tile.x == action.x && tile.y == action.y) {
+                        //console.log(tile.asText() + " is a primary action");
+                        continue top;
+                    }
+                }
+                //console.log(tile.asText() + " mine=" + tile.isSolverFoundBomb() + ", flagged=" + tile.isFlagged() + ", probability=" + tile.probability);
+                if (tile.isSolverFoundBomb() && !tile.isFlagged()) {
+                    otherActions.push(new Action(tile.getX(), tile.getY(), 0, ACTION_FLAG));
+                } else if (tile.probability == 1) {
+                    otherActions.push(new Action(tile.getX(), tile.getY(), 1, ACTION_CLEAR));
+                }
+            }
+
         } else {
             var cleanActions = [];
             for (var i = 0; i < actions.length; i++) {
@@ -77,6 +102,7 @@ function solver(board, options) {
 
     reply.actions = cleanActions;
     reply.fillers = fillerTiles;
+    reply.other = otherActions;
 
     return reply;
 
