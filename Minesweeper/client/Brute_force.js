@@ -27,11 +27,15 @@ class Cruncher {
             this.currentFlagsWitnesses.push(board.adjacentFoundMineCount(this.witnesses[i].tile));
         }
 
+        this.duration = 0;
+
     }
 
 
     
     crunch() {
+
+        var peStart = Date.now();
 
         var sample = this.iterator.getSample();
 
@@ -46,6 +50,10 @@ class Cruncher {
             sample = this.iterator.getSample();
 
         }
+
+        this.duration = Date.now() - peStart;
+
+        console.log(this.iterator.iterationsDone + " cycles took " + this.duration + " milliseconds");
 
         return candidates;
 
@@ -153,6 +161,8 @@ class WitnessWebIterator {
 
         this.probabilityEngine = pe;
 
+        this.cycles = BigInt(1);
+
         // if we are setting the position of the top cog then it can't ever change
         if (rotation == -1) {
             this.bottom = 0;
@@ -185,6 +195,9 @@ class WitnessWebIterator {
             indMines = indMines + w.minesToFind;
 
             loc.push(...w.tiles);
+
+            // multiply up the number of iterations needed
+            this.cycles = this.cycles * combination(w.minesToFind, w.tiles.length);
 
         }
 
@@ -236,6 +249,8 @@ class WitnessWebIterator {
             this.squareOffset.push(indSquares);
             this.mineOffset.push(indMines);
             this.cogs.push(new SequentialIterator(this.probabilityEngine.minesLeft - indMines, this.probabilityEngine.tilesLeft - indSquares));
+
+            this.cycles = this.cycles * combination(this.probabilityEngine.minesLeft - indMines, this.probabilityEngine.tilesLeft - indSquares);
         }
 
         this.top = this.cogs.length - 1;
@@ -257,6 +272,7 @@ class WitnessWebIterator {
             }
         }
 
+        console.log("Iterations needed " + this.cycles);
  
     }
 

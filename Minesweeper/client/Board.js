@@ -326,6 +326,50 @@ class Board {
 		// send it back as an array
 		return Array.from(result.values());
 
-    } 
+	} 
+
+	getFormatMBF() {
+
+		if (this.width > 255 || this.height > 255) {
+			console.log("Board to large to save as MBF format");
+			return null;
+        }
+
+		var length = 4 + 2 * this.num_bombs;
+
+		var mbf = new ArrayBuffer(length);
+		var mbfView = new Uint8Array(mbf);
+
+		mbfView[0] = this.width;
+		mbfView[1] = this.height;
+
+		mbfView[2] = Math.floor(this.num_bombs / 256);
+		mbfView[3] = this.num_bombs % 256;
+
+		var minesFound = 0;
+		var index = 4;
+		for (var i = 0; i < this.tiles.length; i++) {
+
+			var tile = this.getTile(i);
+
+			if (tile.isFlagged()) {
+				minesFound++;
+				if (index < length) {
+					mbfView[index++] = tile.getX();
+					mbfView[index++] = tile.getY();
+                }
+			}
+		}
+
+		if (minesFound != this.num_bombs) {
+			console.log("Board has incorrect number of mines. board=" + this.num_bombs + ", found=" + minesFound);
+			return null;
+		}
+
+		console.log(...mbfView);
+
+		return mbf;
+
+    }
 
 }

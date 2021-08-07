@@ -1469,6 +1469,7 @@ class ProbabilityEngine {
 
         this.bestProbability = Math.max(this.bestOnEdgeProbability, this.offEdgeProbability);            ;
 
+        this.writeToConsole("Safe tiles " + this.localClears.length + ", Mines found " + this.minesFound.length);
         this.writeToConsole("Off edge probability is " + this.offEdgeProbability);
         this.writeToConsole("Best on edge probability is " + this.bestOnEdgeProbability);
         this.writeToConsole("Best probability is " + this.bestProbability);

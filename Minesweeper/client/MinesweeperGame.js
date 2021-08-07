@@ -51,6 +51,49 @@ function getNextGameID() {
 
 }
 
+// copies a previously played game
+function copyGame(id) {
+
+	console.log("Replaying game " + id);
+
+	var game = getGame(id);
+
+	if (game == null) {
+		console.log("Game " + id + " not found");
+
+		return getNextGameID();
+	}
+
+	game.reset();
+
+	var reply = {};
+	reply.id = game.getID();
+
+	return reply;
+
+}
+
+function createGameFromMFB(blob) {
+
+	var width = blob[0];
+	var height = blob[1];
+	var mines = blob[2] * 256 + blob[3];
+
+	var id = gameID++;
+
+	var game = new ServerGame(id, width, height, mines, 0, 0, "safe");
+
+	game.resetMines(blob);
+	game.generateMbfUrl();
+
+	serverGames.set(id, game);
+
+	var reply = {};
+	reply.id = id;
+
+	return reply;
+
+}
 
 // a function which runs periodically to tidy stuff up
 function heartbeat() {
@@ -85,7 +128,12 @@ function killGame(message) {
     // if we found the game then mark for clean-up
     if (game != null) {
         console.log("Game " + id + " marked for housekeeping");
-        game.cleanUp = true;
+		game.cleanUp = true;
+		// need to revoke the url at some point
+		if (game.url != null) {
+			window.URL.revokeObjectURL(game.url);
+        }
+
         return { "result": "okay" };
     } else {
         return { "result": "not found" };
@@ -126,7 +174,7 @@ function handleActions(message) {
 	
 	if (game == null) {
 		game = createGame(header, actions[0].index);
-		//game = createNoGuessGame(header, actions[0].index);
+		//game = await createNoGuessGame(header, actions[0].index);
 	}
 
     // send the game details to the client
@@ -136,6 +184,10 @@ function handleActions(message) {
 	reply.header.height = game.height;
 	reply.header.mines = game.num_bombs;
 	reply.header.startIndex = game.startIndex;
+
+	if (game.url != null) {
+		reply.header.url = game.url;
+	}
 
 	// process each action sent
 	for (var i = 0; i < actions.length; i++) {
@@ -244,7 +296,9 @@ function createGame(header, index) {
 		}
 		cycles--;
     }
-	
+
+	game.generateMbfUrl();
+
 	serverGames.set(header.id, game);
 	
 	console.log("Holding " + serverGames.size + " games in memory");
@@ -253,11 +307,11 @@ function createGame(header, index) {
 	
 }
 
-function createNoGuessGame(header, index) {
+async function createNoGuessGame(header, index) {
 
 	var won = false;
 	var loopCheck = 0;
-	var bestSeed;
+	//var bestSeed;
 	var minTilesLeft = Number.MAX_SAFE_INTEGER;
 	var maxLoops = 10000;
 
@@ -283,7 +337,7 @@ function createNoGuessGame(header, index) {
 		var guessed = false;
 		while (revealedTiles.header.status == IN_PLAY && loopCheck < maxLoops && !guessed) {
 
-			var reply = solver(board, options);  // look for solutions
+			var reply = await solver(board, options);  // look for solutions
 
 			var fillers = reply.fillers;
 			for (var i = 0; i < fillers.length; i++) {
@@ -343,7 +397,7 @@ function createNoGuessGame(header, index) {
 		console.log("Seed " + seed + " tiles left " + game.tilesLeft);
 		if (game.tilesLeft < minTilesLeft) {
 			minTilesLeft = game.tilesLeft;
-			bestSeed = seed;
+			//bestSeed = seed;
         }
 
 		if (revealedTiles.header.status == WON) {
@@ -358,6 +412,7 @@ function createNoGuessGame(header, index) {
 	//game = new ServerGame(header.id, header.width, header.height, header.mines, index, bestSeed, "zero");
 	game.reset();
 
+	game.generateMbfUrl();
 	serverGames.set(header.id, game);
 
 	return game;
@@ -491,7 +546,40 @@ class ServerGame {
 			tile.reset();
 		}
 
+		// this is used by the NG processing and because mines have been moved
+		// the 3BV needs to be recalculated
 		this.value3BV = this.calculate3BV();
+
+    }
+
+	resetMines(blob) {
+
+		// reset every tile and it isn't a bomb
+		for (var i = 0; i < this.tiles.length; i++) {
+			var tile = this.tiles[i];
+			tile.reset();
+			tile.is_bomb = false;
+			tile.value = 0;
+		}
+
+		var index = 4;
+
+		// set the tiles in the mbf to mines
+		while (index < blob.length) {
+			var i = blob[index + 1] * this.width + blob[index];
+
+			var tile = this.tiles[i];
+
+			tile.make_bomb();
+			for (var adjTile of this.getAdjacent(tile)) {
+				adjTile.value += 1;
+			}
+
+			index = index + 2;
+        }
+
+		this.value3BV = this.calculate3BV();
+		this.url = this.getFormatMBF();
 
     }
 
@@ -878,6 +966,68 @@ class ServerGame {
 		//console.log("3BV is " + value3BV);
 
 		return value3BV;
+	}
+
+	generateMbfUrl() {
+
+		// revoke the previous url
+		if (this.url != null) {
+			window.URL.revokeObjectURL(this.url);
+		}
+
+		this.url = this.getFormatMBF();
+    }
+
+	getFormatMBF() {
+
+		if (this.width > 255 || this.height > 255) {
+			console.log("Board to large to save as MBF format");
+			return null;
+		}
+
+		var length = 4 + 2 * this.num_bombs;
+
+		var mbf = new ArrayBuffer(length);
+		var mbfView = new Uint8Array(mbf);
+
+		mbfView[0] = this.width;
+		mbfView[1] = this.height;
+
+		mbfView[2] = Math.floor(this.num_bombs / 256);
+		mbfView[3] = this.num_bombs % 256;
+
+		var minesFound = 0;
+		var index = 4;
+		for (var i = 0; i < this.tiles.length; i++) {
+
+			var tile = this.getTile(i);
+			var x = i % this.width;
+			var y = Math.floor(i / this.width);
+
+			if (tile.isBomb()) {
+				minesFound++;
+				if (index < length) {
+					mbfView[index++] = x;
+					mbfView[index++] = y;
+				}
+			}
+		}
+
+		if (minesFound != this.num_bombs) {
+			console.log("Board has incorrect number of mines. board=" + this.num_bombs + ", found=" + minesFound);
+			return null;
+		}
+
+		console.log(...mbfView);
+
+		var blob = new Blob([mbf], { type: 'application/octet-stream' })
+
+		var url = URL.createObjectURL(blob);
+
+		console.log(url);
+
+		return url;
+
 	}
 
 	getGameDescription() {

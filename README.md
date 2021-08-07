@@ -5,7 +5,7 @@ Play Minesweeper and analyse arbitrary positions at https://davidnhill.github.io
 This readme explains how to use the software and what techniques the solver uses.
 
 ## Overview
-This is a rewrite of my Java minesweeper solver in javascript. All the processing runs on the host machine. The purpose of the rewrite was to make the solver more accessable since there was reluctance to download a java executable. The trade off is that javascript is significantly slower than java to execute. 
+This is a rewrite of my Java minesweeper solver in javascript. All the processing runs on the local (your) machine. The purpose of the rewrite was to make the solver more accessable since there was reluctance to download a java executable. The trade off is that javascript is significantly slower than java to execute. 
 
 The solver has a 40.7% win rate on classic expert (30x16/99 safe start in a corner) and 54% on modern expert (30x16/99 open start at (3,3)).
 
@@ -101,7 +101,7 @@ The solver can discover:
 
 ![Solver 50/50](resources/ReadmeImages/Solver5050-2.jpg)
 
-A *pseudo-50/50* is a situation where a set of tiles is either safe or part of a 50/50. If it is part of a 50/50 then it is correct to guess immediately. If it is safe it is correct to guess immediately. 
+A *pseudo-50/50* is a situation where a set of tiles is either safe or part of a 50/50. If it is part of a 50/50 then it is correct to guess immediately. If it is safe it is also correct to guess immediately. 
 
 The solver can discover
 - 2-tile pseuso-50/50s
@@ -119,7 +119,7 @@ Each tile within 10% of the safest guess (e.g. safest is 80%, then the cutoff is
 - **Progress percentage** - This is the chance that this move will lead to 100% safe moves being available *next* move.
 - **Secondary safety** - This is the likelihood of surviving not only the current move, but also the *next* move.
 
-The progress percentage and the secondary safety are blended together to create a final score. The idea here is that 1) a tile with 90% safety and 10% progress isn't as good as a move with 85% safety and 85% progress and 2) When you don't make progress is there a good guess to follow.  This method is not perfect but has been emperically shown to provide better results than picking the safest tile.
+The progress percentage and the secondary safety are blended together to create a final score. The idea here is that 1) a tile with 90% safety and 10% progress isn't as good as a move with 85% safety and 85% progress and 2) When you don't make progress is there a good guess to follow.  This method is not perfect but has been emperically shown to provide better results than merely picking the safest tile.
 
 An interesting statistic is that to win a classic expert game of minesweeper the solver is required, on average, to make 3.3 guesses.  From this we can see that once the game has opened up it is common to be a able to make significant progress before a guess is needed again. For higher density boards the number of guesses required goes up and the value of looking for progress diminishes. When the mine density reaches a certain point the tie break switches to choosing the tile which has the best chance of reducing the solution space the most.
 

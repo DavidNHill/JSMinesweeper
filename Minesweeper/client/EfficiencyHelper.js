@@ -16,7 +16,7 @@ class EfficiencyHelper {
 
     process() {
 
-        if (this.playStyle != PLAY_STYLE_EFFICIENCY) {
+        if (this.playStyle != PLAY_STYLE_EFFICIENCY || this.actions.length == 0) {
             return this.actions;
         }
 
@@ -115,7 +115,8 @@ class EfficiencyHelper {
             } else {
                 var highest = BigInt(0);
             }
- 
+
+            var foundCertainZero = false;
             for (var act of this.actions) {
 
                 if (act.action == ACTION_CLEAR) {
@@ -177,8 +178,11 @@ class EfficiencyHelper {
 
                         // if we have found an 100% safe zero then just click it.
                         if (adjMines == 0 && prob == 1) {
-                            adjChord = null;
-                            highest = 0;
+                            console.log("(" + act.x + "," + act.y + ") is a certain zero no need for further analysis");
+                            bestAction = act;
+                            break;
+                            //adjChord = null;
+                            //highest = 0;
                         }
 
                         var clickChordNetBenefit = BigInt(reward) * counter.finalSolutionsCount; // expected benefit from clicking the tile then chording it

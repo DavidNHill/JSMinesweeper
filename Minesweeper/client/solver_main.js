@@ -8,6 +8,7 @@ const OFFSETS_ALL = [[2, -2], [2, -1], [2, 0], [2, 1], [2, 2], [-2, -2], [-2, -1
 
 const PLAY_BFDA_THRESHOLD = 750;       // number of solutions for the Brute force analysis to start
 const ANALYSIS_BFDA_THRESHOLD = 5000;
+const BRUTE_FORCE_CYCLES_THRESHOLD = 1000000;
 const HARD_CUT_OFF = 0.90;        // cutoff for considering on edge possibilities below the best probability
 const OFF_EDGE_THRESHOLD = 0.95;  // when to include possibilities off the edge
 const PROGRESS_CONTRIBUTION = 0.2;  // how much progress counts towards the final score
@@ -19,7 +20,7 @@ const PLAY_STYLE_NOFLAGS = 2;
 const PLAY_STYLE_EFFICIENCY = 3;
 
 // solver entry point
-function solver(board, options) {
+async function solver(board, options) {
 
     // when initialising create some entry points to functions needed from outside
     if (board == null) {
@@ -52,7 +53,8 @@ function solver(board, options) {
     // allow the solver to bring back no moves 5 times. No moves is possible when playing no-flags 
     while (noMoves < 5 && cleanActions.length == 0) {
         noMoves++;
-        var actions = doSolve(board, options);  // look for solutions
+        var actions = await doSolve(board, options);  // look for solutions
+        //console.log(actions);
 
         var otherActions = [];    // this is other Actions of interest
 
@@ -109,7 +111,7 @@ function solver(board, options) {
     // **** functions below here ****
 
     // this finds the best moves 
-    function doSolve(board, options) {
+    async function doSolve(board, options) {
 
         // find all the tiles which are revealed and have un-revealed / un-flagged adjacent squares
         var allCoveredTiles = [];
@@ -291,7 +293,7 @@ function solver(board, options) {
 
 
         // have we found any local clears which we can use or everything off the edge is safe
-        if (pe.localClears.length > 0) {
+        if (pe.localClears.length > 0 || pe.minesFound.length > 0 || offEdgeAllSafe) {
             for (var tile of pe.localClears) {   // place each local clear into an action
                 tile.setProbability(1);
                 var action = new Action(tile.getX(), tile.getY(), 1, ACTION_CLEAR);
@@ -317,7 +319,7 @@ function solver(board, options) {
             if (pe.bestOnEdgeProbability >= pe.offEdgeProbability) {
                 result.push(pe.getBestCandidates(1));  // get best options
             } else {
-                writeToConsole("Off edge is best", true);
+                writeToConsole("Off edge is best, off edge prob = " + pe.offEdgeProbability + ", on edge prob = " + pe.bestOnEdgeProbability, true);
                 var bestGuessTile = offEdgeGuess(board, witnessed);
                 result.push(new Action(bestGuessTile.getX(), bestGuessTile.getY(), pe.offEdgeProbability), ACTION_CLEAR);
             }
@@ -358,7 +360,7 @@ function solver(board, options) {
 
             var bfda = new BruteForceAnalysis(pe.isolatedEdgeBruteForce.allSolutions, pe.isolatedEdgeBruteForce.iterator.tiles, 1000);  // the tiles and the solutions need to be in sync
 
-            bfda.process();
+            await bfda.process();
 
             // if the brute force deep analysis completed then use the results
             if (bfda.completed) {
@@ -407,22 +409,32 @@ function solver(board, options) {
         if (pe.bestProbability < 1 && pe.finalSolutionsCount < bfdaThreshold) {
 
             showMessage("The solver is starting brute force deep analysis on " + pe.finalSolutionsCount + " solutions");
+            await sleep(1);
+
             pe.generateIndependentWitnesses();
 
             var iterator = new WitnessWebIterator(pe, allCoveredTiles, -1);
 
-            var bruteForce = new Cruncher(board, iterator);
+            var bfdaCompleted = false;
+            if (iterator.cycles <= BRUTE_FORCE_CYCLES_THRESHOLD) {
+                var bruteForce = new Cruncher(board, iterator);
 
-            var solutionCount = bruteForce.crunch();
+                var solutionCount = bruteForce.crunch();
 
-            writeToConsole("Solutions found by brute force " + solutionCount);
+                writeToConsole("Solutions found by brute force " + solutionCount + " after " + iterator.getIterations() + " cycles");
 
-            var bfda = new BruteForceAnalysis(bruteForce.allSolutions, iterator.tiles, 1000);  // the tiles and the solutions need to be in sync
+                var bfda = new BruteForceAnalysis(bruteForce.allSolutions, iterator.tiles, 1000);  // the tiles and the solutions need to be in sync
 
-            bfda.process();
+                await bfda.process();
+
+                bfdaCompleted = bfda.completed;
+            } else {
+                writeToConsole("Brute Force requires too many cycles - skipping BFDA");
+            }
+
 
             // if the brute force deep analysis completed then use the results
-            if (bfda.completed) {
+            if (bfdaCompleted) {
                 // if they aren't all dead then send the best guess
                 if (!bfda.allTilesDead()) {
                     var nextmove = bfda.getNextMove();
@@ -725,6 +737,12 @@ function solver(board, options) {
 
                     var adjCovered = board.adjacentCoveredCount(tile);
 
+                    // if we only have isolated tiles then use this
+                    if (adjCovered == 0 && bestGuessCount == 9) {
+                        writeToConsole(tile.asText() + " is surrounded by flags");
+                        bestGuess = tile;
+                    }
+
                     if (adjCovered > 0 && adjCovered < bestGuessCount) {
                         bestGuessCount = adjCovered;
                         bestGuess = tile;
@@ -734,6 +752,10 @@ function solver(board, options) {
 
             // ... and pick the first one
             action = bestGuess;
+        }
+
+        if (action == null) {
+            writeToConsole("Off edge guess has returned null!", true);
         }
 
         return action;
@@ -1177,24 +1199,38 @@ function solver(board, options) {
 
         var sizeAllowed = 1;
 
-        //var adders = [...pe.prunedWitnesses];
-        //adders.sort((a, b) => adderSort(a, b));
+        var adders = [...pe.prunedWitnesses];
+        adders.sort((a, b) => adderSort(a, b));
 
-        for (var i = 0; i < pe.prunedWitnesses.length; i++) {
+        //for (var i = 0; i < pe.prunedWitnesses.length; i++) {
+          //var boxWitness = pe.prunedWitnesses[i];
 
-            var boxWitness = pe.prunedWitnesses[i];
+        for (var i = 0; i < adders.length; i++) {
+             var boxWitness = adders[i];
 
             var minesToFind = boxWitness.minesToFind;
             var spacesLeft = boxWitness.tiles.length;
 
-            console.log(boxWitness.tile.asText() + " add " + (spacesLeft - minesToFind) + " remove " + minesToFind);
+            console.log(boxWitness.tile.asText() + " length " + boxWitness.tiles.length + ", add " + (spacesLeft - minesToFind) + ", remove " + minesToFind);
 
         }
 
-        for (var i = 0; i < pe.prunedWitnesses.length; i++) {
+        //for (var i = 0; i < pe.prunedWitnesses.length; i++) {
+        //    var boxWitness = pe.prunedWitnesses[i];
 
-            var boxWitness = pe.prunedWitnesses[i];
+        var balanced = false;
 
+        for (var i = 0; i < adders.length; i++) {
+            var boxWitness = adders[i];
+
+            if (findBalance(boxWitness, adders)) {
+                writeToConsole("*** Balanced ***", true);
+                balanced = true;
+                break;
+            }
+
+
+            /*
             var minesToFind = boxWitness.minesToFind;
             var spacesLeft = boxWitness.tiles.length;
 
@@ -1228,14 +1264,65 @@ function solver(board, options) {
                 writeToConsole("*** Balanced ***", true);
                 break;
             }
+            */
 
         }
 
-        if (!started || difference != 0) {
+        if (!balanced) {
             writeToConsole("*** NOT Balanced ***", true);
             fillerTiles = [];
         }
+
+        //if (!started || difference != 0) {
+        //    writeToConsole("*** NOT Balanced ***", true);
+        //    fillerTiles = [];
+        //}
         
+    }
+
+    function findBalance(boxWitness, adders) {
+
+        // these are the adjustments which will all the tile to be trivially solved
+        var toRemove = boxWitness.minesToFind;
+        var toAdd = boxWitness.tiles.length - toRemove;
+
+        writeToConsole("trying to balance " + boxWitness.tile.asText() + " to Remove=" + toRemove + ", or to Add=" + toAdd, true);
+
+        top: for (var balanceBox of adders) {
+            if (balanceBox.tile.isEqual(boxWitness.tile)) {
+                continue;
+            }
+
+            // ensure the balancing witness doesn't overlap with this one
+            for (var adjTile of board.getAdjacent(balanceBox.tile)) {
+                if (adjTile.isCovered() && !adjTile.isSolverFoundBomb()) {
+                    if (adjTile.isAdjacent(boxWitness.tile)) {
+                        continue top;
+                    }
+                }
+            }
+
+            var toRemove1 = balanceBox.minesToFind;
+            var toAdd1 = balanceBox.tiles.length - toRemove1;
+
+            if (toAdd1 == toRemove) {
+                writeToConsole("found balance " + balanceBox.tile.asText() + " to Add=" + toAdd1, true);
+                addFillings(boxWitness, false); // remove from here
+                addFillings(balanceBox, true); // add to here
+                return true;
+            }
+
+            if (toRemove1 == toAdd) {
+                writeToConsole("found balance " + balanceBox.tile.asText() + " to Remove=" + toRemove1, true);
+                addFillings(boxWitness, true); // add to here
+                addFillings(balanceBox, false); // remove from here
+                return true;
+            }
+
+        }
+
+        return false;
+
     }
 
     function collisionSafe(tile) {
@@ -1256,14 +1343,15 @@ function solver(board, options) {
 
     function adderSort(a, b) {
 
-        var toAdd1 = a.tiles.length - a.minesToFind;
-        var toAdd2 = b.tiles.length - b.minesToFind;
+        // tiels with smallest area first
+        var c = a.tiles.length - b.tiles.length;
 
-        if (toAdd1 != toAdd2) {
-            return toAdd2 - toAdd1;
-        } else {
-            return a.tiles.length - b.tiles.length;
+        // then by the number of mines to find
+        if (c == 0) {
+            c = a.minesToFind - b.minesToFind;
         }
+
+        return c;
     }
 
     function addFillings(boxWitness, fill) {

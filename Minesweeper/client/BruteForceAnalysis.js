@@ -41,7 +41,7 @@ class BruteForceAnalysis {
         processCount = 0;
     }
 
-    process() {
+    async process() {
 
         var start = performance.now();
 
@@ -58,6 +58,9 @@ class BruteForceAnalysis {
         var best = 0;
 
         for (var i = 0; i < top.getLivingLocations().length; i++) {
+
+            showMessage("Analysing Brute Force Deep Analysis line " + i + " of " + top.getLivingLocations().length);
+            await sleep(1);
 
             var move = top.getLivingLocations()[i];  // move is class 'Livinglocation'
 
@@ -78,7 +81,6 @@ class BruteForceAnalysis {
             } else {
                 console.log(move.index + " " + allTiles[move.index].asText() + " is living with " + move.count + " possible values and probability " + this.percentage(singleProb) + ", winning lines " + winningLines);
             }
-
 
         }
 

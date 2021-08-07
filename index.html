@@ -7,13 +7,13 @@
     <link rel="icon" type="image/png" href="resources/images/flagged.png" />
     <title>Minesweeper solver</title>
 </head>
-<body style="position: absolute; left:0px; right:0px; top:0px; bottom:0px; zoom: 1;" onresize="browserResized()">
+<body style="position: absolute; left:0px; right:0px; top:0px; bottom:0px; zoom: 1.0;" onresize="browserResized()">
 
     <!-- Title at the top -->
     <h1><label id="title">Minesweeper solver</label><label style="float: right;"><a href="https://github.com/DavidNHill/JSMinesweeper#readme" target="_blank"><i>help</i></a></label></h1>
 
     <!-- control panel on the left -->
-    <nav id="controls">
+    <nav id="controls" style="zoom: 0.9; position:relative; left:0px; top:0px">
 
         <div class="checkboxes">
             <label><input type="checkbox" class="checkbox" id="analysismode" onclick="setAnalysis()" /> <span>Analysis mode</span></label>
@@ -28,7 +28,7 @@
             </div>
 
             <div class="checkboxes">
-                <label><input type="checkbox" class="checkbox" id="gameTypeZero"/> <span>Opening on start</span></label>
+                <label><input type="checkbox" class="checkbox" id="gameTypeZero" /> <span>Opening on start</span></label>
             </div>
 
             <div class="checkboxes">
@@ -74,6 +74,8 @@
 
         <button style="margin-top: 1em;" id="NewGame" onclick="apply()">New game</button>
 
+        <button style="margin-top: 0em;" id="repeatGame" onclick="playAgain()">Play again</button>
+
         <div style="margin-top: 10px;">
             <label>Style:</label>
             <select id="playstyle">
@@ -111,18 +113,22 @@
     </nav>
 
     <!-- where the board goes -->
-    <div style="position: absolute; left: 200px; right: 10px; top: 75px; bottom: 60px;">
+    <div style="position: absolute; left: 180px; right: 10px; top: 75px; bottom: 60px;">
         <section class="tooltip" id="canvas" style="position: absolute; left: 10px; top: 0px; bottom: 0px; right: 0px;">
-            <div id="display">
+            <div id="display" ondrop="dropHandler(event)" ondragover="dragOverHandler(event)">
                 <canvas class="led" id="myMinesLeft" width="96" height="40" oncontextmenu="return false"></canvas>
             </div>
-            <div id="board" style="overflow: auto; position: absolute; top:60px; left:0px;">
+            <div id="board" style="overflow: auto; position: relative; top:0px; left:0px;">
                 <canvas id="myCanvas" width="500" height="500" oncontextmenu="return false" style="position: absolute; top: 0px; left: 0px;"></canvas>
                 <canvas id="myHints" width="500" height="500" oncontextmenu="return false" style="position: absolute; top: 0px; left: 0px; pointer-events: none;"></canvas>
             </div>
             <span id="tooltip" class="tooltiptext" style="pointer-events: none;">Tooltip text</span>
+            <!-- A hyperlimnk to download the board -->
+            <a id="downloadmbf" style="position: relative; left: 3px; top: 5px" onclick="downloadAsMBF()" download="" href="">Download as MBF</a>
         </section>
     </div>
+
+
 
     <!-- message line at the bottom -->
     <div class="raised" style="position: absolute; bottom: 0px; left: 0px; right: 0px; margin: 10px;">
@@ -261,12 +267,14 @@
                 document.getElementById("play1").style.display = "none";
                 document.getElementById("analysis0").style.display = "block";
                 document.getElementById("analysis1").style.display = "block";
+                document.getElementById("repeatGame").style.display = "none";
                 document.getElementById("NewGame").innerHTML = "Reset board";
             } else {
                 document.getElementById("play0").style.display = "block";
                 document.getElementById("play1").style.display = "block";
                 document.getElementById("analysis0").style.display = "none";
                 document.getElementById("analysis1").style.display = "none";
+                document.getElementById("repeatGame").style.display = "block";
                 document.getElementById("NewGame").innerHTML = "New game";
             }
 

@@ -65,6 +65,8 @@ var docPlayStyle = document.getElementById("playstyle");
 var docTileSize = document.getElementById("tilesize");
 var docFastPlay = document.getElementById("fastPlay");
 
+var downloadHyperlink = document.getElementById('downloadmbf');
+
 // elements used in the local storage modal
 var localStorageButton = document.getElementById("localStorageButton");
 var localStorageModal = document.getElementById("localStorage");
@@ -168,7 +170,7 @@ async function startup() {
     propertiesClose();
 
     // initialise the solver
-    solver();
+    await solver();
 
     if (currentGameDescription != null) {
         var gameDescription = JSON.parse(currentGameDescription);
@@ -253,6 +255,66 @@ function propertiesClose() {
 
 function propertiesOpen() {
     propertiesPanel.style.display = "block";
+}
+
+// save as MBF
+/*
+async function saveAsMBF() {
+
+    if (board == null) {
+        return;
+    }
+
+    var mbf = board.getFormatMBF();
+
+    const options = {
+        excludeAcceptAllOption: true,
+        types: [
+            {
+                description: 'Minesweeper board',
+                accept: {
+                    'application/octet-stream': ['.mbf'],
+                },
+            },
+        ],
+    };
+    const fileHandle = await window.showSaveFilePicker(options);
+
+    const writable = await fileHandle.createWritable();
+
+    await writable.write(mbf);
+
+    await writable.close();
+
+}
+*/
+
+// download as MBF
+// create a BLOB of the data, insert a URL to it into the download link
+async function downloadAsMBF() {
+
+    /*
+    if (board == null) {
+        return;
+    }
+
+    var mbf = board.getFormatMBF();
+
+    if (mbf == null) {
+        return;
+    }
+
+    var blob = new Blob([mbf], { type: 'application/octet-stream' })
+
+    var url = URL.createObjectURL(blob);
+
+    console.log(url);
+
+    //downloadHyperlink.href = url;
+    */
+
+    downloadHyperlink.download = "download.mbf";
+
 }
 
 
@@ -387,9 +449,112 @@ function getDigitCount(mines) {
     return digits;
 }
 
+async function playAgain() {
+
+    // let the server know the game is over
+    if (board != null && !analysisMode) {
+        callKillGame(board.getID());
+
+        var reply = copyGame(board.getID());
+
+        var id = reply.id;
+
+        board = new Board(id, board.width, board.height, board.num_bombs, board.seed, board.gameType);
+
+        TILE_SIZE = parseInt(docTileSize.value);
+
+        // make the canvases large enough to fit the game
+        var boardWidth = board.width * TILE_SIZE;
+        var boardHeight = board.height * TILE_SIZE;
+
+        canvas.width = boardWidth;
+        canvas.height = boardHeight;
+
+        canvasHints.width = boardWidth;
+        canvasHints.height = boardHeight;
+
+        browserResized();
+
+        for (var y = 0; y < board.height; y++) {
+            for (var x = 0; x < board.width; x++) {
+                draw(x, y, HIDDEN);
+            }
+        }
+
+        updateMineCount(board.num_bombs);
+
+        canvasLocked = false;  // just in case it was still locked (after an error for example)
+
+        showMessage("Replay game requested");
+    } else {
+        showMessage("No game to replay");
+    }
+
+}
+
+async function newGameFromBlob(blob) {
+
+    const buffer = await blob.arrayBuffer();
+
+    const view = new Uint8Array(buffer);
+
+    console.log(...view);
+
+    // let the server know the game is over
+    if (board != null) {
+        callKillGame(board.getID());
+    }
+
+    var width = view[0];
+    var height = view[1];
+    var mines = view[2] * 256 + view[3];
+
+    var reply = createGameFromMFB(view);
+
+    var id = reply.id;
+
+    if (gameTypeZero.checked) {
+        var gameType = "zero";
+    } else {
+        var gameType = "safe";
+    }
+
+    board = new Board(id, width, height, mines, "", gameType);
+
+    TILE_SIZE = parseInt(docTileSize.value);
+
+    // make the canvases large enough to fit the game
+    var boardWidth = board.width * TILE_SIZE;
+    var boardHeight = board.height * TILE_SIZE;
+
+    canvas.width = boardWidth;
+    canvas.height = boardHeight;
+
+    canvasHints.width = boardWidth;
+    canvasHints.height = boardHeight;
+
+    browserResized();
+
+    for (var y = 0; y < board.height; y++) {
+        for (var x = 0; x < board.width; x++) {
+            draw(x, y, HIDDEN);
+        }
+    }
+
+    updateMineCount(board.num_bombs);
+
+    canvasLocked = false;  // just in case it was still locked (after an error for example)
+
+    showMessage("Game created from file");
+ 
+}
+
 async function newGame(width, height, mines, seed) {
 
     console.log("New game requested: Width=" + width + " Height=" + height + " Mines=" + mines + " Seed=" + seed);
+
+    // remove the hyperlink
+    downloadHyperlink.style.display = "none";
 
     // let the server know the game is over
     if (board != null) {
@@ -472,7 +637,7 @@ function browserResized() {
     var boardHeight = board.height * TILE_SIZE;
 
     var screenWidth = document.getElementById('canvas').offsetWidth - 10;
-    var screenHeight = document.getElementById('canvas').offsetHeight - 60;   // subtract some space to allow for the mine count panel
+    var screenHeight = document.getElementById('canvas').offsetHeight - 60 - 20;   // subtract some space to allow for the mine count panel and the hyperlink
 
     //console.log("Available size is " + screenWidth + " x " + screenHeight);
 
@@ -526,9 +691,6 @@ function browserResized() {
         var scrollbarYWidth = 0;
         var scrollbarXHeight = 0;
     }
-
-    //var useWidth = Math.min(boardWidth, screenWidth);
-    //var useHeight = Math.min(boardHeight, screenHeight);
 
     //console.log("Usable size is " + useWidth + " x " + useHeight);
     //console.log("Scroll bar Y width  " + scrollbarYWidth);
@@ -647,7 +809,7 @@ async function doAnalysis() {
 
         //var hints = solver(board, options).actions;  // look for solutions
 
-        var solve = solver(board, options);  // look for solutions
+        var solve = await solver(board, options);  // look for solutions
         var hints = solve.actions;
 
         justPressedAnalyse = true;
@@ -664,7 +826,7 @@ async function doAnalysis() {
 
 }
 
-function checkBoard() {
+async function checkBoard() {
 
     if (!analysisMode) {
         return;
@@ -684,17 +846,17 @@ function checkBoard() {
     console.log("Checking board with hash " + currentBoardHash);
 
     board.findAutoMove();
-    var solutionCounter = solver.countSolutions(board);
+    var solutionCounter = await solver.countSolutions(board);
     board.resetForAnalysis();
 
     if (solutionCounter.finalSolutionsCount != 0) {
         analysisButton.disabled = false;
         //showMessage("The board has" + solutionCounter.finalSolutionsCount + " possible solutions");
-        showMessage("The board is valid." + formatSolutions(solutionCounter.finalSolutionsCount));
+        showMessage("The board is valid. " + board.getFlagsPlaced() + " Mines placed. " + formatSolutions(solutionCounter.finalSolutionsCount));
         
     } else {
         analysisButton.disabled = true;
-        showMessage("The board is in an invalid state");
+        showMessage("The board is in an invalid state. " + board.getFlagsPlaced() + " Mines placed. ");
     }
 
 }
@@ -1065,6 +1227,42 @@ function on_mouseWheel_minesLeft(event) {
 
 }
 
+// reads a file dropped onto the top of the minesweeper board
+async function dropHandler(ev) {
+    console.log('File(s) dropped');
+
+    // Prevent default behavior (Prevent file from being opened)
+    ev.preventDefault();
+
+    if (ev.dataTransfer.items) {
+        console.log("Using Items Data Transfer interface");
+        // Use DataTransferItemList interface to access the file(s)
+        for (var i = 0; i < ev.dataTransfer.items.length; i++) {
+            // If dropped items aren't files, reject them
+            if (ev.dataTransfer.items[i].kind === 'file') {
+                var file = ev.dataTransfer.items[i].getAsFile();
+                console.log('... file[' + i + '].name = ' + file.name);
+
+                newGameFromBlob(file)
+
+                break;
+            }
+        }
+    } else {
+        // Use DataTransfer interface to access the file(s)
+        console.log("Using File Transfer Interface");
+        for (var i = 0; i < ev.dataTransfer.files.length; i++) {
+            console.log('... file[' + i + '].name = ' + ev.dataTransfer.files[i].name);
+        }
+    }
+}
+
+// Prevent default behavior (Prevent file from being opened)
+function dragOverHandler(ev) {
+    //console.log('File(s) in drop zone');
+    ev.preventDefault();
+}
+
 function buildMessageFromActions(actions, safeOnly) {
 
     var message = { "header": board.getMessageHeader(), "actions": [] };
@@ -1143,6 +1341,12 @@ async function sendActionsMessage(message) {
         return;
     }
 
+    // remove the hyperlink
+    if (reply.header.url != null) {
+        downloadHyperlink.style.display = "block";
+        downloadHyperlink.href = reply.header.url;
+    }
+ 
     // translate the message and redraw the board
     var tiles = [];
     var prevMineCounter = board.bombs_left;
