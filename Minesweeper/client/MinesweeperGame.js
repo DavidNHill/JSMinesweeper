@@ -37,6 +37,8 @@ var gamesWon = 0;
 var gamesLost = 0;
 var gamesAbandoned = 0;
 
+var ngCancel = false;
+
 const FIND_3BV = 1;     // 1 for high 3BV, -1 for low
 const FIND_3BV_CYCLES = 0;
 
@@ -150,7 +152,7 @@ var serverGames = new Map();
 
 
 // read the data message and perform the actions
-function handleActions(message) {
+async function handleActions(message) {
 	
 	var header = message.header;
 	
@@ -173,8 +175,11 @@ function handleActions(message) {
 	var game = getGame(header.id);
 	
 	if (game == null) {
-		game = createGame(header, actions[0].index);
-		//game = await createNoGuessGame(header, actions[0].index);
+		if (docNgMode.checked) {
+			game = await createNoGuessGame(header, actions[0].index);
+		} else {
+			game = createGame(header, actions[0].index);
+        }
 	}
 
     // send the game details to the client
@@ -309,19 +314,26 @@ function createGame(header, index) {
 
 async function createNoGuessGame(header, index) {
 
+	// pop up to show we are generating the ng map
+	//ngModal.style.display = "block";
+	//ngText.innerHTML = "";
+	//await sleep(500);
+
 	var won = false;
 	var loopCheck = 0;
 	//var bestSeed;
 	var minTilesLeft = Number.MAX_SAFE_INTEGER;
-	var maxLoops = 10000;
+	var maxLoops = 100000;
+	ngCancel = false;
 
 	var options = {};
 	options.playStyle = PLAY_STYLE_NOFLAGS;
 	options.verbose = false;
 	options.advancedGuessing = false;
 
+	var startTime = Date.now();
 
-	while (!won && loopCheck < maxLoops) {
+	while (!won && loopCheck < maxLoops && !ngCancel) {
 
 		var seed = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
 
@@ -335,7 +347,18 @@ async function createNoGuessGame(header, index) {
 		applyResults(board, revealedTiles);
 
 		var guessed = false;
-		while (revealedTiles.header.status == IN_PLAY && loopCheck < maxLoops && !guessed) {
+		while (revealedTiles.header.status == IN_PLAY && loopCheck < maxLoops && !guessed && !ngCancel) {
+
+			loopCheck++;
+
+			if (loopCheck % 100 == 0) {
+				var curTime = Date.now();
+				if (curTime - startTime > 1000) {
+					ngText.innerHTML = "Working " + loopCheck;
+					ngModal.style.display = "block";
+					await sleep(1);
+                }
+            }
 
 			var reply = await solver(board, options);  // look for solutions
 
@@ -390,8 +413,6 @@ async function createNoGuessGame(header, index) {
 				}
 			}
 
-			loopCheck++;
-
 		}
 
 		console.log("Seed " + seed + " tiles left " + game.tilesLeft);
@@ -407,6 +428,11 @@ async function createNoGuessGame(header, index) {
     }
 
 	console.log(revealedTiles.header.status);
+	if (revealedTiles.header.status != WON) {
+		ngText.innerHTML = "** FAILED **";
+		await sleep(1000);
+    }
+
 
 	// rebuild the same game and send it back
 	//game = new ServerGame(header.id, header.width, header.height, header.mines, index, bestSeed, "zero");
@@ -415,8 +441,16 @@ async function createNoGuessGame(header, index) {
 	game.generateMbfUrl();
 	serverGames.set(header.id, game);
 
+	ngModal.style.display = "none";
+
 	return game;
 
+}
+
+// called from index.html
+function noGuessCancel() {
+	ngText.innerHTML = "Cancelling";
+	ngCancel = true;
 }
 
 function applyResults(board, revealedTiles) {
@@ -781,8 +815,7 @@ class ServerGame {
 
         }
 
-
-		console.log(reply);
+		//console.log(reply);
 
 		return reply;
     }

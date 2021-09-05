@@ -64,6 +64,7 @@ var lockMineCount = document.getElementById("lockMineCount");
 var docPlayStyle = document.getElementById("playstyle");
 var docTileSize = document.getElementById("tilesize");
 var docFastPlay = document.getElementById("fastPlay");
+var docNgMode = document.getElementById("noGuessMode");
 
 var downloadHyperlink = document.getElementById('downloadmbf');
 
@@ -74,6 +75,10 @@ var localStorageSelection = document.getElementById("localStorageSelection");
 
 //properties panel
 var propertiesPanel = document.getElementById("properties");
+
+// elements used in the no guess build modal
+var ngModal = document.getElementById("noGuessBuilder");
+var ngText = document.getElementById("ngText");
 
 var analysisMode = false;
 var previousBoardHash = 0;
@@ -706,7 +711,7 @@ function browserResized() {
 
 function keyPressedEvent(e) {
 
-    console.log("Key pressed: " + e.key);
+    //console.log("Key pressed: " + e.key);
     var newValue = null;
     if (e.key == 'a') {
         if (!analysisButton.disabled) {  // don't allow the hotkey if the button is disabled
@@ -1298,7 +1303,7 @@ async function sendActionsMessage(message) {
 
     // either play locally or send to server
     if (PLAY_CLIENT_SIDE) {
-        var reply = handleActions(message);
+        var reply = await handleActions(message);
     } else {
         var json_data = await fetch("/data", {
             method: "POST",

@@ -35,15 +35,13 @@
                 <label><input type="checkbox" class="checkbox" id="fastPlay" /> <span>Fast mode</span></label>
             </div>
 
-            <!--
-            <div style="margin-top: 1em;" class="radioButtons">
-                <label><input id="gameTypeSafe" type="radio" class="radioButton" name="gameType" value="safe"><span>Safe start</span></label>
-                <label><input id="gameTypeZero" type="radio" class="radioButton" name="gameType" value="zero" checked><span>Zero start</span></label>
+            <div class="checkboxes" style="margin-top: 15px;">
+                <label><input type="checkbox" class="checkbox" id="noGuessMode" /> <span>No Guess (beta)</span></label>
             </div>
-            -->
+
         </div>
 
-        <div class="radioButtons" style="margin-top: 15px;">
+        <div class="radioButtons">
             <label><input id="beginner" type="radio" class="radioButton" name="boardSize" value="0"><span>Beginner</span></label>
             <label><input id="intermediate" type="radio" class="radioButton" name="boardSize" value="1"><span>Intermediate</span></label>
             <label><input id="expert" type="radio" class="radioButton" name="boardSize" value="2" checked><span>Expert</span></label>
@@ -159,6 +157,16 @@
             <table style="width: 100%" id="propertiesTable" size="24">
             </table>
             <button style="position: absolute; bottom: 5px; Right: 15px" id="propertiesClose" onclick="propertiesClose()">Close</button>
+        </div>
+    </div>
+
+    <!-- No Guess builder display -->
+    <div id="noGuessBuilder" class="modal">
+        <!-- Modal content -->
+        <div class="modal-content" style="position: absolute; width: 225px; height: 100px; top: 100px; left: 100px">
+            <label style="font-size:20px; padding:5px;">Building No Guess board</label>
+            <label id="ngText" style="font-size:20px; padding:5px;"></label>
+            <button style="position: absolute; bottom: 5px; Right: 30px" id="ngBuilderClose" onclick="noGuessCancel()">Cancel</button>
         </div>
     </div>
 

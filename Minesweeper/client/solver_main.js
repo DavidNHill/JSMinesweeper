@@ -1211,7 +1211,7 @@ async function solver(board, options) {
             var minesToFind = boxWitness.minesToFind;
             var spacesLeft = boxWitness.tiles.length;
 
-            console.log(boxWitness.tile.asText() + " length " + boxWitness.tiles.length + ", add " + (spacesLeft - minesToFind) + ", remove " + minesToFind);
+            //console.log(boxWitness.tile.asText() + " length " + boxWitness.tiles.length + ", add " + (spacesLeft - minesToFind) + ", remove " + minesToFind);
 
         }
 
@@ -1360,7 +1360,7 @@ async function solver(board, options) {
             if (adjTile.isCovered() && !adjTile.isSolverFoundBomb()) {
                 var filler = new Filling(adjTile.index, adjTile.x, adjTile.y, fill);
                 fillerTiles.push(filler);
-                writeToConsole(filler.asText(), true);
+                //writeToConsole(filler.asText(), true);
             }
         }
 
