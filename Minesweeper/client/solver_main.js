@@ -429,7 +429,7 @@ async function solver(board, options) {
 
                 bfdaCompleted = bfda.completed;
             } else {
-                writeToConsole("Brute Force requires too many cycles - skipping BFDA");
+                writeToConsole("Brute Force requires too many cycles - skipping BFDA: " + iterator.cycles);
             }
 
 
@@ -1009,6 +1009,36 @@ async function solver(board, options) {
         var adjFlags = board.adjacentFoundMineCount(tile);
         var adjCovered = board.adjacentCoveredCount(tile);
 
+        var safePe = runProbabilityEngine(board, [tile]);
+        var linkedTilesCount = 0;
+        var dominated = false;  // if tile 'a' being safe ==> tile 'b' & 'c' are safe and 'b' and 'c' are in the same box ==> 'b' is safer then 'a' 
+
+        for (var box of safePe.emptyBoxes) {
+            if (box.contains(tile)) { // if the tile is in this box then ignore it
+
+            } else {
+                if (box.tiles.length > 1) {
+                    dominated = true;
+                } else {
+                    linkedTilesCount++;
+                }
+            }
+        }
+
+        console.log("Tile " + tile.asText() + " has " + linkedTilesCount + " linked tiles and dominated=" + dominated);
+
+        // a dominated tile doesn't need any further resolution
+        if (dominated) {
+            action.progress = action.prob;    // progress is total
+            action.weight = action.prob * (1 + action.prob * 0.1);
+            action.maxSolutions = safePe.finalSolutionsCount;
+            action.commonClears = safePe.localClears;
+
+            tile.setProbability(action.prob, action.progress);
+
+            return;
+        }
+
         var solutionsWithProgess = BigInt(0);
         var expectedClears = BigInt(0);
         var maxSolutions = BigInt(0);
@@ -1056,7 +1086,10 @@ async function solver(board, options) {
             //totalSolutions = totalSolutions + work.finalSolutionsCount;
             if (work.clearCount > 0) {
                 expectedClears = expectedClears + work.finalSolutionsCount * BigInt(work.clearCount);
-                solutionsWithProgess = solutionsWithProgess + work.finalSolutionsCount;
+
+                if (work.clearCount > linkedTilesCount) {  // this is intended to penalise tiles which are linked to other tiles. Otherwise 2 tiles give each other all progress.
+                    solutionsWithProgess = solutionsWithProgess + work.finalSolutionsCount;
+                }
             }
 
             if (work.finalSolutionsCount > maxSolutions) {

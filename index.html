@@ -35,13 +35,13 @@
                 <label><input type="checkbox" class="checkbox" id="fastPlay" /> <span>Fast mode</span></label>
             </div>
 
-            <div class="checkboxes" style="margin-top: 15px;">
+            <div class="checkboxes">
                 <label><input type="checkbox" class="checkbox" id="noGuessMode" /> <span>No Guess (beta)</span></label>
             </div>
 
         </div>
 
-        <div class="radioButtons">
+        <div class="radioButtons" style="margin-top: 15px;">
             <label><input id="beginner" type="radio" class="radioButton" name="boardSize" value="0"><span>Beginner</span></label>
             <label><input id="intermediate" type="radio" class="radioButton" name="boardSize" value="1"><span>Intermediate</span></label>
             <label><input id="expert" type="radio" class="radioButton" name="boardSize" value="2" checked><span>Expert</span></label>
@@ -85,7 +85,7 @@
 
         <div style="margin-top: 10px;">
             <label>Tile size:</label>
-            <select id="tilesize">
+            <select id="tilesize" onchange="changeTileSize()">
                 <option value="12">12 pixels</option>
                 <option value="16">16 pixels</option>
                 <option value="20">20 pixels</option>
@@ -111,9 +111,9 @@
     </nav>
 
     <!-- where the board goes -->
-    <div style="position: absolute; left: 180px; right: 10px; top: 75px; bottom: 60px;">
+    <div style="position: absolute; left: 180px; right: 10px; top: 75px; bottom: 60px;" ondrop="dropHandler(event)" ondragover="dragOverHandler(event)">
         <section class="tooltip" id="canvas" style="position: absolute; left: 10px; top: 0px; bottom: 0px; right: 0px;">
-            <div id="display" ondrop="dropHandler(event)" ondragover="dragOverHandler(event)">
+            <div id="display" >
                 <canvas class="led" id="myMinesLeft" width="96" height="40" oncontextmenu="return false"></canvas>
             </div>
             <div id="board" style="overflow: auto; position: relative; top:0px; left:0px;">
@@ -277,6 +277,8 @@
                 document.getElementById("analysis1").style.display = "block";
                 document.getElementById("repeatGame").style.display = "none";
                 document.getElementById("NewGame").innerHTML = "Reset board";
+
+                switchToAnalysis(true);
             } else {
                 document.getElementById("play0").style.display = "block";
                 document.getElementById("play1").style.display = "block";
@@ -284,8 +286,11 @@
                 document.getElementById("analysis1").style.display = "none";
                 document.getElementById("repeatGame").style.display = "block";
                 document.getElementById("NewGame").innerHTML = "New game";
+
+                switchToAnalysis(false);
             }
 
+            
         }
 
         function makeCustom() {

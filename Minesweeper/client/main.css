@@ -87,7 +87,7 @@ div#display {
 /* canvases which hold LED digits */
 canvas.led {
     padding: 0px;
-    background-color: #ccc;
+    background-color: black;
     border-style: inset;
     border-top-width: 4px;
     border-left-width: 4px;

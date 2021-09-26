@@ -4,8 +4,8 @@
 console.log('At start of main.js');
 
 var TILE_SIZE = 24;
-const DIGIT_HEIGHT = 36;
-const DIGIT_WIDTH = 24;
+const DIGIT_HEIGHT = 38;
+const DIGIT_WIDTH = 22;
 const DIGITS = 5;
 
 const CYCLE_DELAY = 100;  // minimum delay in milliseconds between processing cycles
@@ -42,6 +42,9 @@ var canvasHints = document.getElementById('myHints');
 var ctxHints = canvasHints.getContext('2d');
 
 var currentGameDescription;
+
+var analysisBoard;
+var gameBoard;
 var board;
 
 var oldrng = false;
@@ -158,7 +161,7 @@ async function startup() {
     // add a listener for mouse clicks on the canvas
     canvas.addEventListener("mousedown", (event) => on_click(event));
     canvas.addEventListener("mouseup", (event) => mouseUpEvent(event));
-     canvas.addEventListener('mousemove', (event) => followCursor(event));
+    canvas.addEventListener('mousemove', (event) => followCursor(event));
     canvas.addEventListener('wheel', (event) => on_mouseWheel(event));
     canvas.addEventListener('mouseenter', (event) => on_mouseEnter(event));
     canvas.addEventListener('mouseleave', (event) => on_mouseLeave(event));
@@ -176,6 +179,10 @@ async function startup() {
 
     // initialise the solver
     await solver();
+
+    // create an initial analysis board
+    analysisBoard = new Board(1, 30, 16, 0, seed, "");
+    analysisBoard.setAllZero();
 
     if (currentGameDescription != null) {
         var gameDescription = JSON.parse(currentGameDescription);
@@ -298,30 +305,68 @@ async function saveAsMBF() {
 // create a BLOB of the data, insert a URL to it into the download link
 async function downloadAsMBF() {
 
-    /*
-    if (board == null) {
-        return;
+    // if we are in analysis mode then create the url, otherwise the url was created when the game was generated
+    if (analysisMode) {
+        if (board == null) {
+            return;
+        }
+
+        var mbf = board.getFormatMBF();
+
+        if (mbf == null) {
+            return;
+        }
+
+        var blob = new Blob([mbf], { type: 'application/octet-stream' })
+
+        var url = URL.createObjectURL(blob);
+
+        console.log(url);
+
+        downloadHyperlink.href = url;  // Set the url ready to be downloaded
+
+        setTimeout(function () { console.log("Revoked " + url); URL.revokeObjectURL(url) }, 10000, url);
     }
 
-    var mbf = board.getFormatMBF();
+    // create a download name based on the date/time
+    var now = new Date();
 
-    if (mbf == null) {
-        return;
-    }
+    var filename = "Download" + now.toISOString() + ".mbf";
 
-    var blob = new Blob([mbf], { type: 'application/octet-stream' })
-
-    var url = URL.createObjectURL(blob);
-
-    console.log(url);
-
-    //downloadHyperlink.href = url;
-    */
-
-    downloadHyperlink.download = "download.mbf";
+    downloadHyperlink.download = filename;
 
 }
 
+function switchToAnalysis(doAnalysis) {
+
+    if (doAnalysis) {
+        gameBoard = board;
+        board = analysisBoard;
+
+        showDownloadLink(true, "")  // display the hyperlink
+
+        title.innerHTML = "Minesweeper analyser";  // change the title
+    } else {
+        analysisBoard = board;
+        board = gameBoard;
+
+        showDownloadLink(false, "")  // hide the hyperlink (we don't have the url until we play a move - this could be improved)
+
+        title.innerHTML = "Minesweeper player"; // change the title
+    }
+
+    resizeCanvas(board.width, board.height);
+
+    browserResized();
+
+    renderHints([]);  // clear down hints
+
+    renderTiles(board.tiles); // draw the board
+
+    updateMineCount(board.bombs_left);  // reset the mine count
+
+    analysisMode = doAnalysis;
+}
 
 // render an array of tiles to the canvas
 function renderHints(hints, otherActions) {
@@ -433,7 +478,7 @@ function updateMineCount(minesLeft) {
         var digit = work % 10;
         work = (work - digit) / 10;
 
-        ctxBombsLeft.drawImage(led_images[digit], DIGIT_WIDTH * position, 0, DIGIT_WIDTH, DIGIT_HEIGHT);
+        ctxBombsLeft.drawImage(led_images[digit], DIGIT_WIDTH * position + 2, 2, DIGIT_WIDTH - 4, DIGIT_HEIGHT - 4);
 
         position--;
     }
@@ -454,6 +499,21 @@ function getDigitCount(mines) {
     return digits;
 }
 
+// display or hide the download link 
+function showDownloadLink(show, url) {
+
+    if (show) {
+        downloadHyperlink.style.display = "block";
+        if (url != null) {
+            downloadHyperlink.href = url;
+        }
+
+    } else {
+        downloadHyperlink.style.display = "none";
+    }
+
+}
+
 async function playAgain() {
 
     // let the server know the game is over
@@ -468,6 +528,7 @@ async function playAgain() {
 
         TILE_SIZE = parseInt(docTileSize.value);
 
+        /*
         // make the canvases large enough to fit the game
         var boardWidth = board.width * TILE_SIZE;
         var boardHeight = board.height * TILE_SIZE;
@@ -477,6 +538,9 @@ async function playAgain() {
 
         canvasHints.width = boardWidth;
         canvasHints.height = boardHeight;
+        */
+
+        resizeCanvas(board.width, board.height);
 
         browserResized();
 
@@ -528,15 +592,9 @@ async function newGameFromBlob(blob) {
 
     TILE_SIZE = parseInt(docTileSize.value);
 
-    // make the canvases large enough to fit the game
-    var boardWidth = board.width * TILE_SIZE;
-    var boardHeight = board.height * TILE_SIZE;
+    resizeCanvas(board.width, board.height);
 
-    canvas.width = boardWidth;
-    canvas.height = boardHeight;
-
-    canvasHints.width = boardWidth;
-    canvasHints.height = boardHeight;
+    showDownloadLink(false, ""); // remove the download link
 
     browserResized();
 
@@ -557,9 +615,6 @@ async function newGameFromBlob(blob) {
 async function newGame(width, height, mines, seed) {
 
     console.log("New game requested: Width=" + width + " Height=" + height + " Mines=" + mines + " Seed=" + seed);
-
-    // remove the hyperlink
-    downloadHyperlink.style.display = "none";
 
     // let the server know the game is over
     if (board != null) {
@@ -586,10 +641,14 @@ async function newGame(width, height, mines, seed) {
     if (analysisModeButton.checked) {
         title.innerHTML = "Minesweeper analyser";
         analysisMode = true;
-        lockMineCount.checked = false;  // dom't lock the mine count when the board is reset
+        lockMineCount.checked = false;  // don't lock the mine count when the board is reset
+
+        showDownloadLink(true, "");
     } else {
         title.innerHTML = "Minesweeper player";
         analysisMode = false;
+
+        showDownloadLink(false, "");
     }
 
     var drawTile = HIDDEN;
@@ -607,16 +666,7 @@ async function newGame(width, height, mines, seed) {
 
     TILE_SIZE = parseInt(docTileSize.value);
 
-
-    // make the canvases large enough to fit the game
-    var boardWidth = width * TILE_SIZE;
-    var boardHeight = height * TILE_SIZE;
-
-    canvas.width = boardWidth;
-    canvas.height = boardHeight;
-
-    canvasHints.width = boardWidth;
-    canvasHints.height = boardHeight;
+    resizeCanvas(width, height);
 
     browserResized();
 
@@ -631,6 +681,36 @@ async function newGame(width, height, mines, seed) {
     canvasLocked = false;  // just in case it was still locked (after an error for example)
 
     showMessage("New game requested with width " + width + ", height " + height + " and " + mines + " mines.");
+
+}
+
+function changeTileSize() {
+
+    TILE_SIZE = parseInt(docTileSize.value);
+
+    console.log("Changing tile size to " + TILE_SIZE);
+
+    resizeCanvas(board.width, board.height);  // resize the canvas
+
+    browserResized();  // do we need scroll bars?
+
+    renderTiles(board.tiles); // draw the board
+
+    //updateMineCount(board.bombs_left);  // reset the mine count
+
+}
+
+    // make the canvases large enough to fit the game
+function resizeCanvas(width, height) {
+
+    var boardWidth = width * TILE_SIZE;
+    var boardHeight = height * TILE_SIZE;
+
+    canvas.width = boardWidth;
+    canvas.height = boardHeight;
+
+    canvasHints.width = boardWidth;
+    canvasHints.height = boardHeight;
 
 }
 
@@ -1346,10 +1426,9 @@ async function sendActionsMessage(message) {
         return;
     }
 
-    // remove the hyperlink
+    // add the hyperlink the hyperlink
     if (reply.header.url != null) {
-        downloadHyperlink.style.display = "block";
-        downloadHyperlink.href = reply.header.url;
+        showDownloadLink(true, reply.header.url);
     }
  
     // translate the message and redraw the board
@@ -1624,11 +1703,11 @@ function load_images() {
     for (var i = 0; i <= 8; i++) {
         var file_path = "resources/images/" + i.toString() + ".png";
         images.push(load_image(file_path));
-        var led_path = "resources/images/led" + i.toString() + ".png";
+        var led_path = "resources/images/led" + i.toString() + ".svg";
         led_images.push(load_image(led_path));
     }
 
-    led_images.push(load_image("resources/images/led9.png"));
+    led_images.push(load_image("resources/images/led9.svg"));
 
     images.push(load_image("resources/images/bomb.png"));
     images.push(load_image("resources/images/facingDown.png"));

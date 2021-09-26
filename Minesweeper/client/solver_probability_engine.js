@@ -37,6 +37,8 @@ class ProbabilityEngine {
         this.deadTiles = [];
         this.lonelyTiles = [];  // tiles with no empty space around them
 
+        this.emptyBoxes = [];  // boxes which never contain mines - i.e. the set of safe tiles by Box
+
         this.boxProb = [];  // the probabilities end up here
 		this.workingProbs = []; 
         this.heldProbs = [];
@@ -1358,10 +1360,12 @@ class ProbabilityEngine {
                 if (tally[i] == totalTally) {  // a mine
                     //console.log("Box " + i + " contains mines");
                     this.boxProb[i] = 0;
-                    //for (Square squ: boxes.get(i).getSquares()) {  // add the squares in the box to the list of mines
-                    //   mines.add(squ);
-                    //}
-                } else {
+
+                } else if (tally[i] == 0) {  // safe
+                    this.boxProb[i] = 1;
+                    this.emptyBoxes.push(this.boxes[i]);
+
+                } else {  // neither mine nor safe
                     this.boxProb[i] = 1 - divideBigInt(tally[i], totalTally, 6);
                 }
 
@@ -1537,6 +1541,22 @@ class ProbabilityEngine {
     getDeadTiles() {
 
          return this.deadTiles;
+    }
+
+    // forces a box to contain a tile which isn't a mine.  If the location isn't in a box false is returned.
+    setMustBeEmpty(tile) {
+
+        var box = this.getBox(tile);
+
+        if (box == null) {
+            this.validWeb = false;
+            return false;
+        } else {
+            box.incrementEmptyTiles();
+        }
+
+        return true;
+
     }
 
     writeToConsole(text, always) {
