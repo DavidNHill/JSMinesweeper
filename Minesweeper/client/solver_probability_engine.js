@@ -1129,7 +1129,7 @@ class ProbabilityEngine {
             }
         }
 
-        this.writeToConsole("ERROR - tile " + tile.asText() + " doesn't belong to a box", true);
+        this.writeToConsole("ERROR - tile " + tile.asText() + " doesn't belong to a box");
 
         return null;
     }

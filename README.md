@@ -7,7 +7,7 @@ This readme explains how to use the software and what techniques the solver uses
 ## Overview
 This is a rewrite of my Java minesweeper solver in javascript. All the processing runs on the local (your) machine. The purpose of the rewrite was to make the solver more accessable since there was reluctance to download a java executable. The trade off is that javascript is significantly slower than java to execute. 
 
-The solver has a 40.7% win rate on classic expert (30x16/99 safe start in a corner) and 54% on modern expert (30x16/99 open start at (3,3)).
+The Java solver has a 40.9% win rate on classic expert (30x16/99 safe start in a corner) and 54.2% on modern expert (30x16/99 open start at (3,3)). The Javascript version is slightly weaker.
 
 ## How to use the player
 
@@ -17,6 +17,7 @@ The landing screen provides access to the Minesweeper player.
 
 Basic Options:
 - Opening on start: Determines whether the first click is a guaranteed opening or only guaranteed safe.
+- No Guesss: Attempts to generate a board which contains no guesses. The board is generated on your first click.
 - Beginner:  9x9/10.
 - Intermediate: 16x16/40.
 - Expert: 30x16/99.
@@ -27,7 +28,7 @@ Advanced options:
 - Style - Flagging: Put a flag on mines when the solver discovers them.
 - Style - No Flagging: Never place flags.
 - Style - Efficiency: This option allows the solver to use chording and flags are only placed in an attempt to minimize the number of clicks required to solve the game. **This mode seriously impacts performance.**
-- Tile size: use this to select the tile size best suited.  Will take affect next time the game starts or the board is reset.
+- Tile size: use this to select the tile size best suited for you.
 - Show hints: The solver will shadow your play and highlight safe plays and (if necessary) what it considers the best guess
 - Auto play: The solver will play the game for you until a guess is required.
 - Accept guesses: The solver will play the game until it is won or lost.
@@ -37,11 +38,11 @@ The analysis button can be used to force the solver to analyse the current games
 
 ## How to use the Analyser
 
-To access the analyser toggle select the 'Analysis mode' switch and press the *Reset board* button which has replaced the *New Game* button.
+To access the analyser press the button in the top right corner. 
 
 ![Empty Analysis screen](resources/ReadmeImages/AnalysisEmpty.jpg)
 
-To start you are presented with a blank board which is either all *zeros* or all *hidden* depending on the option you have selected.
+To start you are presented with a blank expert board which is all *zeros*. You can start with all *hidden* by selecting *build all hidden* and then reseting the board.
 
 From here you can construct the position you wish to analyse. This is best done in the following order:
 1. Use the left mouse button (or 'h') to toggle a tile from hidden to revealed.

@@ -7,19 +7,30 @@
     <link rel="icon" type="image/png" href="resources/images/flagged.png" />
     <title>Minesweeper solver</title>
 </head>
-<body style="position: absolute; left:0px; right:0px; top:0px; bottom:0px; zoom: 1.0;" onresize="browserResized()">
+<body style="position: absolute; left:0px; right:0px; top:0px; bottom:0px; zoom: 1.0;" onresize="browserResized()" onload="load_images()" onunload="exiting()">
 
     <!-- Title at the top -->
-    <h1><label id="title">Minesweeper solver</label><label style="float: right;"><a href="https://github.com/DavidNHill/JSMinesweeper#readme" target="_blank"><i>help</i></a></label></h1>
+    <h1>
+        <button type="button" style="zoom: 0.9; vertical-align: middle;" id="switchButton" onclick="setAnalysis()">Switch to Analyser</button>
+        <label id="title" style="font-size: 36px; vertical-align: middle;">Minesweeper solver</label>
+        <label style="float: right; padding-right: 10px;">
+            <a href="https://github.com/DavidNHill/JSMinesweeper#readme" target="_blank"><i>help</i></a>
+        </label>
+    </h1>
 
     <!-- control panel on the left -->
     <nav id="controls" style="zoom: 0.9; position:relative; left:0px; top:0px">
 
-        <div class="checkboxes">
-            <label><input type="checkbox" class="checkbox" id="analysismode" onclick="setAnalysis()" /> <span>Analysis mode</span></label>
-        </div>
+        <!--
+         <div class="checkboxes">
+             <label><input type="checkbox" class="checkbox" id="analysismode" onclick="setAnalysis()" /> <span>Analysis mode</span></label>
+         </div>
 
-        <div id="play0" style="margin-top: 15px;">
+
+         <button type="button" style="margin-top: 0em;" id="switchButton" onclick="setAnalysis()">Switch to Analyser</button>
+        -->
+
+        <div id="play0" style="margin-top: 0px;">
             <div class="checkboxes">
                 <label><input type="checkbox" class="checkbox" id="useSeed" /> <span>Use seed</span></label>
             </div>
@@ -35,13 +46,13 @@
                 <label><input type="checkbox" class="checkbox" id="fastPlay" /> <span>Fast mode</span></label>
             </div>
 
-            <div class="checkboxes">
+            <div class="checkboxes" style="margin-bottom: 10px;">
                 <label><input type="checkbox" class="checkbox" id="noGuessMode" /> <span>No Guess (beta)</span></label>
             </div>
 
         </div>
 
-        <div class="radioButtons" style="margin-top: 15px;">
+        <div class="radioButtons" style="margin-top: 0px;">
             <label><input id="beginner" type="radio" class="radioButton" name="boardSize" value="0"><span>Beginner</span></label>
             <label><input id="intermediate" type="radio" class="radioButton" name="boardSize" value="1"><span>Intermediate</span></label>
             <label><input id="expert" type="radio" class="radioButton" name="boardSize" value="2" checked><span>Expert</span></label>
@@ -70,9 +81,9 @@
             <button style="margin-top: 1em;" id="localStorageButton" onclick="openLocalStorage()">Local Storage</button>
         </div>
 
-        <button style="margin-top: 1em;" id="NewGame" onclick="apply()">New game</button>
+        <button type="button" style="margin-top: 1em;" id="NewGame" onclick="apply()">New game</button>
 
-        <button style="margin-top: 0em;" id="repeatGame" onclick="playAgain()">Play again</button>
+        <button type="button" style="margin-top: 0em;" id="repeatGame" onclick="playAgain()">Play again</button>
 
         <div style="margin-top: 10px;">
             <label>Style:</label>
@@ -106,7 +117,7 @@
             <label><input type="checkbox" class="checkbox" id="lockMineCount" /> <span><u>L</u>ock mine count</span></label>
         </div>
 
-        <button style="margin-top: 1em;" id="AnalysisButton" onclick="doAnalysis()"><u>A</u>nalyse</button>
+        <button type="button" style="margin-top: 1em;" id="AnalysisButton" onclick="doAnalysis()"><u>A</u>nalyse</button>
 
     </nav>
 
@@ -211,12 +222,15 @@
             var minesX = document.getElementById("mines").value;
 
             if (isNaN(widthX)) {
+                document.getElementById("width").focus();
                 return;
             }
             if (isNaN(heightX)) {
+                document.getElementById("height").focus();
                 return;
             }
             if (isNaN(minesX)) {
+                document.getElementById("mines").focus();
                 return;
             }
 
@@ -225,8 +239,8 @@
             var mines = Number(minesX);
 
             if (width < 1) {
-                document.getElementById("width").value = 1
-                width = 1;
+                document.getElementById("width").value = 30
+                width = 30;
             }
 
             if (width > MAX_WIDTH) {
@@ -235,8 +249,8 @@
             }
 
             if (height < 1) {
-                document.getElementById("height").value = 1
-                height = 1;
+                document.getElementById("height").value = 16
+                height = 16;
             }
 
             if (height > MAX_HEIGHT) {
@@ -245,8 +259,8 @@
             }
 
             if (mines < 1) {
-                document.getElementById("mines").value = 1;
-                mines = 1;
+                document.getElementById("mines").value = 99
+                mines = 99;
             }
 
             if (mines > width * height - 1) {
@@ -270,7 +284,8 @@
 
         function setAnalysis() {
 
-            if (document.getElementById("analysismode").checked) {
+            //if (document.getElementById("analysismode").checked) {
+            if (!analysisMode) {
                 document.getElementById("play0").style.display = "none";
                 document.getElementById("play1").style.display = "none";
                 document.getElementById("analysis0").style.display = "block";

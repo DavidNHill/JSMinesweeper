@@ -499,7 +499,6 @@ function applyResults(board, revealedTiles) {
 
 	}
 
-
 }
 
 

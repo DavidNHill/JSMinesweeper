@@ -19,7 +19,7 @@ var cacheWinningLines = 0;
 
 class BruteForceAnalysis {
 
-	constructor(solutions, tiles, size) {  // tiles is array of class 'Tile' being considered
+	constructor(solutions, tiles, size, verbose) {  // tiles is array of class 'Tile' being considered
 
         allTiles = tiles;
 
@@ -33,6 +33,8 @@ class BruteForceAnalysis {
         //this.maxSolutionSize = size;
         this.completed = false;
 
+        this.verbose = verbose;
+
         // reset the globals
         allSolutions = new SolutionTable(solutions);
         cache.clear();  //clear the cache
@@ -45,8 +47,8 @@ class BruteForceAnalysis {
 
         var start = performance.now();
 
-        console.log("----- Brute Force Deep Analysis starting ----");
-        console.log(allSolutions.size() + " solutions in BruteForceAnalysis");
+        this.writeToConsole("----- Brute Force Deep Analysis starting ----");
+        this.writeToConsole(allSolutions.size() + " solutions in BruteForceAnalysis");
 
         // create the top node 
         var top = this.buildTopNode(allSolutions);  // top is class 'Node'
@@ -59,9 +61,11 @@ class BruteForceAnalysis {
 
         for (var i = 0; i < top.getLivingLocations().length; i++) {
 
-            showMessage("Analysing Brute Force Deep Analysis line " + i + " of " + top.getLivingLocations().length);
-            await sleep(1);
-
+            if (this.verbose) {
+                showMessage("Analysing Brute Force Deep Analysis line " + i + " of " + top.getLivingLocations().length);
+                await sleep(1);
+            }
+ 
             var move = top.getLivingLocations()[i];  // move is class 'Livinglocation'
 
             var winningLines = top.getWinningLinesStart(move);  // calculate the number of winning lines if this move is played
@@ -77,9 +81,9 @@ class BruteForceAnalysis {
             var singleProb = (allSolutions.size() - move.mineCount) / allSolutions.size();
 
             if (move.pruned) {
-                console.log(move.index + " " + allTiles[move.index].asText() + " is living with " + move.count + " possible values and probability " + this.percentage(singleProb) + ", this location was pruned (max winning lines " + winningLines + ")");
+                this.writeToConsole(move.index + " " + allTiles[move.index].asText() + " is living with " + move.count + " possible values and probability " + this.percentage(singleProb) + ", this location was pruned (max winning lines " + winningLines + ")");
             } else {
-                console.log(move.index + " " + allTiles[move.index].asText() + " is living with " + move.count + " possible values and probability " + this.percentage(singleProb) + ", winning lines " + winningLines);
+                this.writeToConsole(move.index + " " + allTiles[move.index].asText() + " is living with " + move.count + " possible values and probability " + this.percentage(singleProb) + ", winning lines " + winningLines);
             }
 
         }
@@ -92,16 +96,16 @@ class BruteForceAnalysis {
             this.winChance = best / allSolutions.size() ;
             this.completed = true;
             if (true) {
-                console.log("--------- Probability Tree dump start ---------");
+                this.writeToConsole("--------- Probability Tree dump start ---------");
                 this.showTree(0, 0, top);
-                console.log("---------- Probability Tree dump end ----------");
+                this.writeToConsole("---------- Probability Tree dump end ----------");
             }
         }
 
         var end = performance.now();;
-        console.log("Total nodes in cache = " + cache.size + ", total cache hits = " + cacheHit + ", total winning lines saved = " + cacheWinningLines);
-        console.log("process took " + (end - start) + " milliseconds and explored " + processCount + " nodes");
-        console.log("----- Brute Force Deep Analysis finished ----");
+        this.writeToConsole("Total nodes in cache = " + cache.size + ", total cache hits = " + cacheHit + ", total winning lines saved = " + cacheWinningLines);
+        this.writeToConsole("process took " + (end - start) + " milliseconds and explored " + processCount + " nodes");
+        this.writeToConsole("----- Brute Force Deep Analysis finished ----");
 
         // clear down the cache
         cache.clear();
@@ -231,7 +235,9 @@ class BruteForceAnalysis {
 
         if (node.bestLiving == null) {
             var line = INDENT.substring(0, depth * 3) + condition + " Solve chance " + node.getProbability();
-            console.log(line);
+
+            this.writeToConsole(line);
+            //console.log(line);
             return;
         }
 
@@ -241,8 +247,9 @@ class BruteForceAnalysis {
 
 
         var line = INDENT.substring(0, depth * 3) + condition + " play " + loc.asText() + " Survival chance " + prob + ", Solve chance " + node.getProbability();
+        this.writeToConsole(line);
 
-        console.log(line);
+        //console.log(line);
 
         //for (Node nextNode: node.bestLiving.children) {
         for (var val = 0; val < node.bestLiving.children.length; val++) {
@@ -268,6 +275,11 @@ class BruteForceAnalysis {
         return this.allDead;
     }
 
+    writeToConsole(text) {
+        if (this.verbose) {
+            console.log(text);
+        }
+    }
 
 }
 

@@ -358,7 +358,7 @@ async function solver(board, options) {
 
             writeToConsole("Solutions found by brute force for isolated edge " + solutionCount);
 
-            var bfda = new BruteForceAnalysis(pe.isolatedEdgeBruteForce.allSolutions, pe.isolatedEdgeBruteForce.iterator.tiles, 1000);  // the tiles and the solutions need to be in sync
+            var bfda = new BruteForceAnalysis(pe.isolatedEdgeBruteForce.allSolutions, pe.isolatedEdgeBruteForce.iterator.tiles, 1000, options.verbose);  // the tiles and the solutions need to be in sync
 
             await bfda.process();
 
@@ -423,7 +423,7 @@ async function solver(board, options) {
 
                 writeToConsole("Solutions found by brute force " + solutionCount + " after " + iterator.getIterations() + " cycles");
 
-                var bfda = new BruteForceAnalysis(bruteForce.allSolutions, iterator.tiles, 1000);  // the tiles and the solutions need to be in sync
+                var bfda = new BruteForceAnalysis(bruteForce.allSolutions, iterator.tiles, 1000, options.verbose);  // the tiles and the solutions need to be in sync
 
                 await bfda.process();
 
@@ -602,7 +602,7 @@ async function solver(board, options) {
 
         findAlternativeMove(actions);
 
-        writeToConsole("Solver recommends (" + actions[0].x + "," + actions[0].y + ")", true);
+        writeToConsole("Solver recommends (" + actions[0].x + "," + actions[0].y + ")");
 
         writeToConsole("Best Guess analysis took " + (Date.now() - start) + " milliseconds to complete");
 
@@ -1025,7 +1025,7 @@ async function solver(board, options) {
             }
         }
 
-        console.log("Tile " + tile.asText() + " has " + linkedTilesCount + " linked tiles and dominated=" + dominated);
+        writeToConsole("Tile " + tile.asText() + " has " + linkedTilesCount + " linked tiles and dominated=" + dominated);
 
         // a dominated tile doesn't need any further resolution
         if (dominated) {
@@ -1399,29 +1399,6 @@ async function solver(board, options) {
 
 
     }
-
-    /*
-    function formatSolutions(count) {
-
-        if (count > maxSolutionsDisplay) {
-            var work = count;
-            var index = 3;
-            var power = 0;
-            while (work > power10n[index * 2]) {
-                work = work / power10n[index];
-                power = power + index;
-            }
-
-            var value = divideBigInt(work, power10n[index], 3);
-            power = power + 3;
-
-            return " Approximately " + value + " * 10<sup>" + power + "</sup> possible solutions remain.";
-        } else {
-            return " " + count.toLocaleString() + " possible solutions remain.";
-        }
-
-    }
-    */
 
     function writeToConsole(text, always) {
 

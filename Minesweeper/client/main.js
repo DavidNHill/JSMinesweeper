@@ -59,7 +59,8 @@ var acceptGuessesCheckBox = document.getElementById("acceptguesses");
 var seedText = document.getElementById("seed");
 var gameTypeSafe = document.getElementById("gameTypeSafe");
 var gameTypeZero = document.getElementById("gameTypeZero");
-var analysisModeButton = document.getElementById("analysismode");
+//var analysisModeButton = document.getElementById("analysismode");
+var switchButton = document.getElementById("switchButton");
 var analysisButton = document.getElementById("AnalysisButton");
 var messageLine = document.getElementById("messageLine");
 var title = document.getElementById("title");
@@ -92,11 +93,8 @@ var hoverTile;         // tile the mouse last moved over
 var analysing = false;  // try and prevent the analyser running twice if pressed more than once
 
 
-// add a listener for when the client exists the page
-
-
-// when exiting store the current game
-function exiting(event) {
+// things to do when exiting the page
+function exiting() {
 
     console.log("exiting...");
 
@@ -111,8 +109,6 @@ function exiting(event) {
     return "";
 }
 
-// load the images
-load_images();
 
 // things to do to get the game up and running
 async function startup() {
@@ -144,17 +140,6 @@ async function startup() {
 
 
     BINOMIAL = new Binomial(50000, 200);
-
-    /*
-    var start = performance.now();
-    BINOMIAL.generate(99, 240)
-    //console.log(ps.generate(200, 480));
-    var mid = performance.now();
-    //console.log(combination(200, 480));
-    combination(99, 240)
-    var end = performance.now();
-    console.log("fast " + (mid - start) + " slow " + (end - mid));
-    */
 
     window.addEventListener("beforeunload", (event) => exiting(event));
 
@@ -202,6 +187,8 @@ async function startup() {
         await sendActionsMessage(message);
         board.setStarted();
     }
+
+    //bulkRun(5678, 1000);
 
     showMessage("Welcome to minesweeper solver dedicated to Annie");
 }
@@ -346,6 +333,7 @@ function switchToAnalysis(doAnalysis) {
         showDownloadLink(true, "")  // display the hyperlink
 
         title.innerHTML = "Minesweeper analyser";  // change the title
+        switchButton.innerHTML = "Switch to Player";
     } else {
         analysisBoard = board;
         board = gameBoard;
@@ -353,6 +341,7 @@ function switchToAnalysis(doAnalysis) {
         showDownloadLink(false, "")  // hide the hyperlink (we don't have the url until we play a move - this could be improved)
 
         title.innerHTML = "Minesweeper player"; // change the title
+        switchButton.innerHTML = "Switch to Analyser";
     }
 
     resizeCanvas(board.width, board.height);
@@ -514,6 +503,99 @@ function showDownloadLink(show, url) {
 
 }
 
+async function bulkRun(runSeed, size) {
+
+    var options = {};
+    options.playStyle = PLAY_STYLE_NOFLAGS;
+    options.verbose = false;
+    options.advancedGuessing = true;
+
+    var startTime = Date.now();
+
+    var played = 0;
+    var won = 0;
+
+    var rng = JSF(runSeed);  // create an RNG based on the seed
+    var startIndex = 0;
+
+
+    while (played < size) {
+
+        played++;
+
+        var gameSeed = rng() * Number.MAX_SAFE_INTEGER;
+
+        console.log(gameSeed);
+
+        var game = new ServerGame(0, 30, 16, 99, startIndex, gameSeed, "safe");
+
+        var board = new Board(0, 30, 16, 99, gameSeed, "safe");
+
+        var tile = game.getTile(startIndex);
+
+        var revealedTiles = game.clickTile(tile);
+        applyResults(board, revealedTiles);  // this is in MinesweeperGame.js
+
+        var guessed = false;
+        var loopCheck = 0;
+        while (revealedTiles.header.status == IN_PLAY) {
+
+            loopCheck++;
+
+            if (loopCheck > 10000) {
+                break;
+            }
+
+            var reply = await solver(board, options);  // look for solutions
+
+            var actions = reply.actions;
+
+            for (var i = 0; i < actions.length; i++) {
+
+                var action = actions[i];
+
+                if (action.action == ACTION_CHORD) {
+                    console.log("Got a chord request!");
+
+                } else if (action.action == ACTION_FLAG) {   // zero safe probability == mine
+                    console.log("Got a flag request!");
+
+                } else {   // otherwise we're trying to clear
+
+                    tile = game.getTile(board.xy_to_index(action.x, action.y));
+
+                    revealedTiles = game.clickTile(tile);
+
+                    if (revealedTiles.header.status != IN_PLAY) {  // if won or lost nothing more to do
+                        break;
+                    }
+
+                    applyResults(board, revealedTiles);
+
+                    if (action.prob != 1) {  // do no more actions after a guess
+                    	break;
+                    }
+                }
+            }
+
+        }
+
+        console.log(revealedTiles.header.status);
+
+        if (revealedTiles.header.status == WON) {
+            won++;
+        }
+
+    }
+
+
+    console.log("Played " + played + " won " + won);
+
+
+    return game;
+
+}
+
 async function playAgain() {
 
     // let the server know the game is over
@@ -638,6 +720,7 @@ async function newGame(width, height, mines, seed) {
         var gameType = "safe";
     }
 
+    /*
     if (analysisModeButton.checked) {
         title.innerHTML = "Minesweeper analyser";
         analysisMode = true;
@@ -648,6 +731,14 @@ async function newGame(width, height, mines, seed) {
         title.innerHTML = "Minesweeper player";
         analysisMode = false;
 
+        showDownloadLink(false, "");
+    }
+    */
+
+    if (analysisMode) {
+        lockMineCount.checked = false;  // don't lock the mine count when the board is reset
+        showDownloadLink(true, "");
+    } else {
         showDownloadLink(false, "");
     }
 
@@ -801,23 +892,23 @@ function keyPressedEvent(e) {
     } else if (analysisMode) {
         if (e.key == 'l') {   // 'L'
             lockMineCount.checked = !lockMineCount.checked;
-        } else if (e.key == '0') {  
+        } else if (e.key == '0') {
             newValue = 0;
         } else if (e.key == '1') {  // '1'
             newValue = 1;
-        } else if (e.key == '2') {  
+        } else if (e.key == '2') {
             newValue = 2;
-        } else if (e.key == '3') {  
+        } else if (e.key == '3') {
             newValue = 3;
-        } else if (e.key == '4') {  
+        } else if (e.key == '4') {
             newValue = 4;
-        } else if (e.key == '5') {  
+        } else if (e.key == '5') {
             newValue = 5;
-        } else if (e.key == '6') {  
+        } else if (e.key == '6') {
             newValue = 6;
-        } else if (e.key == '7') {  
+        } else if (e.key == '7') {
             newValue = 7;
-        } else if (e.key == '8') {  
+        } else if (e.key == '8') {
             newValue = 8;
         } else if (e.key == 'h') {
             var tile = hoverTile;
@@ -827,6 +918,10 @@ function keyPressedEvent(e) {
             var tile = hoverTile;
             var tilesToUpdate = analysis_toggle_flag(tile);
             window.requestAnimationFrame(() => renderTiles(tilesToUpdate));
+        }
+    } else {
+        if (e.key == ' ' && board.isGameover()) {
+            apply();  // this is in the index.html file
         }
     }
 
