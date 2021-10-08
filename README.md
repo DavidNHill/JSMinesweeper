@@ -38,7 +38,7 @@ The analysis button can be used to force the solver to analyse the current games
 
 ## How to use the Analyser
 
-To access the analyser press the button in the top right corner. 
+To access the analyser press the button in the top left corner. 
 
 ![Empty Analysis screen](resources/ReadmeImages/AnalysisEmpty.jpg)
 
