@@ -35,6 +35,11 @@ Advanced options:
 
 The analysis button can be used to force the solver to analyse the current games position.  This is useful if you have turned off all the solver options.
 
+The **Play again** button can be used to replay the same board. This is useful if you have made a no guess game you wish to replay without having to redo the generation step. If you don't start with the same tile you may blast or game may no longer be no guess.
+
+**New:**
+**Boards can be downloaded in mbf format to be stored locally or shared with friends.**
+**boards saved using MinesweeperX (mbf) or Arbitar (abf) can be loaded into the Player by dragging and dropping the file on the play area.**
 
 ## How to use the Analyser
 
@@ -59,6 +64,10 @@ If the board is valid the **Analyse** button will be enabled and pressing this (
 The safe tiles are shown in green and the mines in red. If no certain move is available then the solver will highlight the move it considers best in yellow with a green centre.  Other moves it considered but rejected are shown in yellow. Tiles highlighted in grey can have only one possible value and it is never correct to play these when there are other moves available.
 
 If you are playing a game and using the analyser to provide assistance then you can keep the mine count in step by selecting "Lock mine count".  Now every time a flag is placed the mine counter is reduced by one.
+
+## Using the Analyser to construct boards to keep
+
+If you wish to construct a board to share with friends or to see how the solver would approach playing it, then place flags in the location of where the mines are and **Download as MBF**.  Drop the downloaded file into the Minesweeper Player's play area to load the game.
 
 ## High level components
 
@@ -94,10 +103,10 @@ As part of the probability engine some tiles can be discovered that are either m
 
 ## 50/50 and pseudo-50/50 detection
 
-A 2-tile 50/50 is a pair of tiles which share 1 mine where one of the tiles can never receive information without the other tile also receiving the same information.  In this situation there is no way to differentiate between the two tiles and they must be (and always will be) an unavoidable guess with 50% chance of being correct.  Since the 50/50 will never change it is always correct to guess these at the earliest possible moment, since they might provide information to their neighbouring tiles. In practice this processing has a dependency on the probability engine and so the solver can only find these after that has run.
+A 2-tile 50/50 is a pair of tiles which share 1 mine where one of the tiles can never receive information without the other tile also receiving the same information.  In this situation there is no way to differentiate between the two tiles and they must be (and always will be) an unavoidable guess with 50% chance of being correct.  Since the 50/50 will never change it is always correct to guess these at the earliest opportunity, since they might provide information to their neighbouring tiles. In practice this processing has a dependency on the probability engine and so the solver can only find these after that has run.
 
 The solver can discover:
-- Arbitrarily extended 2-tile 50/50s.  
+- Arbitrarily extended 2-tile 50/50s. 
 - Enclosed 2x2/2 boxes
 
 ![Solver 50/50](resources/ReadmeImages/Solver5050-2.jpg)
@@ -122,7 +131,7 @@ Each tile within 10% of the safest guess (e.g. safest is 80%, then the cutoff is
 
 The progress percentage and the secondary safety are blended together to create a final score. The idea here is that 1) a tile with 90% safety and 10% progress isn't as good as a move with 85% safety and 85% progress and 2) When you don't make progress is there a good guess to follow.  This method is not perfect but has been emperically shown to provide better results than merely picking the safest tile.
 
-An interesting statistic is that to win a classic expert game of minesweeper the solver is required, on average, to make 3.3 guesses.  From this we can see that once the game has opened up it is common to be a able to make significant progress before a guess is needed again. For higher density boards the number of guesses required goes up and the value of looking for progress diminishes. When the mine density reaches a certain point the tie break switches to choosing the tile which has the best chance of reducing the solution space the most.
+An interesting statistic is that to win a classic expert game of minesweeper the solver is required, on average, to make 3.3 guesses.  From this we can see that once the game has opened up it is common to be a able to make significant progress before a guess is needed again. For higher density boards the number of guesses required goes up and the value of looking for progress diminishes. For this reason the guessing heuristic may not be optimal for high density boards.
 
 
 ## Brute force analysis

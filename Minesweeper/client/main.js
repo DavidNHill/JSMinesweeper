@@ -290,18 +290,28 @@ async function saveAsMBF() {
 
 // download as MBF
 // create a BLOB of the data, insert a URL to it into the download link
-async function downloadAsMBF() {
+async function downloadAsMBF(e) {
 
     // if we are in analysis mode then create the url, otherwise the url was created when the game was generated
     if (analysisMode) {
         if (board == null) {
-            return;
+            e.preventDefault();
+            console.log("No Board defined, unable to generate MBF");
+            return false;
+        }
+
+        if (board.bombs_left != 0) {
+            showMessage("Mines left must be zero in order to download the board from Analysis mode.");
+            e.preventDefault();
+            return false;
         }
 
         var mbf = board.getFormatMBF();
 
         if (mbf == null) {
-            return;
+            console.log("Null data returned from getFormatMBF()");
+            e.preventDefault();
+            return false;
         }
 
         var blob = new Blob([mbf], { type: 'application/octet-stream' })

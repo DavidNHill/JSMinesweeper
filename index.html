@@ -12,7 +12,7 @@
     <!-- Title at the top -->
     <h1>
         <button type="button" style="zoom: 0.9; vertical-align: middle;" id="switchButton" onclick="setAnalysis()">Switch to Analyser</button>
-        <label id="title" style="font-size: 36px; vertical-align: middle;">Minesweeper solver</label>
+        <label id="title" style="font-size: 36px; vertical-align: middle;">Minesweeper player</label>
         <label style="float: right; padding-right: 10px;">
             <a href="https://github.com/DavidNHill/JSMinesweeper#readme" target="_blank"><i>help</i></a>
         </label>
@@ -133,7 +133,7 @@
             </div>
             <span id="tooltip" class="tooltiptext" style="pointer-events: none;">Tooltip text</span>
             <!-- A hyperlimnk to download the board -->
-            <a id="downloadmbf" style="position: relative; left: 3px; top: 5px" onclick="downloadAsMBF()" download="" href="">Download as MBF</a>
+            <a id="downloadmbf" style="position: relative; left: 3px; top: 5px" onclick="downloadAsMBF(event)" download="" href="">Download as MBF</a>
         </section>
     </div>
 
