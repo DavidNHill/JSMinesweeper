@@ -284,6 +284,11 @@
 
         function setAnalysis() {
 
+            // can't switch modes while the solver is working
+            if (canvasLocked) {
+                return;
+            }
+
             //if (document.getElementById("analysismode").checked) {
             if (!analysisMode) {
                 document.getElementById("play0").style.display = "none";

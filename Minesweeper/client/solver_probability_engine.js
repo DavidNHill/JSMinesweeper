@@ -1219,10 +1219,10 @@ class ProbabilityEngine {
         //console.log(text);
 
         // if this edge is everything then it isn't an isolated edge
-        if (everything) {
-            this.writeToConsole("Not isolated because the edge is everything");
-            return false;
-        }
+        //if (everything) {
+        //    this.writeToConsole("Not isolated because the edge is everything");
+        //    return false;
+        //}
 
         if (this.isolatedEdgeBruteForce != null && edgeTiles.size >= this.isolatedEdgeBruteForce.tiles.length) {
             this.writeToConsole("Already found an isolated edge of smaller size");

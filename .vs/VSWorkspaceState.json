@@ -3,9 +3,7 @@
     "",
     "\\Minesweeper",
     "\\Minesweeper\\client",
-    "\\Minesweeper\\Utility",
-    "\\resources",
-    "\\resources\\ReadmeImages"
+    "\\resources"
   ],
   "SelectedNode": "\\index.html",
   "PreviewInSolutionExplorer": false

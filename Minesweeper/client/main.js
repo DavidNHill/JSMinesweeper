@@ -620,18 +620,6 @@ async function playAgain() {
 
         TILE_SIZE = parseInt(docTileSize.value);
 
-        /*
-        // make the canvases large enough to fit the game
-        var boardWidth = board.width * TILE_SIZE;
-        var boardHeight = board.height * TILE_SIZE;
-
-        canvas.width = boardWidth;
-        canvas.height = boardHeight;
-
-        canvasHints.width = boardWidth;
-        canvasHints.height = boardHeight;
-        */
-
         resizeCanvas(board.width, board.height);
 
         browserResized();
@@ -704,6 +692,115 @@ async function newGameFromBlob(blob) {
  
 }
 
+async function newBoardFromFile(file) {
+
+    var fr = new FileReader();
+
+    fr.onloadend = function (e) {
+
+        //console.log(e.target.result);
+
+        var lines = e.target.result.split("\n");
+        var size = lines[0].split("x");
+
+        if (size.length != 3) {
+            console.log("Header line is invalid: " + lines[0]);
+            return;
+        }
+
+        var width = parseInt(size[0]);
+        var height = parseInt(size[1]);
+        var mines = parseInt(size[2]);
+
+        console.log("width " + width + " height " + height + " mines " + mines);
+
+        if (width < 1 || height < 1 || mines < 1) {
+            console.log("Invalid dimensions for game");
+            return;
+        }
+
+        if (lines.length < height + 1) {
+            console.log("Insufficient lines to hold the data: " + lines.length);
+            return;
+        }
+
+        var newBoard = new Board(1, width, height, mines, "", "safe");
+
+        for (var y = 0; y < height; y++) {
+            var line = lines[y + 1];
+            console.log(line);
+            for (var x = 0; x < width; x++) {
+
+                var char = line.charAt(x);
+                var tile = newBoard.getTileXY(x, y);
+
+                if (char == "F") {
+                    tile.toggleFlag();
+                    newBoard.bombs_left--;
+                } else if (char == "0") {
+                    tile.setValue(0);
+                } else if (char == "1") {
+                    tile.setValue(1);
+                } else if (char == "2") {
+                    tile.setValue(2);
+                } else if (char == "3") {
+                    tile.setValue(3);
+                } else if (char == "4") {
+                    tile.setValue(4);
+                } else if (char == "5") {
+                    tile.setValue(5);
+                } else if (char == "6") {
+                    tile.setValue(6);
+                } else if (char == "7") {
+                    tile.setValue(7);
+                } else if (char == "8") {
+                    tile.setValue(8);
+                } else {
+                    tile.setCovered(true);
+                }
+             }
+        }
+
+        // switch to the board
+        board = newBoard;
+
+        // this redraws the board
+        changeTileSize();
+
+        updateMineCount(board.bombs_left);
+
+        canvasLocked = false;  // just in case it was still locked (after an error for example)
+
+        showMessage("Position loaded from file " + file.name);
+
+    };
+
+    fr.readAsText(file);
+
+    /*
+    board = new Board(id, width, height, mines, "", gameType);
+
+    TILE_SIZE = parseInt(docTileSize.value);
+
+    resizeCanvas(board.width, board.height);
+
+    showDownloadLink(false, ""); // remove the download link
+
+    browserResized();
+
+    for (var y = 0; y < board.height; y++) {
+        for (var x = 0; x < board.width; x++) {
+            draw(x, y, HIDDEN);
+        }
+    }
+
+    updateMineCount(board.num_bombs);
+
+    
+    */
+
+}
+
 async function newGame(width, height, mines, seed) {
 
     console.log("New game requested: Width=" + width + " Height=" + height + " Mines=" + mines + " Seed=" + seed);
@@ -730,22 +827,7 @@ async function newGame(width, height, mines, seed) {
         var gameType = "safe";
     }
 
-    /*
-    if (analysisModeButton.checked) {
-        title.innerHTML = "Minesweeper analyser";
-        analysisMode = true;
-        lockMineCount.checked = false;  // don't lock the mine count when the board is reset
-
-        showDownloadLink(true, "");
-    } else {
-        title.innerHTML = "Minesweeper player";
-        analysisMode = false;
-
-        showDownloadLink(false, "");
-    }
-    */
-
-    if (analysisMode) {
+     if (analysisMode) {
         lockMineCount.checked = false;  // don't lock the mine count when the board is reset
         showDownloadLink(true, "");
     } else {
@@ -1433,14 +1515,23 @@ async function dropHandler(ev) {
                 var file = ev.dataTransfer.items[i].getAsFile();
                 console.log('... file[' + i + '].name = ' + file.name);
 
-                newGameFromBlob(file)
-
-                break;
+                if (file.name.endsWith(".mbf") || file.name.endsWith(".abf")) {
+                    if (!analysisMode) {
+                        newGameFromBlob(file);
+                        break; // only process the first one
+                    }
+                } else {
+                    if (analysisMode) {
+                        newBoardFromFile(file);
+                        break; // only process the first one
+                    }
+                }
+  
             }
         }
     } else {
         // Use DataTransfer interface to access the file(s)
-        console.log("Using File Transfer Interface");
+        console.log("File Transfer Interface not supported");
         for (var i = 0; i < ev.dataTransfer.files.length; i++) {
             console.log('... file[' + i + '].name = ' + ev.dataTransfer.files[i].name);
         }
