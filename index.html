@@ -21,15 +21,6 @@
     <!-- control panel on the left -->
     <nav id="controls" style="zoom: 0.9; position:relative; left:0px; top:0px">
 
-        <!--
-         <div class="checkboxes">
-             <label><input type="checkbox" class="checkbox" id="analysismode" onclick="setAnalysis()" /> <span>Analysis mode</span></label>
-         </div>
-
-
-         <button type="button" style="margin-top: 0em;" id="switchButton" onclick="setAnalysis()">Switch to Analyser</button>
-        -->
-
         <div id="play0" style="margin-top: 0px;">
             <div class="checkboxes">
                 <label><input type="checkbox" class="checkbox" id="useSeed" /> <span>Use seed</span></label>
@@ -38,28 +29,21 @@
                 <input id="seed" type="text" style="width: 150px" />
             </div>
 
-            <div class="checkboxes">
+            <div class="checkboxes" style="margin-top: 10px;">
                 <label><input type="checkbox" class="checkbox" id="gameTypeZero" /> <span>Opening on start</span></label>
-            </div>
-
-            <div class="checkboxes">
                 <label><input type="checkbox" class="checkbox" id="fastPlay" /> <span>Fast mode</span></label>
-            </div>
-
-            <div class="checkboxes" style="margin-bottom: 10px;">
                 <label><input type="checkbox" class="checkbox" id="noGuessMode" /> <span>No Guess (beta)</span></label>
             </div>
-
         </div>
 
-        <div class="radioButtons" style="margin-top: 0px;">
+        <div class="radioButtons" style="margin-top: 5px;">
             <label><input id="beginner" type="radio" class="radioButton" name="boardSize" value="0"><span>Beginner</span></label>
             <label><input id="intermediate" type="radio" class="radioButton" name="boardSize" value="1"><span>Intermediate</span></label>
             <label><input id="expert" type="radio" class="radioButton" name="boardSize" value="2" checked><span>Expert</span></label>
             <label style="margin-bottom: 0.5em;"><input id="custom" type="radio" class="radioButton" name="boardSize" value="3"><span>Custom</span></label>
         </div>
 
-        <div style="margin-top: 10px;">
+        <div style="margin-top: 0px;">
             <div class="block">
                 <label>Width:</label>
                 <input id="width" onkeypress="makeCustom()" type="text" />
@@ -111,6 +95,21 @@
             <label><input type="checkbox" class="checkbox" id="autoplay" /> <span>Auto play</span></label>
             <label><input type="checkbox" class="checkbox" id="acceptguesses" /> <span>Accept guesses</span></label>
 
+        </div>
+
+        <!--
+        <div style="margin-top: 1em;" class="checkboxes">
+            <label><input type="checkbox" class="checkbox" id="showProbability" /> <span>Probability overlay</span></label>
+        </div>
+        -->
+
+        <div style="margin-top: 10px;">
+            <label>Overlay:</label>
+            <select id="overlay">
+                <option value="none">None</option>
+                <option value="safety">Safety %</option>
+                <option value="mine">Mine %</option>
+            </select>
         </div>
 
         <div style="margin-top: 1em; display: none;" class="checkboxes" id="analysis1">
@@ -300,11 +299,11 @@
 
                 switchToAnalysis(true);
             } else {
-                document.getElementById("play0").style.display = "block";
-                document.getElementById("play1").style.display = "block";
+                document.getElementById("play0").style.display = "";
+                document.getElementById("play1").style.display = "";
                 document.getElementById("analysis0").style.display = "none";
                 document.getElementById("analysis1").style.display = "none";
-                document.getElementById("repeatGame").style.display = "block";
+                document.getElementById("repeatGame").style.display = "";
                 document.getElementById("NewGame").innerHTML = "New game";
 
                 switchToAnalysis(false);

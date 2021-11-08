@@ -2,9 +2,8 @@
   "ExpandedNodes": [
     "",
     "\\Minesweeper",
-    "\\Minesweeper\\client",
-    "\\resources"
+    "\\Minesweeper\\client"
   ],
-  "SelectedNode": "\\index.html",
+  "SelectedNode": "\\Minesweeper",
   "PreviewInSolutionExplorer": false
 }

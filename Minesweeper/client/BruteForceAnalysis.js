@@ -30,6 +30,9 @@ class BruteForceAnalysis {
         this.currentNode;
         this.expectedMove;
 
+        this.bestTile;
+        this.processedMoves = [];
+
         //this.maxSolutionSize = size;
         this.completed = false;
 
@@ -86,11 +89,21 @@ class BruteForceAnalysis {
                 this.writeToConsole(move.index + " " + allTiles[move.index].asText() + " is living with " + move.count + " possible values and probability " + this.percentage(singleProb) + ", winning lines " + winningLines);
             }
 
+            if (processCount < BRUTE_FORCE_ANALYSIS_MAX_NODES) {
+                this.processedMoves.push(allTiles[move.index]);  // store the tiles we've processed
+            }
+
         }
 
         top.winningLines = best;
 
         this.currentNode = top;
+
+        // this is the best tile to guess (or the best we've calculated if incomplete).  "Tile" class.
+        if (top.bestLiving != null) {
+            this.bestTile = allTiles[top.bestLiving.index];
+        }
+ 
 
         if (processCount < BRUTE_FORCE_ANALYSIS_MAX_NODES) {
             this.winChance = best / allSolutions.size() ;
@@ -109,6 +122,25 @@ class BruteForceAnalysis {
 
         // clear down the cache
         cache.clear();
+
+    }
+
+    // 6020245077845603
+    checkForBetterMove(guess) {
+
+        // if we haven't processed 2 tiles or this tile is the best then stick with it
+        if (this.processedMoves.length < 2 || (guess.x == this.bestTile.x && guess.y == this.bestTile.y)) {
+            return null;
+        }
+
+        for (var tile of this.processedMoves) {
+            if (guess.x == tile.x && guess.y == tile.y) {  // if we have processed the guess and it isn't the best tile then return the best tile
+                return this.bestTile;
+            }
+        }
+
+        //  otherwise nothing better
+        return null;
 
     }
 

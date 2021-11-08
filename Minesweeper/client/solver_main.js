@@ -6,7 +6,7 @@
 const OFFSETS = [[2, 0], [-2, 0], [0, 2], [0, -2]];
 const OFFSETS_ALL = [[2, -2], [2, -1], [2, 0], [2, 1], [2, 2], [-2, -2], [-2, -1], [-2, 0], [-2, 1], [-2, 2], [-1, 2], [0, 2], [1, 2], [-1, -2], [0, -2], [1, -2]];
 
-const PLAY_BFDA_THRESHOLD = 750;       // number of solutions for the Brute force analysis to start
+const PLAY_BFDA_THRESHOLD = 1000;       // number of solutions for the Brute force analysis to start
 const ANALYSIS_BFDA_THRESHOLD = 5000;
 const BRUTE_FORCE_CYCLES_THRESHOLD = 1000000;
 const HARD_CUT_OFF = 0.90;        // cutoff for considering on edge possibilities below the best probability
@@ -42,6 +42,11 @@ async function solver(board, options) {
     // this is used to disable all the advanced stuff like BFDA and tie-break
     if (options.advancedGuessing == null) {
         options.advancedGuessing = true;
+    }
+
+    // this is used to force a probability engine search
+    if (options.fullProbability == null) {
+        options.fullProbability = false;
     }
 
     var noMoves = 0;
@@ -89,10 +94,13 @@ async function solver(board, options) {
                 var action = actions[i];
 
                 if (action.action == ACTION_FLAG) {   // if a request to flag
-                    if (options.playStyle == PLAY_STYLE_FLAGS) {  // if we are flagging
-                        var tile = board.getTileXY(action.x, action.y);
-                        if (!tile.isFlagged()) {   // only accept the flag action if the tile isn't already flagged
+ 
+                    var tile = board.getTileXY(action.x, action.y);
+                    if (!tile.isFlagged()) {   // only accept the flag action if the tile isn't already flagged
+                        if (options.playStyle == PLAY_STYLE_FLAGS) {  // if we are flagging
                             cleanActions.push(action);
+                        } else {
+                            otherActions.push(action);
                         }
                     }
                 } else {
@@ -181,7 +189,7 @@ async function solver(board, options) {
         var result = [];
 
         // if we are in flagged mode then flag any mines currently unflagged
-        if (options.playStyle == PLAY_STYLE_FLAGS) {
+        if (options.playStyle != PLAY_STYLE_EFFICIENCY) {
             for (var tile of unflaggedMines) {
                 result.push(new Action(tile.getX(), tile.getY(), 0, ACTION_FLAG));
             }
@@ -200,12 +208,16 @@ async function solver(board, options) {
         var oldMineCount = result.length;
 
         // add any trivial moves we've found
-        result.push(...trivial_actions(board, witnesses));
-
-
+        if (options.fullProbability || options.playStyle == PLAY_STYLE_EFFICIENCY) {
+            console.log("Skipping trivial analysis since Probability Engine analysis is required")
+        } else {
+            result.push(...trivial_actions(board, witnesses));
+        }
+ 
         if (result.length > oldMineCount) {
             showMessage("The solver found " + result.length + " trivial safe moves");
-
+            return result;
+            /*
             if (options.playStyle != PLAY_STYLE_FLAGS) {
                 var mineFound = false;
                 var noFlagResult = [];
@@ -230,6 +242,7 @@ async function solver(board, options) {
             } else {
                 return result;
             }
+            */
         }
 
         var pe = new ProbabilityEngine(board, witnesses, witnessed, squaresLeft, minesLeft, options);
@@ -303,10 +316,10 @@ async function solver(board, options) {
             for (var tile of pe.minesFound) {   // place each found flag
                 tile.setProbability(0);
                 tile.setFoundBomb();
-                if (options.playStyle == PLAY_STYLE_FLAGS) {
+                //if (options.playStyle == PLAY_STYLE_FLAGS) {
                     var action = new Action(tile.getX(), tile.getY(), 0, ACTION_FLAG);
                     result.push(action);
-                }
+                //}
             }
 
             showMessage("The probability engine has found " + pe.localClears.length + " safe clears and " + pe.minesFound.length + " mines");
@@ -406,6 +419,7 @@ async function solver(board, options) {
             bfdaThreshold = PLAY_BFDA_THRESHOLD;
         }
 
+        var partialBFDA = null;
         if (pe.bestProbability < 1 && pe.finalSolutionsCount < bfdaThreshold) {
 
             showMessage("The solver is starting brute force deep analysis on " + pe.finalSolutionsCount + " solutions");
@@ -452,6 +466,7 @@ async function solver(board, options) {
                 return addDeadTiles(result, deadTiles);
             } else {
                 deadTiles = pe.getDeadTiles();  // use the dead tiles from the probability engine
+                partialBFDA = bfda;
             }
 
         } else {
@@ -500,7 +515,7 @@ async function solver(board, options) {
             } else {
                 showMessage("The solver has found the best guess on the edge using the probability engine." + formatSolutions(pe.finalSolutionsCount));
                 if (pe.duration < 50) {  // if the probability engine didn't take long then use some tie-break logic
-                    result = tieBreak(pe, result);
+                    result = tieBreak(pe, result, partialBFDA);
                 }
             }
 
@@ -542,7 +557,7 @@ async function solver(board, options) {
 
     }
 
-    function tieBreak(pe, actions) {
+    function tieBreak(pe, actions, bfda) {
 
         var start = Date.now();
 
@@ -598,6 +613,15 @@ async function solver(board, options) {
                 }
 
             });
+        }
+
+        if (bfda != null && actions.length > 0) {
+            var better = bfda.checkForBetterMove(actions[0]);
+            if (better != null) {
+                var betterAction = new Action(better.x, better.y, better.probability, ACTION_CLEAR);
+                writeToConsole("Replacing " + actions[0].asText() + " with " + betterAction.asText() + " because it is better from partial BFDA");
+                actions = [betterAction];
+            }
         }
 
         findAlternativeMove(actions);

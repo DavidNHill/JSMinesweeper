@@ -69,6 +69,8 @@ var docPlayStyle = document.getElementById("playstyle");
 var docTileSize = document.getElementById("tilesize");
 var docFastPlay = document.getElementById("fastPlay");
 var docNgMode = document.getElementById("noGuessMode");
+//var docProbabilityOverlay = document.getElementById("showProbability");
+var docOverlay = document.getElementById("overlay");
 
 var downloadHyperlink = document.getElementById('downloadmbf');
 
@@ -188,7 +190,7 @@ async function startup() {
         board.setStarted();
     }
 
-    //bulkRun(5678, 1000);
+    //bulkRun(5678, 10000);
 
     showMessage("Welcome to minesweeper solver dedicated to Annie");
 }
@@ -410,6 +412,52 @@ function renderHints(hints, otherActions) {
 
     }
 
+     // put percentage over the tile 
+    if (docOverlay.value != "none") {
+
+        if (TILE_SIZE == 12) {
+            ctxHints.font = "7px serif";
+        } else if (TILE_SIZE == 16) {
+            ctxHints.font = "10px serif";
+        } else if (TILE_SIZE == 20) {
+            ctxHints.font = "12px serif";
+        } else if (TILE_SIZE == 24) {
+            ctxHints.font = "14px serif";
+        } else if (TILE_SIZE == 28) {
+            ctxHints.font = "16px serif";
+        } if (TILE_SIZE == 32) {
+            ctxHints.font = "21px serif";
+        } else {
+            ctxHints.font = "6x serif";
+        }
+
+        ctxHints.globalAlpha = 1;
+        ctxHints.fillStyle = "black";
+        for (var tile of board.tiles) {
+            if (tile.getHasHint() && tile.isCovered() && !tile.isFlagged() && tile.probability != null) {
+                if (!showHintsCheckBox.checked || (tile.probability != 1 && tile.probability != 0)) {  // show the percentage unless we've already colour coded it
+                    if (docOverlay.value == "safety") {
+                        var value = tile.probability * 100;
+                    } else {
+                        var value = (1 - tile.probability) * 100;
+                    }
+  
+                    if (value < 10) {
+                        var value1 = value.toFixed(1);
+                    } else {
+                        var value1 = value.toFixed(0);
+                    }
+
+                    var offsetX = (TILE_SIZE - ctxHints.measureText(value1).width) / 2;
+
+                    ctxHints.fillText(value1, tile.x * TILE_SIZE + offsetX, (tile.y + 0.7) * TILE_SIZE, TILE_SIZE);
+
+                }
+            }
+        }
+    }
+
+
     if (otherActions == null) {
         return;
     }
@@ -424,7 +472,6 @@ function renderHints(hints, otherActions) {
         }
         ctxHints.fillRect((action.x + 0.35) * TILE_SIZE, (action.y + 0.35) * TILE_SIZE, 0.3 * TILE_SIZE, 0.3 * TILE_SIZE);
     }
-
 
 }
 
@@ -688,7 +735,7 @@ async function newGameFromBlob(blob) {
 
     canvasLocked = false;  // just in case it was still locked (after an error for example)
 
-    showMessage("Game created from file");
+    showMessage("Game "  + width + "x" + heigh + "/" + mines + " created from file");
  
 }
 
@@ -696,80 +743,11 @@ async function newBoardFromFile(file) {
 
     var fr = new FileReader();
 
-    fr.onloadend = function (e) {
+    fr.onloadend = async function (e) {
 
-        //console.log(e.target.result);
+        await newBoardFromString(e.target.result);
 
-        var lines = e.target.result.split("\n");
-        var size = lines[0].split("x");
-
-        if (size.length != 3) {
-            console.log("Header line is invalid: " + lines[0]);
-            return;
-        }
-
-        var width = parseInt(size[0]);
-        var height = parseInt(size[1]);
-        var mines = parseInt(size[2]);
-
-        console.log("width " + width + " height " + height + " mines " + mines);
-
-        if (width < 1 || height < 1 || mines < 1) {
-            console.log("Invalid dimensions for game");
-            return;
-        }
-
-        if (lines.length < height + 1) {
-            console.log("Insufficient lines to hold the data: " + lines.length);
-            return;
-        }
-
-        var newBoard = new Board(1, width, height, mines, "", "safe");
-
-        for (var y = 0; y < height; y++) {
-            var line = lines[y + 1];
-            console.log(line);
-            for (var x = 0; x < width; x++) {
-
-                var char = line.charAt(x);
-                var tile = newBoard.getTileXY(x, y);
-
-                if (char == "F") {
-                    tile.toggleFlag();
-                    newBoard.bombs_left--;
-                } else if (char == "0") {
-                    tile.setValue(0);
-                } else if (char == "1") {
-                    tile.setValue(1);
-                } else if (char == "2") {
-                    tile.setValue(2);
-                } else if (char == "3") {
-                    tile.setValue(3);
-                } else if (char == "4") {
-                    tile.setValue(4);
-                } else if (char == "5") {
-                    tile.setValue(5);
-                } else if (char == "6") {
-                    tile.setValue(6);
-                } else if (char == "7") {
-                    tile.setValue(7);
-                } else if (char == "8") {
-                    tile.setValue(8);
-                } else {
-                    tile.setCovered(true);
-                }
-             }
-        }
-
-        // switch to the board
-        board = newBoard;
-
-        // this redraws the board
-        changeTileSize();
-
-        updateMineCount(board.bombs_left);
-
-        canvasLocked = false;  // just in case it was still locked (after an error for example)
+        lockMineCount.checked = true;
 
         showMessage("Position loaded from file " + file.name);
 
@@ -777,27 +755,82 @@ async function newBoardFromFile(file) {
 
     fr.readAsText(file);
 
-    /*
-    board = new Board(id, width, height, mines, "", gameType);
+}
 
-    TILE_SIZE = parseInt(docTileSize.value);
+async function newBoardFromString(data) {
 
-    resizeCanvas(board.width, board.height);
+    //console.log(data);
 
-    showDownloadLink(false, ""); // remove the download link
+    var lines = data.split("\n");
+    var size = lines[0].split("x");
 
-    browserResized();
+    if (size.length != 3) {
+        console.log("Header line is invalid: " + lines[0]);
+        return;
+    }
 
-    for (var y = 0; y < board.height; y++) {
-        for (var x = 0; x < board.width; x++) {
-            draw(x, y, HIDDEN);
+    var width = parseInt(size[0]);
+    var height = parseInt(size[1]);
+    var mines = parseInt(size[2]);
+
+    console.log("width " + width + " height " + height + " mines " + mines);
+
+    if (width < 1 || height < 1 || mines < 1) {
+        console.log("Invalid dimensions for game");
+        return;
+    }
+
+    if (lines.length < height + 1) {
+        console.log("Insufficient lines to hold the data: " + lines.length);
+        return;
+    }
+
+    var newBoard = new Board(1, width, height, mines, "", "safe");
+
+    for (var y = 0; y < height; y++) {
+        var line = lines[y + 1];
+        console.log(line);
+        for (var x = 0; x < width; x++) {
+
+            var char = line.charAt(x);
+            var tile = newBoard.getTileXY(x, y);
+
+            if (char == "F") {
+                tile.toggleFlag();
+                newBoard.bombs_left--;
+            } else if (char == "0") {
+                tile.setValue(0);
+            } else if (char == "1") {
+                tile.setValue(1);
+            } else if (char == "2") {
+                tile.setValue(2);
+            } else if (char == "3") {
+                tile.setValue(3);
+            } else if (char == "4") {
+                tile.setValue(4);
+            } else if (char == "5") {
+                tile.setValue(5);
+            } else if (char == "6") {
+                tile.setValue(6);
+            } else if (char == "7") {
+                tile.setValue(7);
+            } else if (char == "8") {
+                tile.setValue(8);
+            } else {
+                tile.setCovered(true);
+            }
         }
     }
 
-    updateMineCount(board.num_bombs);
+    // switch to the board
+    board = newBoard;
 
-    
-    */
+    // this redraws the board
+    changeTileSize();
+
+    updateMineCount(board.bombs_left);
+
+    canvasLocked = false;  // just in case it was still locked (after an error for example)
 
 }
 
@@ -827,8 +860,8 @@ async function newGame(width, height, mines, seed) {
         var gameType = "safe";
     }
 
-     if (analysisMode) {
-        lockMineCount.checked = false;  // don't lock the mine count when the board is reset
+    if (analysisMode) {
+        lockMineCount.checked = !document.getElementById('buildZero').checked;  // lock the mine count or not
         showDownloadLink(true, "");
     } else {
         showDownloadLink(false, "");
@@ -1010,6 +1043,10 @@ function keyPressedEvent(e) {
             var tile = hoverTile;
             var tilesToUpdate = analysis_toggle_flag(tile);
             window.requestAnimationFrame(() => renderTiles(tilesToUpdate));
+        } else if (e.key == 'v' && e.ctrlKey) {
+            //console.log("Control-V pressed");
+            navigator.clipboard.readText().then(
+                clipText => newBoardFromString(clipText));
         }
     } else {
         if (e.key == ' ' && board.isGameover()) {
@@ -1078,6 +1115,12 @@ async function doAnalysis() {
         } else {
             options.playStyle = PLAY_STYLE_EFFICIENCY;
         } 
+
+        if (docOverlay.value != "none") {
+            options.fullProbability = true;
+        } else {
+            options.fullProbability = false;
+        }
 
         //var hints = solver(board, options).actions;  // look for solutions
 
@@ -1721,7 +1764,7 @@ async function sendActionsMessage(message) {
     }
 
     // do we want to show hints
-    if (showHintsCheckBox.checked || autoPlayCheckBox.checked || assistedPlayHints.length != 0) {
+    if (showHintsCheckBox.checked || autoPlayCheckBox.checked || assistedPlayHints.length != 0 || docOverlay.value != "none") {
 
         document.getElementById("canvas").style.cursor = "wait";
 
@@ -1733,6 +1776,12 @@ async function sendActionsMessage(message) {
         } else {
             options.playStyle = PLAY_STYLE_EFFICIENCY;
         } 
+
+        if (docOverlay.value != "none") {
+            options.fullProbability = true;
+        } else {
+            options.fullProbability = false;
+        }
 
         var hints;
         var other;

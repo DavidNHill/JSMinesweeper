@@ -20,6 +20,7 @@ class EfficiencyHelper {
             return this.actions;
         }
 
+        var firstClear;
         var result = [];
         var chordLocations = [];
 
@@ -121,6 +122,11 @@ class EfficiencyHelper {
 
                 if (act.action == ACTION_CLEAR) {
 
+                    // this is the default move;
+                    if (firstClear == null) {
+                        firstClear = act;
+                    }
+
                     var tile = board.getTileXY(act.x, act.y);
 
                     // find the best chord adjacent to this clear if there is one
@@ -190,7 +196,7 @@ class EfficiencyHelper {
                         // if it is a chord/chord combo
                         if (adjChord != null) {
                             var current = this.chordChordCombo(adjChord, tile, counter.finalSolutionsCount, currSolnCount.finalSolutionsCount);
-                            if (current < clickChordNetBenefit) {  // if click chord is better than discard the adjacent chord
+                            if (current < clickChordNetBenefit) {  // if click chord is better then discard the adjacent chord
                                 current = clickChordNetBenefit;
                                 adjChord = null;
                             }
@@ -203,7 +209,7 @@ class EfficiencyHelper {
                             //console.log("best " + act.x + "," + act.y);
                             highest = current;
                             if (adjChord != null) {  // if there is an adjacent chord then use this to clear the tile
-                                bestChord = adjChord
+                                bestChord = adjChord;
                                 bestAction = null;
                             } else {
                                 bestChord = null;
@@ -239,9 +245,12 @@ class EfficiencyHelper {
         //}
 
         if (result.length > 0) {
-            return result;
+            return result;   // most efficient move
+
+        } else if (firstClear != null) {
+            return [firstClear];  // first clear when no efficient move
         } else {
-            return [this.actions[0]];
+            return [];  // nothing when no clears available
         }
 
 

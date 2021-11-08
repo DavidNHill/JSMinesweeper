@@ -112,8 +112,14 @@ button:hover {
     cursor: grab;
 }
 
+.radioButtons {
+    display: inline-block;
+}
+
 /* make the radio button larger*/
 .radioButton {
+    margin: 0px;
+    margin-right: 5px;
     height: 20px;
     width: 20px;
 }
@@ -121,7 +127,6 @@ button:hover {
 .radioButtons label {
     display: block;
     float: left;
-    padding-right: 10px;
     white-space: nowrap;
     width: 150px;
 }
@@ -151,13 +156,15 @@ button:hover {
 /* make the tick box bigger*/
 .checkbox {
     position: relative;
-    height: 20px;
+    margin: 0px;
+    height: 20px; 
     width: 20px;
 }
 
 .checkboxes {
+    display: inline-block;
     position: relative;
-    height: 24px;
+/*    height: 24px;  */
     width: 150px;
 }
 

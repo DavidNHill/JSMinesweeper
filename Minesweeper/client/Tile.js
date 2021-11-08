@@ -19,6 +19,7 @@ class Tile {
         this.hint = false;
         this.probability;
 		this.hintText = "";
+		this.hasHint = false;
 
 		this.efficiencyValue;   // the value we need to be to be chordable
 		this.efficiencyProbability;  // the probability of being that value
@@ -77,6 +78,10 @@ class Tile {
 
     }
 
+	getHasHint() {
+		return this.hasHint;
+    }
+
     setProbability(prob, progress) {
         this.probability = prob;
         this.hasHint = true;
@@ -111,6 +116,7 @@ class Tile {
 		this.efficiencyValue = null;
 		this.efficiencyProbability = 0;
 		this.efficiencyText = "";
+		this.probability = 0;
     }
 
     setOnEdge() {
