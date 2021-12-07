@@ -21,7 +21,7 @@ class Board {
 		this.tiles = [];
 		this.started = false;
 		this.bombs_left = this.num_bombs;
-		//this.tiles_left = this.width * this.height - this.num_bombs;
+
 		this.init_tiles();
 
 		this.gameover = false;
@@ -31,6 +31,7 @@ class Board {
 
 		//console.log("... board created");
 
+		Object.seal(this) // prevent new properties being created
 	}
 
 	isStarted() {
@@ -85,7 +86,7 @@ class Board {
 	
 	getTileXY(x, y) {
 		
-		var index = this.xy_to_index(x,y);
+		const index = this.xy_to_index(x,y);
 		
 		return this.tiles[index];
 		
@@ -101,9 +102,9 @@ class Board {
 	// and number of unrevealed > 0
 	canChord(tile) {
 		
-		var flagCount = 0;
-		var coveredCount = 0;		
-		for (var adjTile of this.getAdjacent(tile)) {
+		let flagCount = 0;
+		let coveredCount = 0;		
+		for (let adjTile of this.getAdjacent(tile)) {
 			if (adjTile.isFlagged()) {  
 				flagCount++;
 			}
@@ -119,8 +120,8 @@ class Board {
     // return number of confirmed mines adjacent to this tile
     adjacentFoundMineCount(tile) {
 
-        var mineCount = 0;
-        for (var adjTile of this.getAdjacent(tile)) {
+        let mineCount = 0;
+        for (let adjTile of this.getAdjacent(tile)) {
 			if (adjTile.isSolverFoundBomb()) {
                 mineCount++;
             }
@@ -133,8 +134,8 @@ class Board {
 	// return number of flags adjacent to this tile
 	adjacentFlagsPlaced(tile) {
 
-		var flagCount = 0;
-		for (var adjTile of this.getAdjacent(tile)) {
+		let flagCount = 0;
+		for (let adjTile of this.getAdjacent(tile)) {
 			if (adjTile.isFlagged()) {
 				flagCount++;
 			}
@@ -147,8 +148,8 @@ class Board {
     // return number of covered tiles adjacent to this tile
     adjacentCoveredCount(tile) {
 
-        var coveredCount = 0;
-        for (var adjTile of this.getAdjacent(tile)) {
+        let coveredCount = 0;
+        for (let adjTile of this.getAdjacent(tile)) {
 			//if (adjTile.isCovered() && !adjTile.isFlagged()) {
 			if (adjTile.isCovered() && !adjTile.isSolverFoundBomb()) {
                 coveredCount++;
@@ -167,21 +168,21 @@ class Board {
 	// returns all the tiles adjacent to this tile
 	getAdjacent(tile) {
 		
-		var col = tile.getX();
-		var row = tile.getY();
+		const col = tile.getX();
+		const row = tile.getY();
 
-		var first_row = Math.max(0, row - 1);
-		var last_row = Math.min(this.height - 1, row + 1);
+		const first_row = Math.max(0, row - 1);
+		const last_row = Math.min(this.height - 1, row + 1);
 
-		var first_col = Math.max(0, col - 1);
-		var last_col = Math.min(this.width - 1, col + 1);
+		const first_col = Math.max(0, col - 1);
+		const last_col = Math.min(this.width - 1, col + 1);
 
-		var result = []
+		const result = []
 
-		for (var r = first_row; r <= last_row; r++) {
-			for (var c = first_col; c <= last_col; c++) {
-				var i = this.width * r + c;
+		for (let r = first_row; r <= last_row; r++) {
+			for (let c = first_col; c <= last_col; c++) {
 				if (!(r == row && c == col)) {  // don't include ourself
+					const i = this.width * r + c;
 					result.push(this.tiles[i]);
 				}
 			}
@@ -192,8 +193,8 @@ class Board {
 
 	getFlagsPlaced() {
 
-		var tally = 0;
-		for (var i = 0; i < this.tiles.length; i++) {
+		let tally = 0;
+		for (let i = 0; i < this.tiles.length; i++) {
 			if (this.tiles[i].isFlagged()) {
 				tally++;
             }
@@ -205,25 +206,24 @@ class Board {
 	// sets up the initial tiles 
 	init_tiles() {
 		
-		for (var y=0; y < this.height; y++) {
-			for (var x=0; x < this.width; x++) {
+		for (let y=0; y < this.height; y++) {
+			for (let x=0; x < this.width; x++) {
 				this.tiles.push(new Tile(x, y, y * this.width + x));
 			}
 		}
 		
-		//console.log(this.tiles.length + " tiles added to board");
 	}
 
 	setAllZero() {
-		for (var i = 0; i < this.tiles.length; i++) {
+		for (let i = 0; i < this.tiles.length; i++) {
 			this.tiles[i].setValue(0);
 		}
     }
 
 	resetForAnalysis() {
 
-		for (var i = 0; i < this.tiles.length; i++) {
-			var tile = this.tiles[i];
+		for (let i = 0; i < this.tiles.length; i++) {
+			const tile = this.tiles[i];
 			if (tile.isFlagged()) {
 				tile.foundBomb = true;
 			} else {
@@ -235,10 +235,10 @@ class Board {
 
 	getHashValue() {
 
-		var hash = (31 * 31 * 31 * this.num_bombs + 31 * 31 * this.getFlagsPlaced() + 31 * this.width + this.height) % this.MAX;
+		let hash = (31 * 31 * 31 * this.num_bombs + 31 * 31 * this.getFlagsPlaced() + 31 * this.width + this.height) % this.MAX;
 
-		for (var i = 0; i < this.tiles.length; i++) {
-			var tile = this.tiles[i];
+		for (let i = 0; i < this.tiles.length; i++) {
+			const tile = this.tiles[i];
 			if (tile.isFlagged()) {
 				hash = (31 * hash + 13) % this.MAX;
 			} else if (tile.isCovered()) {
@@ -272,11 +272,11 @@ class Board {
 
 	findAutoMove() {
 
-		var result = new Map();
+		const result = new Map();
 
-		for (var i = 0; i < this.tiles.length; i++) {
+		for (let i = 0; i < this.tiles.length; i++) {
 
-			var tile = this.getTile(i);
+			const tile = this.getTile(i);
 
 			if (tile.isFlagged()) {
 				continue;  // if the tile is a mine then nothing to consider
@@ -284,13 +284,13 @@ class Board {
 				continue;  // if the tile hasn't been revealed yet then nothing to consider
 			}
 
-			var adjTiles = this.getAdjacent(tile);
+			const adjTiles = this.getAdjacent(tile);
 
-			var needsWork = false;
-			var flagCount = 0;
-			var coveredCount = 0;
-			for (var j = 0; j < adjTiles.length; j++) {
-				var adjTile = adjTiles[j];
+			let needsWork = false;
+			let flagCount = 0;
+			let coveredCount = 0;
+			for (let j = 0; j < adjTiles.length; j++) {
+				const adjTile = adjTiles[j];
 				if (adjTile.isCovered() && !adjTile.isFlagged()) {
 					needsWork = true;
 				}
@@ -303,16 +303,16 @@ class Board {
 
 			if (needsWork) {  // the witness still has some unrevealed adjacent tiles
 				if (tile.getValue() == flagCount) {  // can clear around here
-					for (var j = 0; j < adjTiles.length; j++) {
-						var adjTile = adjTiles[j];
+					for (let j = 0; j < adjTiles.length; j++) {
+						const adjTile = adjTiles[j];
 						if (adjTile.isCovered() && !adjTile.isFlagged()) {
 							result.set(adjTile.index, new Action(adjTile.getX(), adjTile.getY(), 1, ACTION_CLEAR));
 						}
 					}			
 
 				} else if (tile.getValue() == flagCount + coveredCount) { // can place all flags
-					for (var j = 0; j < adjTiles.length; j++) {
-						var adjTile = adjTiles[j];
+					for (let j = 0; j < adjTiles.length; j++) {
+						const adjTile = adjTiles[j];
 						if (adjTile.isCovered() && !adjTile.isFlagged()) { // if covered and isn't flagged
 							adjTile.setFoundBomb();   // Must be a bomb
 							result.set(adjTile.index, new Action(adjTile.getX(), adjTile.getY(), 0, ACTION_FLAG));
@@ -335,10 +335,10 @@ class Board {
 			return null;
         }
 
-		var length = 4 + 2 * this.num_bombs;
+		const length = 4 + 2 * this.num_bombs;
 
-		var mbf = new ArrayBuffer(length);
-		var mbfView = new Uint8Array(mbf);
+		const mbf = new ArrayBuffer(length);
+		const mbfView = new Uint8Array(mbf);
 
 		mbfView[0] = this.width;
 		mbfView[1] = this.height;
@@ -346,11 +346,11 @@ class Board {
 		mbfView[2] = Math.floor(this.num_bombs / 256);
 		mbfView[3] = this.num_bombs % 256;
 
-		var minesFound = 0;
-		var index = 4;
-		for (var i = 0; i < this.tiles.length; i++) {
+		let minesFound = 0;
+		let index = 4;
+		for (let i = 0; i < this.tiles.length; i++) {
 
-			var tile = this.getTile(i);
+			const tile = this.getTile(i);
 
 			if (tile.isFlagged()) {
 				minesFound++;

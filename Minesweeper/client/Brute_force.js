@@ -17,13 +17,13 @@ class Cruncher {
 
         // determine how many flags are currently next to each tile
         this.currentFlagsTiles = [];
-        for (var i = 0; i < this.tiles.length; i++) {
+        for (let i = 0; i < this.tiles.length; i++) {
             this.currentFlagsTiles.push(board.adjacentFoundMineCount(this.tiles[i]));
         }
 
         // determine how many flags are currently next to each witness
         this.currentFlagsWitnesses = [];
-        for (var i = 0; i < this.witnesses.length; i++) {
+        for (let i = 0; i < this.witnesses.length; i++) {
             this.currentFlagsWitnesses.push(board.adjacentFoundMineCount(this.witnesses[i].tile));
         }
 
@@ -35,11 +35,11 @@ class Cruncher {
     
     crunch() {
 
-        var peStart = Date.now();
+        const peStart = Date.now();
 
-        var sample = this.iterator.getSample();
+        let sample = this.iterator.getSample();  // first sample
 
-        var candidates = 0;  // number of samples which satisfy the current board state
+        let candidates = 0;  // number of samples which satisfy the current board state
 
         while (sample != null) {
 
@@ -63,38 +63,38 @@ class Cruncher {
     checkSample(sample) {
 
         // get the tiles which are mines in this sample
-        var mine = [];
-        for (var i = 0; i < sample.length; i++) {
+        const mine = [];
+        for (let i = 0; i < sample.length; i++) {
             mine.push(this.tiles[sample[i]]);
         }
 
-        for (var i = 0; i < this.witnesses.length; i++) {
+        for (let i = 0; i < this.witnesses.length; i++) {
 
-            var flags1 = this.currentFlagsWitnesses[i];
-            var flags2 = 0;
+            const flags1 = this.currentFlagsWitnesses[i];
+            let flags2 = 0;
 
             // count how many candidate mines are next to this witness
-            for (var j = 0; j < mine.length; j++) {
+            for (let j = 0; j < mine.length; j++) {
                 if (mine[j].isAdjacent(this.witnesses[i].tile)) {
                     flags2++;
                 }
             }
 
-            var flags3 = this.witnesses[i].tile.getValue();  // number of flags indicated on the tile
+            const value = this.witnesses[i].tile.getValue();  // number of flags indicated on the tile
 
-            if (flags3 != flags1 + flags2) {
+            if (value != flags1 + flags2) {
                 return false;
             }
         }
 
         //if it is a good solution then calculate the distribution if required
 
-        var solution = new Array(this.tiles.length);
+        const solution = new Array(this.tiles.length);
 
-        for (var i = 0; i < this.tiles.length; i++) {
+        for (let i = 0; i < this.tiles.length; i++) {
 
-            var isMine = false;
-            for (var j = 0; j < sample.length; j++) {
+            let isMine = false;
+            for (let j = 0; j < sample.length; j++) {
                 if (i == sample[j]) {
                     isMine = true;
                     break;
@@ -105,7 +105,7 @@ class Cruncher {
             if (!isMine) {
                 var flags2 = this.currentFlagsTiles[i];
                 // count how many candidate mines are next to this square
-                for (var j = 0; j < mine.length; j++) {
+                for (let j = 0; j < mine.length; j++) {
                     if (mine[j].isAdjacent(this.tiles[i])) {
                         flags2++;
                     }
@@ -174,18 +174,18 @@ class WitnessWebIterator {
         //squareOffset = new int[web.getIndependentWitnesses().size() + 1];
         //mineOffset = new int[web.getIndependentWitnesses().size() + 1];
  
-        var loc = [];  // array of locations
+        const loc = [];  // array of locations
 
         var indWitnesses = this.probabilityEngine.independentWitnesses;
 
         var cogi = 0;
-        var indSquares = 0;
-        var indMines = 0;
+        let indSquares = 0;
+        let indMines = 0;
 
         // create an array of locations in the order of independent witnesses
-        for (var i = 0; i < indWitnesses.length; i++) {
+        for (let i = 0; i < indWitnesses.length; i++) {
 
-            var w = indWitnesses[i];
+            const w = indWitnesses[i];
 
             this.squareOffset.push(indSquares);
             this.mineOffset.push(indMines);
@@ -207,14 +207,14 @@ class WitnessWebIterator {
         // the last cog has the remaining squares and mines
 
         //add the rest of the locations
-        for (var i = 0; i < allCoveredTiles.length; i++) {
+        for (let i = 0; i < allCoveredTiles.length; i++) {
 
-            var l = allCoveredTiles[i];
+            const l = allCoveredTiles[i];
 
             var skip = false;
-            for (var j = 0; j < loc.length; j++) {
+            for (let j = 0; j < loc.length; j++) {
 
-                var m = loc[j];
+                const m = loc[j];
 
                 if (l.isEqual(m)) {
                     skip = true;
@@ -265,9 +265,9 @@ class WitnessWebIterator {
         //}
 
         // now set up the initial sample position
-        for (var i = 0; i < this.top; i++) {
-            var s = this.cogs[i].getNextSample();
-            for (var j = 0; j < s.length; j++) {
+        for (let i = 0; i < this.top; i++) {
+            const s = this.cogs[i].getNextSample();
+            for (let j = 0; j < s.length; j++) {
                 this.sample[this.mineOffset[i] + j] = this.squareOffset[i] + s[j];
             }
         }
@@ -284,9 +284,9 @@ class WitnessWebIterator {
             console.log("**** attempting to iterator when already completed ****");
             return null;
         }
-        var index = this.top;
+        let index = this.top;
 
-        var s = this.cogs[index].getNextSample();
+        let s = this.cogs[index].getNextSample();
 
         while (s == null && index != this.bottom) {
             index--;
@@ -298,14 +298,14 @@ class WitnessWebIterator {
             return null;
         }
 
-        for (var j = 0; j < s.length; j++) {
+        for (let j = 0; j < s.length; j++) {
             this.sample[this.mineOffset[index] + j] = this.squareOffset[index] + s[j];
         }
         index++;
         while (index <= this.top) {
             this.cogs[index] = new SequentialIterator(this.cogs[index].numberBalls, this.cogs[index].numberHoles);
             s = this.cogs[index].getNextSample();
-            for (var j = 0; j < s.length; j++) {
+            for (let j = 0; j < s.length; j++) {
                 this.sample[this.mineOffset[index] + j] = this.squareOffset[index] + s[j];
             }
             index++;
@@ -332,7 +332,7 @@ class WitnessWebIterator {
     // this iterator does
     witnessAlwaysSatisfied(location) {
 
-        for (var i = 0; i < this.probabilityEngine.independentWitness.length; i++) {
+        for (let i = 0; i < this.probabilityEngine.independentWitness.length; i++) {
             if (this.probabilityEngine.independentWitness[i].equals(location)) {
                 return true;
             }
@@ -360,7 +360,7 @@ class SequentialIterator {
 
         this.index = n - 1;
 
-        for (var i = 0; i < n; i++) {
+        for (let i = 0; i < n; i++) {
             this.sample.push(i);
         }
 

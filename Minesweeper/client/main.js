@@ -3,7 +3,7 @@
 
 console.log('At start of main.js');
 
-var TILE_SIZE = 24;
+let TILE_SIZE = 24;
 const DIGIT_HEIGHT = 38;
 const DIGIT_WIDTH = 22;
 const DIGITS = 5;
@@ -23,77 +23,74 @@ const PLAY_CLIENT_SIDE = true;
 const GAME_DESCRIPTION_KEY = "CURRENT_GAME_DESCRIPTION";
 const GAME_BOARD_STATE_KEY = "CURRENT_GAME_BOARD_STATE";
 
-var BINOMIAL;
+let BINOMIAL;
 
 // holds the images
-var images = [];
-var imagesLoaded = 0;
-var led_images = [];
+const images = [];
+let imagesLoaded = 0;
+const led_images = [];
 
-var canvasLocked = false;   // we need to lock the canvas if we are auto playing to prevent multiple threads playing the same game
+let canvasLocked = false;   // we need to lock the canvas if we are auto playing to prevent multiple threads playing the same game
 
-var canvas = document.getElementById('myCanvas');
-var ctx = canvas.getContext('2d');
+const canvas = document.getElementById('myCanvas');
+const ctx = canvas.getContext('2d');
 
-var docMinesLeft = document.getElementById('myMinesLeft');
-var ctxBombsLeft = docMinesLeft.getContext('2d');
+const docMinesLeft = document.getElementById('myMinesLeft');
+const ctxBombsLeft = docMinesLeft.getContext('2d');
 
-var canvasHints = document.getElementById('myHints');
-var ctxHints = canvasHints.getContext('2d');
+const canvasHints = document.getElementById('myHints');
+const ctxHints = canvasHints.getContext('2d');
 
-var currentGameDescription;
+let currentGameDescription;
 
-var analysisBoard;
-var gameBoard;
-var board;
+let analysisBoard;
+let gameBoard;
+let board;
 
-var oldrng = false;
+let oldrng = false;
 
-docMinesLeft.width = DIGIT_WIDTH * DIGITS;
-docMinesLeft.height = DIGIT_HEIGHT;
+//docMinesLeft.width = DIGIT_WIDTH * DIGITS;
+//docMinesLeft.height = DIGIT_HEIGHT;
 
-var tooltip = document.getElementById('tooltip');
-var autoPlayCheckBox = document.getElementById("autoplay");
-var showHintsCheckBox = document.getElementById("showhints");
-var acceptGuessesCheckBox = document.getElementById("acceptguesses");
-var seedText = document.getElementById("seed");
-var gameTypeSafe = document.getElementById("gameTypeSafe");
-var gameTypeZero = document.getElementById("gameTypeZero");
-//var analysisModeButton = document.getElementById("analysismode");
-var switchButton = document.getElementById("switchButton");
-var analysisButton = document.getElementById("AnalysisButton");
-var messageLine = document.getElementById("messageLine");
-var title = document.getElementById("title");
-var lockMineCount = document.getElementById("lockMineCount");
-var docPlayStyle = document.getElementById("playstyle");
-var docTileSize = document.getElementById("tilesize");
-var docFastPlay = document.getElementById("fastPlay");
-var docNgMode = document.getElementById("noGuessMode");
-//var docProbabilityOverlay = document.getElementById("showProbability");
-var docOverlay = document.getElementById("overlay");
+const tooltip = document.getElementById('tooltip');
+const autoPlayCheckBox = document.getElementById("autoplay");
+const showHintsCheckBox = document.getElementById("showhints");
+const acceptGuessesCheckBox = document.getElementById("acceptguesses");
+const seedText = document.getElementById("seed");
+const gameTypeSafe = document.getElementById("gameTypeSafe");
+const gameTypeZero = document.getElementById("gameTypeZero");
+const switchButton = document.getElementById("switchButton");
+const analysisButton = document.getElementById("AnalysisButton");
+const messageLine = document.getElementById("messageLine");
+const title = document.getElementById("title");
+const lockMineCount = document.getElementById("lockMineCount");
+const docPlayStyle = document.getElementById("playstyle");
+const docTileSize = document.getElementById("tilesize");
+const docFastPlay = document.getElementById("fastPlay");
+const docNgMode = document.getElementById("noGuessMode");
+const docOverlay = document.getElementById("overlay");
 
-var downloadHyperlink = document.getElementById('downloadmbf');
+const downloadHyperlink = document.getElementById('downloadmbf');
 
-// elements used in the local storage modal
-var localStorageButton = document.getElementById("localStorageButton");
-var localStorageModal = document.getElementById("localStorage");
-var localStorageSelection = document.getElementById("localStorageSelection");
+// elements used in the local storage modal - wip
+const localStorageButton = document.getElementById("localStorageButton");
+const localStorageModal = document.getElementById("localStorage");
+const localStorageSelection = document.getElementById("localStorageSelection");
 
 //properties panel
-var propertiesPanel = document.getElementById("properties");
+const propertiesPanel = document.getElementById("properties");
 
 // elements used in the no guess build modal
-var ngModal = document.getElementById("noGuessBuilder");
-var ngText = document.getElementById("ngText");
+const ngModal = document.getElementById("noGuessBuilder");
+const ngText = document.getElementById("ngText");
 
-var analysisMode = false;
-var previousBoardHash = 0;
-var justPressedAnalyse = false;
-var dragging = false;  //whether we are dragging the cursor
-var dragTile;          // the last tile dragged over
-var hoverTile;         // tile the mouse last moved over
-var analysing = false;  // try and prevent the analyser running twice if pressed more than once
-
+let analysisMode = false;
+let previousBoardHash = 0;
+let justPressedAnalyse = false;
+let dragging = false;  //whether we are dragging the cursor
+let dragTile;          // the last tile dragged over
+let hoverTile;         // tile the mouse last moved over
+let analysing = false;  // try and prevent the analyser running twice if pressed more than once
 
 // things to do when exiting the page
 function exiting() {
@@ -131,15 +128,17 @@ async function startup() {
         console.log("Using old rng");
     }
 
-    var seed = urlParams.get('seed');
+    let seed = urlParams.get('seed');
     if (seed == null) {
         seed = 0;
     } else {
         seedText.value = seed;
     }
 
-    var start = urlParams.get('start');
+    const start = urlParams.get('start');
 
+    docMinesLeft.width = DIGIT_WIDTH * DIGITS;
+    docMinesLeft.height = DIGIT_HEIGHT;
 
     BINOMIAL = new Binomial(50000, 200);
 
@@ -172,7 +171,7 @@ async function startup() {
     analysisBoard.setAllZero();
 
     if (currentGameDescription != null) {
-        var gameDescription = JSON.parse(currentGameDescription);
+        const gameDescription = JSON.parse(currentGameDescription);
         console.log(gameDescription);
         await newGame(gameDescription.width, gameDescription.height, gameDescription.mines, gameDescription.seed);
 
@@ -190,7 +189,7 @@ async function startup() {
         board.setStarted();
     }
 
-    //bulkRun(5678, 10000);
+    //bulkRun(21, 12500);
 
     showMessage("Welcome to minesweeper solver dedicated to Annie");
 }
@@ -204,18 +203,18 @@ function openLocalStorage() {
     localStorageSelection.length = 0;
 
     // iterate localStorage
-    for (var i = 0; i < localStorage.length; i++) {
+    for (let i = 0; i < localStorage.length; i++) {
 
         // set iteration key name
-        var key = localStorage.key(i);
+        const key = localStorage.key(i);
 
-        var option = document.createElement("option");
+        const option = document.createElement("option");
         option.text = key;
         option.value = key;
         localStorageSelection.add(option);
 
         // use key name to retrieve the corresponding value
-        var value = localStorage.getItem(key);
+        const value = localStorage.getItem(key);
 
         // console.log the iteration key and value
         console.log('Key: ' + key + ', Value: ' + value);
@@ -234,7 +233,7 @@ function closeLocalStorage() {
 
 function saveLocalStorage() {
 
-    key = localStorageSelection.value;
+    const key = localStorageSelection.value;
 
     console.log("Saving board position to local storage key '" + key + "'");
 
@@ -258,38 +257,6 @@ function propertiesOpen() {
     propertiesPanel.style.display = "block";
 }
 
-// save as MBF
-/*
-async function saveAsMBF() {
-
-    if (board == null) {
-        return;
-    }
-
-    var mbf = board.getFormatMBF();
-
-    const options = {
-        excludeAcceptAllOption: true,
-        types: [
-            {
-                description: 'Minesweeper board',
-                accept: {
-                    'application/octet-stream': ['.mbf'],
-                },
-            },
-        ],
-    };
-    const fileHandle = await window.showSaveFilePicker(options);
-
-    const writable = await fileHandle.createWritable();
-
-    await writable.write(mbf);
-
-    await writable.close();
-
-}
-*/
-
 // download as MBF
 // create a BLOB of the data, insert a URL to it into the download link
 async function downloadAsMBF(e) {
@@ -308,7 +275,7 @@ async function downloadAsMBF(e) {
             return false;
         }
 
-        var mbf = board.getFormatMBF();
+        const mbf = board.getFormatMBF();
 
         if (mbf == null) {
             console.log("Null data returned from getFormatMBF()");
@@ -316,21 +283,22 @@ async function downloadAsMBF(e) {
             return false;
         }
 
-        var blob = new Blob([mbf], { type: 'application/octet-stream' })
+        const blob = new Blob([mbf], { type: 'application/octet-stream' })
 
-        var url = URL.createObjectURL(blob);
+        const url = URL.createObjectURL(blob);
 
         console.log(url);
 
         downloadHyperlink.href = url;  // Set the url ready to be downloaded
 
+        // give it 10 seconds then revoke the url
         setTimeout(function () { console.log("Revoked " + url); URL.revokeObjectURL(url) }, 10000, url);
     }
 
     // create a download name based on the date/time
-    var now = new Date();
+    const now = new Date();
 
-    var filename = "Download" + now.toISOString() + ".mbf";
+    const filename = "Download" + now.toISOString() + ".mbf";
 
     downloadHyperlink.download = filename;
 
@@ -356,13 +324,15 @@ function switchToAnalysis(doAnalysis) {
         switchButton.innerHTML = "Switch to Analyser";
     }
 
-    resizeCanvas(board.width, board.height);
+    changeTileSize();
 
-    browserResized();
+    //resizeCanvas(board.width, board.height);
+
+    //browserResized();
 
     renderHints([]);  // clear down hints
 
-    renderTiles(board.tiles); // draw the board
+    //renderTiles(board.tiles); // draw the board
 
     updateMineCount(board.bombs_left);  // reset the mine count
 
@@ -380,10 +350,10 @@ function renderHints(hints, otherActions) {
         return;
     }
 
-    var firstGuess = 0;  // used to identify the first (best) guess, subsequent guesses are just for info 
-    for (var i = 0; i < hints.length; i++) {
+    let firstGuess = 0;  // used to identify the first (best) guess, subsequent guesses are just for info 
+    for (let i = 0; i < hints.length; i++) {
 
-        var hint = hints[i];
+        const hint = hints[i];
 
         if (hint.action == ACTION_CHORD) {
             ctxHints.fillStyle = "#00FF00";
@@ -433,19 +403,22 @@ function renderHints(hints, otherActions) {
 
         ctxHints.globalAlpha = 1;
         ctxHints.fillStyle = "black";
-        for (var tile of board.tiles) {
+        for (let tile of board.tiles) {
             if (tile.getHasHint() && tile.isCovered() && !tile.isFlagged() && tile.probability != null) {
                 if (!showHintsCheckBox.checked || (tile.probability != 1 && tile.probability != 0)) {  // show the percentage unless we've already colour coded it
+
+                    let value;
                     if (docOverlay.value == "safety") {
-                        var value = tile.probability * 100;
+                        value = tile.probability * 100;
                     } else {
-                        var value = (1 - tile.probability) * 100;
+                        value = (1 - tile.probability) * 100;
                     }
-  
+
+                    let value1;
                     if (value < 10) {
-                        var value1 = value.toFixed(1);
+                        value1 = value.toFixed(1);
                     } else {
-                        var value1 = value.toFixed(0);
+                        value1 = value.toFixed(0);
                     }
 
                     var offsetX = (TILE_SIZE - ctxHints.measureText(value1).width) / 2;
@@ -464,7 +437,7 @@ function renderHints(hints, otherActions) {
 
     ctxHints.globalAlpha = 1;
     // these are from the efficiency play style and are the known moves which haven't been made
-    for (var action of otherActions) {
+    for (let action of otherActions) {
         if (action.action == ACTION_CLEAR) {
             ctxHints.fillStyle = "#00FF00";
         } else {
@@ -480,9 +453,9 @@ function renderTiles(tiles) {
 
     //console.log(tiles.length + " tiles to render");
 
-    for (var i = 0; i < tiles.length; i++) {
-        var tile = tiles[i];
-        var tileType = HIDDEN;
+    for (let i = 0; i < tiles.length; i++) {
+        const tile = tiles[i];
+        let tileType = HIDDEN;
 
         if (tile.isBomb()) {
             if (tile.exploded) {
@@ -512,16 +485,16 @@ function renderTiles(tiles) {
 
 function updateMineCount(minesLeft) {
 
-    var work = minesLeft;
-    var digits = getDigitCount(minesLeft);
+    let work = minesLeft;
+    const digits = getDigitCount(minesLeft);
 
-    var position = digits - 1;
+    let position = digits - 1;
 
     docMinesLeft.width = DIGIT_WIDTH * digits;
 
-    for (var i = 0; i < DIGITS; i++) {
+    for (let i = 0; i < DIGITS; i++) {
 
-        var digit = work % 10;
+        const digit = work % 10;
         work = (work - digit) / 10;
 
         ctxBombsLeft.drawImage(led_images[digit], DIGIT_WIDTH * position + 2, 2, DIGIT_WIDTH - 4, DIGIT_HEIGHT - 4);
@@ -533,7 +506,7 @@ function updateMineCount(minesLeft) {
 
 function getDigitCount(mines) {
 
-    var digits;
+    let digits;
     if (mines < 1000) {
         digits = 3;
     } else if (mines < 10000) {
@@ -562,39 +535,37 @@ function showDownloadLink(show, url) {
 
 async function bulkRun(runSeed, size) {
 
-    var options = {};
+    const options = {};
     options.playStyle = PLAY_STYLE_NOFLAGS;
     options.verbose = false;
     options.advancedGuessing = true;
 
-    var startTime = Date.now();
+    const startTime = Date.now();
 
-    var played = 0;
-    var won = 0;
+    let played = 0;
+    let won = 0;
 
-    var rng = JSF(runSeed);  // create an RNG based on the seed
-    var startIndex = 0;
-
+    const rng = JSF(runSeed);  // create an RNG based on the seed
+    const startIndex = 0;
 
     while (played < size) {
 
         played++;
 
-        var gameSeed = rng() * Number.MAX_SAFE_INTEGER;
+        const gameSeed = rng() * Number.MAX_SAFE_INTEGER;
 
         console.log(gameSeed);
 
-        var game = new ServerGame(0, 30, 16, 99, startIndex, gameSeed, "safe");
+        const game = new ServerGame(0, 30, 16, 99, startIndex, gameSeed, "safe");
 
-        var board = new Board(0, 30, 16, 99, gameSeed, "safe");
+        const board = new Board(0, 30, 16, 99, gameSeed, "safe");
 
-        var tile = game.getTile(startIndex);
+        let tile = game.getTile(startIndex);
 
-        var revealedTiles = game.clickTile(tile);
+        let revealedTiles = game.clickTile(tile);
         applyResults(board, revealedTiles);  // this is in MinesweeperGame.js
 
-        var guessed = false;
-        var loopCheck = 0;
+        let loopCheck = 0;
         while (revealedTiles.header.status == IN_PLAY) {
 
             loopCheck++;
@@ -603,13 +574,13 @@ async function bulkRun(runSeed, size) {
                 break;
             }
 
-            var reply = await solver(board, options);  // look for solutions
+            const reply = await solver(board, options);  // look for solutions
 
-            var actions = reply.actions;
+            const actions = reply.actions;
 
-            for (var i = 0; i < actions.length; i++) {
+            for (let i = 0; i < actions.length; i++) {
 
-                var action = actions[i];
+                const action = actions[i];
 
                 if (action.action == ACTION_CHORD) {
                     console.log("Got a chord request!");
@@ -645,12 +616,7 @@ async function bulkRun(runSeed, size) {
 
     }
 
-
     console.log("Played " + played + " won " + won);
-
-
-    return game;
-
 }
 
 async function playAgain() {
@@ -659,23 +625,27 @@ async function playAgain() {
     if (board != null && !analysisMode) {
         callKillGame(board.getID());
 
-        var reply = copyGame(board.getID());
+        const reply = copyGame(board.getID());
 
-        var id = reply.id;
+        const id = reply.id;
 
         board = new Board(id, board.width, board.height, board.num_bombs, board.seed, board.gameType);
 
+        /*
         TILE_SIZE = parseInt(docTileSize.value);
 
         resizeCanvas(board.width, board.height);
 
         browserResized();
 
-        for (var y = 0; y < board.height; y++) {
-            for (var x = 0; x < board.width; x++) {
+        for (let y = 0; y < board.height; y++) {
+            for (let x = 0; x < board.width; x++) {
                 draw(x, y, HIDDEN);
             }
         }
+        */
+
+        changeTileSize();
 
         updateMineCount(board.num_bombs);
 
@@ -701,35 +671,38 @@ async function newGameFromBlob(blob) {
         callKillGame(board.getID());
     }
 
-    var width = view[0];
-    var height = view[1];
-    var mines = view[2] * 256 + view[3];
+    const width = view[0];
+    const height = view[1];
+    const mines = view[2] * 256 + view[3];
 
-    var reply = createGameFromMFB(view);
+    const reply = createGameFromMFB(view);  // this function is in MinesweeperGame.js
 
-    var id = reply.id;
+    const id = reply.id;
 
+    let gameType;
     if (gameTypeZero.checked) {
-        var gameType = "zero";
+        gameType = "zero";
     } else {
-        var gameType = "safe";
+        gameType = "safe";
     }
 
     board = new Board(id, width, height, mines, "", gameType);
 
-    TILE_SIZE = parseInt(docTileSize.value);
+    changeTileSize();
 
-    resizeCanvas(board.width, board.height);
+    //TILE_SIZE = parseInt(docTileSize.value);
+
+    //resizeCanvas(board.width, board.height);
 
     showDownloadLink(false, ""); // remove the download link
 
-    browserResized();
+    //browserResized();
 
-    for (var y = 0; y < board.height; y++) {
-        for (var x = 0; x < board.width; x++) {
-            draw(x, y, HIDDEN);
-        }
-    }
+    //for (let y = 0; y < board.height; y++) {
+    //    for (let x = 0; x < board.width; x++) {
+    //        draw(x, y, HIDDEN);
+    //    }
+    //}
 
     updateMineCount(board.num_bombs);
 
@@ -741,7 +714,7 @@ async function newGameFromBlob(blob) {
 
 async function newBoardFromFile(file) {
 
-    var fr = new FileReader();
+    const fr = new FileReader();
 
     fr.onloadend = async function (e) {
 
@@ -759,19 +732,17 @@ async function newBoardFromFile(file) {
 
 async function newBoardFromString(data) {
 
-    //console.log(data);
-
-    var lines = data.split("\n");
-    var size = lines[0].split("x");
+    const lines = data.split("\n");
+    const size = lines[0].split("x");
 
     if (size.length != 3) {
         console.log("Header line is invalid: " + lines[0]);
         return;
     }
 
-    var width = parseInt(size[0]);
-    var height = parseInt(size[1]);
-    var mines = parseInt(size[2]);
+    const width = parseInt(size[0]);
+    const height = parseInt(size[1]);
+    const mines = parseInt(size[2]);
 
     console.log("width " + width + " height " + height + " mines " + mines);
 
@@ -785,15 +756,15 @@ async function newBoardFromString(data) {
         return;
     }
 
-    var newBoard = new Board(1, width, height, mines, "", "safe");
+    const newBoard = new Board(1, width, height, mines, "", "safe");
 
-    for (var y = 0; y < height; y++) {
-        var line = lines[y + 1];
+    for (let y = 0; y < height; y++) {
+        const line = lines[y + 1];
         console.log(line);
-        for (var x = 0; x < width; x++) {
+        for (let x = 0; x < width; x++) {
 
-            var char = line.charAt(x);
-            var tile = newBoard.getTileXY(x, y);
+            const char = line.charAt(x);
+            const tile = newBoard.getTileXY(x, y);
 
             if (char == "F") {
                 tile.toggleFlag();
@@ -844,20 +815,22 @@ async function newGame(width, height, mines, seed) {
     }
 
     // this is a message to the server or local
+    let reply;
     if (PLAY_CLIENT_SIDE) {
-        var reply = getNextGameID();
+        reply = getNextGameID();
     } else {
-        var json_data = await fetch("/requestID");
-        var reply = await json_data.json();
+        const json_data = await fetch("/requestID");
+        reply = await json_data.json();
     }
 
     console.log("<== " + JSON.stringify(reply));
-    var id = reply.id;
+    const id = reply.id;
 
+    let gameType;
     if (gameTypeZero.checked) {
-        var gameType = "zero";
+        gameType = "zero";
     } else {
-        var gameType = "safe";
+        gameType = "safe";
     }
 
     if (analysisMode) {
@@ -867,7 +840,7 @@ async function newGame(width, height, mines, seed) {
         showDownloadLink(false, "");
     }
 
-    var drawTile = HIDDEN;
+    let drawTile = HIDDEN;
     if (analysisMode) {
         if (document.getElementById('buildZero').checked) {
             board = new Board(id, width, height, 0, seed, gameType);
@@ -880,17 +853,21 @@ async function newGame(width, height, mines, seed) {
         board = new Board(id, width, height, mines, seed, gameType);
     }
 
+    /*
     TILE_SIZE = parseInt(docTileSize.value);
 
     resizeCanvas(width, height);
 
     browserResized();
 
-    for (var y = 0; y < height; y++) {
-        for (var x = 0; x < width; x++) {
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
             draw(x, y, drawTile);
         }
     }
+    */
+
+    changeTileSize();
 
     updateMineCount(board.num_bombs);
 
@@ -904,7 +881,7 @@ function changeTileSize() {
 
     TILE_SIZE = parseInt(docTileSize.value);
 
-    console.log("Changing tile size to " + TILE_SIZE);
+    //console.log("Changing tile size to " + TILE_SIZE);
 
     resizeCanvas(board.width, board.height);  // resize the canvas
 
@@ -912,15 +889,13 @@ function changeTileSize() {
 
     renderTiles(board.tiles); // draw the board
 
-    //updateMineCount(board.bombs_left);  // reset the mine count
-
 }
 
     // make the canvases large enough to fit the game
 function resizeCanvas(width, height) {
 
-    var boardWidth = width * TILE_SIZE;
-    var boardHeight = height * TILE_SIZE;
+    const boardWidth = width * TILE_SIZE;
+    const boardHeight = height * TILE_SIZE;
 
     canvas.width = boardWidth;
     canvas.height = boardHeight;
@@ -932,65 +907,71 @@ function resizeCanvas(width, height) {
 
 function browserResized() {
 
-    var boardElement = document.getElementById('board');
+    const boardElement = document.getElementById('board');
 
-    var boardWidth = board.width * TILE_SIZE;
-    var boardHeight = board.height * TILE_SIZE;
+    const boardWidth = board.width * TILE_SIZE;
+    const boardHeight = board.height * TILE_SIZE;
 
-    var screenWidth = document.getElementById('canvas').offsetWidth - 10;
-    var screenHeight = document.getElementById('canvas').offsetHeight - 60 - 20;   // subtract some space to allow for the mine count panel and the hyperlink
+    const screenWidth = document.getElementById('canvas').offsetWidth - 10;
+    const screenHeight = document.getElementById('canvas').offsetHeight - 60 - 20;   // subtract some space to allow for the mine count panel and the hyperlink
 
     //console.log("Available size is " + screenWidth + " x " + screenHeight);
 
+    // things to determine
+    let useWidth;
+    let useHeight;
+    let scrollbarYWidth;
+    let scrollbarXHeight;
+
     // decide screen size and set scroll bars
     if (boardWidth > screenWidth && boardHeight > screenHeight) {  // both need scroll bars
-        var useWidth = screenWidth;
-        var useHeight = screenHeight;
+        useWidth = screenWidth;
+        useHeight = screenHeight;
         boardElement.style.overflowX = "scroll";
         boardElement.style.overflowY = "scroll";
 
-        var scrollbarYWidth = 0;    
-        var scrollbarXHeight = 0;
+        scrollbarYWidth = 0;    
+        scrollbarXHeight = 0;
 
     } else if (boardWidth > screenWidth) {  // need a scroll bar on the bottom
-        var useWidth = screenWidth;
+        useWidth = screenWidth;
         boardElement.style.overflowX = "scroll";
 
-        var scrollbarXHeight = boardElement.offsetHeight - boardElement.clientHeight - 10;
-        var scrollbarYWidth = 0;
+        scrollbarXHeight = boardElement.offsetHeight - boardElement.clientHeight - 10;
+        scrollbarYWidth = 0;
 
         if (boardHeight + scrollbarXHeight > screenHeight) {  // the scroll bar has made the height to large now !
-            var useHeight = screenHeight;
+            useHeight = screenHeight;
             boardElement.style.overflowY = "scroll";
-            var scrollbarXHeight = 0;
+            scrollbarXHeight = 0;
         } else {
-            var useHeight = boardHeight;
+            useHeight = boardHeight;
             boardElement.style.overflowY = "hidden";
         }
 
     } else if (boardHeight > screenHeight) {  // need a scroll bar on the right
-        var useHeight = screenHeight;
+        useHeight = screenHeight;
         boardElement.style.overflowY = "scroll";
 
-        var scrollbarYWidth = boardElement.offsetWidth - boardElement.clientWidth - 10;
-        var scrollbarXHeight = 0;
+        scrollbarYWidth = boardElement.offsetWidth - boardElement.clientWidth - 10;
+        scrollbarXHeight = 0;
 
         if (boardWidth + scrollbarYWidth > screenWidth) {  // the scroll bar has made the width to large now !
-            var useWidth = screenWidth;
-            var scrollbarYWidth = 0;
+            useWidth = screenWidth;
+            scrollbarYWidth = 0;
             boardElement.style.overflowX = "scroll";
         } else {
-            var useWidth = boardWidth;
+            useWidth = boardWidth;
             boardElement.style.overflowX = "hidden";
         }
 
     } else {
-        var useWidth = boardWidth;
+         useWidth = boardWidth;
         boardElement.style.overflowX = "hidden";
-        var useHeight = boardHeight;
+        useHeight = boardHeight;
         boardElement.style.overflowY = "hidden";
-        var scrollbarYWidth = 0;
-        var scrollbarXHeight = 0;
+        scrollbarYWidth = 0;
+        scrollbarXHeight = 0;
     }
 
     //console.log("Usable size is " + useWidth + " x " + useHeight);
@@ -1008,7 +989,7 @@ function browserResized() {
 function keyPressedEvent(e) {
 
     //console.log("Key pressed: " + e.key);
-    var newValue = null;
+    let newValue = null;
     if (e.key == 'a') {
         if (!analysisButton.disabled) {  // don't allow the hotkey if the button is disabled
             doAnalysis();
@@ -1036,12 +1017,12 @@ function keyPressedEvent(e) {
         } else if (e.key == '8') {
             newValue = 8;
         } else if (e.key == 'h') {
-            var tile = hoverTile;
+            const tile = hoverTile;
             tile.setCovered(true);
             window.requestAnimationFrame(() => renderTiles([tile]));
         } else if (e.key == 'f') {
-            var tile = hoverTile;
-            var tilesToUpdate = analysis_toggle_flag(tile);
+            const tile = hoverTile;
+            const tilesToUpdate = analysis_toggle_flag(tile);
             window.requestAnimationFrame(() => renderTiles(tilesToUpdate));
         } else if (e.key == 'v' && e.ctrlKey) {
             //console.log("Control-V pressed");
@@ -1058,7 +1039,7 @@ function keyPressedEvent(e) {
         return;
     }
 
-    var tile = hoverTile;
+    const tile = hoverTile;
 
     console.log('tile is' + tile);
     // can't replace a flag
@@ -1103,11 +1084,11 @@ async function doAnalysis() {
     board.resetForAnalysis();
     board.findAutoMove();
  
-    var solutionCounter = solver.countSolutions(board);
+    const solutionCounter = solver.countSolutions(board);
 
     if (solutionCounter.finalSolutionsCount != 0) {
 
-        var options = {};
+        const options = {};
         if (docPlayStyle.value == "flag") {
             options.playStyle = PLAY_STYLE_FLAGS;
         } else if (docPlayStyle.value == "noflag") {
@@ -1124,8 +1105,8 @@ async function doAnalysis() {
 
         //var hints = solver(board, options).actions;  // look for solutions
 
-        var solve = await solver(board, options);  // look for solutions
-        var hints = solve.actions;
+        const solve = await solver(board, options);  // look for solutions
+        const hints = solve.actions;
 
         justPressedAnalyse = true;
 
@@ -1150,7 +1131,7 @@ async function checkBoard() {
     // this will set all the obvious mines which makes the solution counter a lot more efficient on very large boards
     board.resetForAnalysis();
  
-    var currentBoardHash = board.getHashValue();
+    const currentBoardHash = board.getHashValue();
 
     if (currentBoardHash == previousBoardHash) {
         return;
@@ -1161,7 +1142,7 @@ async function checkBoard() {
     console.log("Checking board with hash " + currentBoardHash);
 
     board.findAutoMove();
-    var solutionCounter = await solver.countSolutions(board);
+    const solutionCounter = await solver.countSolutions(board);
     board.resetForAnalysis();
 
     if (solutionCounter.finalSolutionsCount != 0) {
@@ -1195,8 +1176,8 @@ function draw(x, y, tileType) {
 function followCursor(e) {
 
     // get the tile we're over
-    var row = Math.floor(event.offsetY / TILE_SIZE);
-    var col = Math.floor(event.offsetX / TILE_SIZE);
+    const row = Math.floor(event.offsetY / TILE_SIZE);
+    const col = Math.floor(event.offsetX / TILE_SIZE);
     hoverTile = board.getTileXY(col, row);
 
     // if not showing hints don't show tooltip
@@ -1212,14 +1193,14 @@ function followCursor(e) {
 
     if (dragging && analysisMode) {
 
-        var tile = hoverTile;
+        const tile = hoverTile;
 
         if (!tile.isEqual(dragTile)) {
 
             dragTile = tile;  // remember the latest tile
 
             if (tile.isCovered()) {
-                var flagCount = board.adjacentFoundMineCount(tile);
+                const flagCount = board.adjacentFoundMineCount(tile);
                 tile.setValue(flagCount);
             } else {
                 tile.setCovered(true);
@@ -1237,7 +1218,7 @@ function followCursor(e) {
         tooltip.style.display = "none";
         return;
     } else {
-        var tile = board.getTileXY(col, row);
+        const tile = board.getTileXY(col, row);
         tooltip.innerText = tile.asText() + " " + tile.getHintText();
         tooltip.style.display = "inline-block";
     }
@@ -1285,8 +1266,8 @@ function on_click(event) {
         return;
     } 
 
-    var row = Math.floor(event.offsetY / TILE_SIZE);
-    var col = Math.floor(event.offsetX / TILE_SIZE);
+    const row = Math.floor(event.offsetY / TILE_SIZE);
+    const col = Math.floor(event.offsetX / TILE_SIZE);
 
     //console.log("Resolved to Col=" + col + ", row=" + row);
 
@@ -1298,11 +1279,11 @@ function on_click(event) {
 
     } else if (analysisMode) {  // analysis mode
 
-        var button = event.which
+        const button = event.which
 
-        var tile = board.getTileXY(col, row);
+        const tile = board.getTileXY(col, row);
 
-        var tiles = [];
+        let tiles = [];
 
         if (button == 1) {   // left mouse button
 
@@ -1340,9 +1321,9 @@ function on_click(event) {
         window.requestAnimationFrame(() => renderTiles(tiles));
 
     } else {  // play mode
-        var button = event.which
+        const button = event.which
 
-        var tile = board.getTileXY(col, row);
+        const tile = board.getTileXY(col, row);
 
         if (button == 1) {   // left mouse button
 
@@ -1411,13 +1392,13 @@ function on_click(event) {
  */
 function analysis_toggle_flag(tile) {
 
-    var tiles = [];
+    const tiles = [];
 
     if (!tile.isCovered()) {
         tile.setCovered(true);
     }
 
-    var delta;
+    let delta;
     if (tile.isFlagged()) {
         delta = -1;
         tile.foundBomb = false;  // in analysis mode we believe the flags are mines
@@ -1436,15 +1417,15 @@ function analysis_toggle_flag(tile) {
         window.requestAnimationFrame(() => updateMineCount(board.bombs_left));
 
     } else {   // otherwise adjust the total number of bombs
-        var tally = board.getFlagsPlaced();
+        const tally = board.getFlagsPlaced();
         board.num_bombs = tally + board.bombs_left + delta;
     }
 
     // if the adjacent tiles values are in step then keep them in step
-    var adjTiles = board.getAdjacent(tile);
-    for (var i = 0; i < adjTiles.length; i++) {
-        var adjTile = adjTiles[i];
-        var adjFlagCount = board.adjacentFlagsPlaced(adjTile);
+    const adjTiles = board.getAdjacent(tile);
+    for (let i = 0; i < adjTiles.length; i++) {
+        const adjTile = adjTiles[i];
+        const adjFlagCount = board.adjacentFlagsPlaced(adjTile);
         if (adjTile.getValue() == adjFlagCount) {
             adjTile.setValueOnly(adjFlagCount + delta);
             tiles.push(adjTile);
@@ -1468,22 +1449,23 @@ function on_mouseWheel(event) {
 
     //console.log("Mousewheel event at X=" + event.offsetX + ", Y=" + event.offsetY);
 
-    var row = Math.floor(event.offsetY / TILE_SIZE);
-    var col = Math.floor(event.offsetX / TILE_SIZE);
+    const row = Math.floor(event.offsetY / TILE_SIZE);
+    const col = Math.floor(event.offsetX / TILE_SIZE);
 
     //console.log("Resolved to Col=" + col + ", row=" + row);
 
-    var delta = Math.sign(event.deltaY);
+    const delta = Math.sign(event.deltaY);
 
-    var tile = board.getTileXY(col, row);
+    const tile = board.getTileXY(col, row);
 
-    var flagCount = board.adjacentFoundMineCount(tile);
-    var covered = board.adjacentCoveredCount(tile);
+    const flagCount = board.adjacentFoundMineCount(tile);
+    const covered = board.adjacentCoveredCount(tile);
 
+    let newValue;
     if (tile.isCovered()) {
         newValue = flagCount;
     } else {
-        var newValue = tile.getValue() + delta;
+        newValue = tile.getValue() + delta;
     }
  
     if (newValue < flagCount) {
@@ -1507,15 +1489,15 @@ function on_mouseWheel_minesLeft(event) {
 
     //console.log("Mousewheel event at X=" + event.offsetX + ", Y=" + event.offsetY);
 
-    var delta = Math.sign(event.deltaY);
+    const delta = Math.sign(event.deltaY);
 
-    var digit = Math.floor(event.offsetX / DIGIT_WIDTH);
+    const digit = Math.floor(event.offsetX / DIGIT_WIDTH);
 
     //console.log("Mousewheel event at X=" + event.offsetX + ", Y=" + event.offsetY + ", digit=" + digit);
 
-    var newCount = board.bombs_left;
+    let newCount = board.bombs_left;
 
-    var digits = getDigitCount(newCount);
+    const digits = getDigitCount(newCount);
 
     if (digit == digits - 1) {
         newCount = newCount + delta; 
@@ -1525,7 +1507,7 @@ function on_mouseWheel_minesLeft(event) {
         newCount = newCount + delta * 10;
     }
 
-    var flagsPlaced = board.getFlagsPlaced();
+    const flagsPlaced = board.getFlagsPlaced();
 
     if (newCount < 0) {
         board.bombs_left = 0;
@@ -1552,10 +1534,10 @@ async function dropHandler(ev) {
     if (ev.dataTransfer.items) {
         console.log("Using Items Data Transfer interface");
         // Use DataTransferItemList interface to access the file(s)
-        for (var i = 0; i < ev.dataTransfer.items.length; i++) {
+        for (let i = 0; i < ev.dataTransfer.items.length; i++) {
             // If dropped items aren't files, reject them
             if (ev.dataTransfer.items[i].kind === 'file') {
-                var file = ev.dataTransfer.items[i].getAsFile();
+                const file = ev.dataTransfer.items[i].getAsFile();
                 console.log('... file[' + i + '].name = ' + file.name);
 
                 if (file.name.endsWith(".mbf") || file.name.endsWith(".abf")) {
@@ -1575,7 +1557,7 @@ async function dropHandler(ev) {
     } else {
         // Use DataTransfer interface to access the file(s)
         console.log("File Transfer Interface not supported");
-        for (var i = 0; i < ev.dataTransfer.files.length; i++) {
+        for (let i = 0; i < ev.dataTransfer.files.length; i++) {
             console.log('... file[' + i + '].name = ' + ev.dataTransfer.files[i].name);
         }
     }
@@ -1589,11 +1571,11 @@ function dragOverHandler(ev) {
 
 function buildMessageFromActions(actions, safeOnly) {
 
-    var message = { "header": board.getMessageHeader(), "actions": [] };
+    const message = { "header": board.getMessageHeader(), "actions": [] };
 
-    for (var i = 0; i < actions.length; i++) {
+    for (let i = 0; i < actions.length; i++) {
 
-        var action = actions[i];
+        const action = actions[i];
 
         if (action.action == ACTION_CHORD) {
             message.actions.push({ "index": board.xy_to_index(action.x, action.y), "action": 3 });
@@ -1616,15 +1598,16 @@ function buildMessageFromActions(actions, safeOnly) {
 // send a JSON message to the server describing what action the user made
 async function sendActionsMessage(message) {
 
-    var outbound = JSON.stringify(message);
+    const outbound = JSON.stringify(message);
 
     console.log("==> " + outbound);
 
     // either play locally or send to server
+    let reply;
     if (PLAY_CLIENT_SIDE) {
-        var reply = await handleActions(message);
+        reply = await handleActions(message);
     } else {
-        var json_data = await fetch("/data", {
+        const json_data = await fetch("/data", {
             method: "POST",
             body: outbound,
             headers: new Headers({
@@ -1632,7 +1615,7 @@ async function sendActionsMessage(message) {
             })
         });
 
-        var reply = await json_data.json();
+        reply = await json_data.json();
     }
 
     console.log("<== " + JSON.stringify(reply));
@@ -1671,18 +1654,18 @@ async function sendActionsMessage(message) {
     }
  
     // translate the message and redraw the board
-    var tiles = [];
-    var prevMineCounter = board.bombs_left;
+    const tiles = [];
+    const prevMineCounter = board.bombs_left;
 
     // apply the changes to the logical board
-    for (var i = 0; i < reply.tiles.length; i++) {
+    for (let i = 0; i < reply.tiles.length; i++) {
 
-        var target = reply.tiles[i];
+        const target = reply.tiles[i];
 
-        var index = target.index;
-        var action = target.action;
+        const index = target.index;
+        const action = target.action;
 
-        var tile = board.getTile(index);
+        const tile = board.getTile(index);
 
         if (action == 1) {    // reveal value on tile
             tile.setValue(target.value);
@@ -1732,28 +1715,29 @@ async function sendActionsMessage(message) {
         canvasLocked = false;
         window.requestAnimationFrame(() => renderHints([], []));  // clear the hints overlay
 
-        var value3BV = reply.header.value3BV;
-        var actionsMade = reply.header.actions;
+        const value3BV = reply.header.value3BV;
+        const solved3BV = reply.header.solved3BV;
+        const actionsMade = reply.header.actions;
 
-        var efficiency;
+        let efficiency;
         if (reply.header.status == "won") {
-            var efficiency = (100 * value3BV / actionsMade).toFixed(2) + "%";
+            efficiency = (100 * value3BV / actionsMade).toFixed(2) + "%";
         } else {
-            var efficiency = "n/a";
+            efficiency = (100 * solved3BV / actionsMade).toFixed(2) + "%";
         }
 
         // if the current game is no longer in play then no need to remember the games details
         currentGameDescription = null;
         localStorage.removeItem(GAME_DESCRIPTION_KEY);
 
-        showMessage("The game has been " + reply.header.status + ". 3BV: " + value3BV + ",  Actions: " + actionsMade + ",  Efficiency: " + efficiency);
+        showMessage("The game has been " + reply.header.status + ". 3BV: " + solved3BV + "/" + value3BV + ",  Actions: " + actionsMade + ",  Efficiency: " + efficiency);
         return;
     }
 
-    var solverStart = Date.now();
+    const solverStart = Date.now();
 
-    var assistedPlay = docFastPlay.checked;
-    var assistedPlayHints;
+    let assistedPlay = docFastPlay.checked;
+    let assistedPlayHints;
     if (assistedPlay) {
         assistedPlayHints = board.findAutoMove();
         if (assistedPlayHints.length == 0) {
@@ -1768,7 +1752,7 @@ async function sendActionsMessage(message) {
 
         document.getElementById("canvas").style.cursor = "wait";
 
-        var options = {};
+        const options = {};
         if (docPlayStyle.value == "flag") {
             options.playStyle = PLAY_STYLE_FLAGS;
         } else if (docPlayStyle.value == "noflag") {
@@ -1783,18 +1767,18 @@ async function sendActionsMessage(message) {
             options.fullProbability = false;
         }
 
-        var hints;
-        var other;
+        let hints;
+        let other;
         if (assistedPlay) {
             hints = assistedPlayHints;
             other = [];
         } else {
-            var solve = await solver(board, options);  // look for solutions
+            const solve = await solver(board, options);  // look for solutions
             hints = solve.actions;
             other = solve.other;
         }
 
-        var solverDuration = Date.now() - solverStart;
+        const solverDuration = Date.now() - solverStart;
 
         if (board.id != reply.header.id) {
             console.log("Game when Solver started " + reply.header.id + " game now " + board.id + " ignoring solver results");
@@ -1815,20 +1799,20 @@ async function sendActionsMessage(message) {
 
         if (autoPlayCheckBox.checked || assistedPlay) {
             if (hints.length > 0 && (hints[0].prob == 1 || hints[0].prob == 0)) {
-                var message = buildMessageFromActions(hints, true);  // send all safe actions
+                const message = buildMessageFromActions(hints, true);  // send all safe actions
 
-                var wait = Math.max(0, (CYCLE_DELAY - solverDuration));
+                const wait = Math.max(0, (CYCLE_DELAY - solverDuration));
 
                 setTimeout(function () { sendActionsMessage(message) }, wait);
 
             } else if (hints.length > 0 && acceptGuessesCheckBox.checked) { // if we are accepting guesses
 
-                var hint = [];
-                hint.push(hints[0]);
+                //const hint = [];
+                //hint.push(hints[0]);
 
-                var message = buildMessageFromActions(hint, false); // if we are guessing send only the first guess  
+                const message = buildMessageFromActions([hints[0]], false); // if we are guessing send only the first guess
 
-                var wait = Math.max(0, (CYCLE_DELAY - solverDuration));
+                const wait = Math.max(0, (CYCLE_DELAY - solverDuration));
 
                 setTimeout(function () { sendActionsMessage(message) }, wait);
 
@@ -1858,23 +1842,24 @@ async function sendActionsMessage(message) {
 // send a JSON message to the server asking it to kill the game
 async function callKillGame(id) {
 
-    var message = { "id": id };
+    const message = { "id": id };
 
-    var outbound = JSON.stringify(message);
+    const outbound = JSON.stringify(message);
     console.log("==> " + outbound);
 
     // either client side or server side
+    let reply;
     if (PLAY_CLIENT_SIDE) {
-        var reply = killGame(message);   
+        reply = killGame(message);   
     } else {
-        var json_data = await fetch("/kill", {
+        const json_data = await fetch("/kill", {
             method: "POST",
             body: outbound,
             headers: new Headers({
                 "Content-Type": "application/json"
             })
         });
-        var reply = await json_data.json();
+        reply = await json_data.json();
     }
 
     console.log("<== " + JSON.stringify(reply));
@@ -1883,7 +1868,7 @@ async function callKillGame(id) {
 
 // generic function to make a div dragable (https://www.w3schools.com/howto/howto_js_draggable.asp)
 function dragElement(elmnt) {
-    var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+    let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
     if (document.getElementById(elmnt.id + "Header")) {
         // if present, the header is where you move the DIV from:
         document.getElementById(elmnt.id + "Header").onmousedown = dragMouseDown;
@@ -1927,7 +1912,7 @@ function dragElement(elmnt) {
 
 // load an image 
 function load_image(image_path) {
-    var image = new Image();
+    const image = new Image();
     image.addEventListener('load', function () {
 
         console.log("An image has loaded: " + image_path);
@@ -1945,10 +1930,10 @@ function load_images() {
 
     console.log('Loading images...');
 
-    for (var i = 0; i <= 8; i++) {
-        var file_path = "resources/images/" + i.toString() + ".png";
+    for (let i = 0; i <= 8; i++) {
+        const file_path = "resources/images/" + i.toString() + ".png";
         images.push(load_image(file_path));
-        var led_path = "resources/images/led" + i.toString() + ".svg";
+        const led_path = "resources/images/led" + i.toString() + ".svg";
         led_images.push(load_image(led_path));
     }
 

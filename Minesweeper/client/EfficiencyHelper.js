@@ -1,9 +1,9 @@
 "use strict";
 
-const ALLOW_ZERO_NET_GAIN_CHORD = true;
-const ALLOW_ZERO_NET_GAIN_PRE_CHORD = true;
-
 class EfficiencyHelper {
+
+    static ALLOW_ZERO_NET_GAIN_CHORD = true;
+    static ALLOW_ZERO_NET_GAIN_PRE_CHORD = true;
 
     constructor(board, witnesses, actions, playStyle) {
 
@@ -20,24 +20,24 @@ class EfficiencyHelper {
             return this.actions;
         }
 
-        var firstClear;
-        var result = [];
-        var chordLocations = [];
+        let firstClear;
+        let result = [];
+        const chordLocations = [];
 
         // 1. look for tiles which are satisfied by known mines and work out the net benefit of placing the mines and then chording
-        for (var tile of this.witnesses) {   // for each witness
+        for (let tile of this.witnesses) {   // for each witness
 
             if (tile.getValue() == this.board.adjacentFoundMineCount(tile)) {
 
                 // how many hidden tiles are next to the mine(s) we would have flagged, the more the better
                 // this favours flags with many neighbours over flags buried against cleared tiles.
-                var hiddenMineNeighbours = new Set();  
-                for (var adjMine of board.getAdjacent(tile)) {
+                const hiddenMineNeighbours = new Set();  
+                for (let adjMine of board.getAdjacent(tile)) {
 
                     if (!adjMine.isSolverFoundBomb()) {
                         continue;
                     }
-                    for (var adjTile of board.getAdjacent(adjMine)) {
+                    for (let adjTile of board.getAdjacent(adjMine)) {
                         if (!adjTile.isSolverFoundBomb() && adjTile.isCovered()) {
                             hiddenMineNeighbours.add(adjTile.index);
                         }
@@ -69,23 +69,11 @@ class EfficiencyHelper {
             }
         });
 
-        var bestChord = null;
-        var witnessReward = 0;
-        for (var cl of chordLocations) {
+        let bestChord = null;
+        let witnessReward = 0;
+        for (let cl of chordLocations) {
 
-            //console.log("checking chord at " + cl.tile.asText());
-
-            // add the required flags
-            //for (var adjTile of board.getAdjacent(cl.tile)) {
-            //    if (adjTile.isSolverFoundBomb() && !adjTile.isFlagged()) {
-            //        result.push(new Action(adjTile.getX(), adjTile.getY(), 0, ACTION_FLAG));
-            //    }
-            //}
-
-            // Add the chord action
-            //result.push(new Action(cl.tile.getX(), cl.tile.getY(), 0, ACTION_CHORD))
-
-            if (cl.netBenefit > 0 || ALLOW_ZERO_NET_GAIN_CHORD && cl.netBenefit == 0 && cl.cost > 0) {
+            if (cl.netBenefit > 0 || EfficiencyHelper.ALLOW_ZERO_NET_GAIN_CHORD && cl.netBenefit == 0 && cl.cost > 0) {
                 bestChord = cl;
                 witnessReward = cl.netBenefit;
             }
@@ -107,18 +95,17 @@ class EfficiencyHelper {
             //    return this.actions;
             //}
 
-            var bestAction = null;
-            var highest = BigInt(0);
+            let bestAction = null;
+            let highest = BigInt(0);
 
-            var currSolnCount = solver.countSolutions(board);
+            const currSolnCount = solver.countSolutions(board);
             if (witnessReward != 0) {
-                var highest = currSolnCount.finalSolutionsCount * BigInt(witnessReward);
+                highest = currSolnCount.finalSolutionsCount * BigInt(witnessReward);
             } else {
-                var highest = BigInt(0);
+                highest = BigInt(0);
             }
 
-            var foundCertainZero = false;
-            for (var act of this.actions) {
+            for (let act of this.actions) {
 
                 if (act.action == ACTION_CLEAR) {
 
@@ -127,13 +114,12 @@ class EfficiencyHelper {
                         firstClear = act;
                     }
 
-                    var tile = board.getTileXY(act.x, act.y);
+                    const tile = board.getTileXY(act.x, act.y);
 
                     // find the best chord adjacent to this clear if there is one
-                    //var adjBenefit = 0;
-                    var adjChord = null;
-                    for (var cl of chordLocations) {
-                        if (cl.netBenefit == 0 && !ALLOW_ZERO_NET_GAIN_PRE_CHORD) {
+                    let adjChord = null;
+                    for (let cl of chordLocations) {
+                        if (cl.netBenefit == 0 && !EfficiencyHelper.ALLOW_ZERO_NET_GAIN_PRE_CHORD) {
                             continue;
                         }
 
@@ -152,29 +138,29 @@ class EfficiencyHelper {
                         console.log("(" + act.x + "," + act.y + ") has adjacent chord " + adjChord.tile.asText() + " with net benefit " + adjChord.netBenefit);
                      }
 
-                    var adjMines = this.board.adjacentFoundMineCount(tile);
-                    var adjFlags = this.board.adjacentFlagsPlaced(tile);
-                    var hidden = this.board.adjacentCoveredCount(tile);   // hidden excludes unflagged but found mines
+                    const adjMines = this.board.adjacentFoundMineCount(tile);
+                    const adjFlags = this.board.adjacentFlagsPlaced(tile);
+                    const hidden = this.board.adjacentCoveredCount(tile);   // hidden excludes unflagged but found mines
 
+                    let chord;
                     if (adjMines != 0) {  // if the value we want isn't zero subtract the cost of chording
-                        var chord = 1;
+                        chord = 1;
                     } else {
-                        var chord = 0;
+                        chord = 0;
                     }
 
-                    // reward = H - (M - F) = H - M + F
-                    var reward = hidden - adjMines + adjFlags - chord;
+                     const reward = hidden - adjMines + adjFlags - chord;
 
                     //console.log("considering " + act.x + "," + act.y + " with value " + adjMines + " and reward " + reward + " ( H=" + hidden + " M=" + adjMines + " F=" + adjFlags + " Chord=" + chord + ")");
 
                     if (reward > witnessReward) {
 
                         tile.setValue(adjMines);
-                        var counter = solver.countSolutions(board);
+                        const counter = solver.countSolutions(board);
                         tile.setCovered(true);
 
-                        var prob = divideBigInt(counter.finalSolutionsCount, currSolnCount.finalSolutionsCount, 4);
-                        var expected = prob * reward;
+                        const prob = divideBigInt(counter.finalSolutionsCount, currSolnCount.finalSolutionsCount, 4);
+                        const expected = prob * reward;
 
                         // set this information on the tile, so we can display it in the tooltip
                         tile.setValueProbability(adjMines, prob);
@@ -191,18 +177,19 @@ class EfficiencyHelper {
                             //highest = 0;
                         }
 
-                        var clickChordNetBenefit = BigInt(reward) * counter.finalSolutionsCount; // expected benefit from clicking the tile then chording it
+                        const clickChordNetBenefit = BigInt(reward) * counter.finalSolutionsCount; // expected benefit from clicking the tile then chording it
 
+                        let current;
                         // if it is a chord/chord combo
                         if (adjChord != null) {
-                            var current = this.chordChordCombo(adjChord, tile, counter.finalSolutionsCount, currSolnCount.finalSolutionsCount);
+                            current = this.chordChordCombo(adjChord, tile, counter.finalSolutionsCount, currSolnCount.finalSolutionsCount);
                             if (current < clickChordNetBenefit) {  // if click chord is better then discard the adjacent chord
                                 current = clickChordNetBenefit;
                                 adjChord = null;
                             }
 
                         } else {  // or a clear/chord combo
-                            var current = clickChordNetBenefit;  // expected benefit == p*benefit
+                            current = clickChordNetBenefit;  // expected benefit == p*benefit
                         }
 
                         if (current > highest) {
@@ -231,7 +218,7 @@ class EfficiencyHelper {
             if (bestChord != null) {
                 result = []
                 // add the required flags
-                for (var adjTile of board.getAdjacent(bestChord.tile)) {
+                for (let adjTile of board.getAdjacent(bestChord.tile)) {
                     if (adjTile.isSolverFoundBomb() && !adjTile.isFlagged()) {
                         result.push(new Action(adjTile.getX(), adjTile.getY(), 0, ACTION_FLAG));
                     }
@@ -261,16 +248,16 @@ class EfficiencyHelper {
     // this method works out the net benefit of this play
     chordChordCombo(chord1, chord2Tile, occurs, total) {
 
-        var failedBenefit = chord1.netBenefit;
+        const failedBenefit = chord1.netBenefit;
  
-        var chord1Tile = chord1.tile;
+        const chord1Tile = chord1.tile;
 
         // now check each tile around the tile to be chorded 2nd and see how many mines to flag and tiles will be cleared
-        var alreadyCounted = 0;
-        var needsFlag = 0;
-        var clearable = 0;
-        var chordClick = 0;
-        for (var adjTile of board.getAdjacent(chord2Tile)) {
+        //var alreadyCounted = 0;
+        let needsFlag = 0;
+        let clearable = 0;
+        let chordClick = 0;
+        for (let adjTile of board.getAdjacent(chord2Tile)) {
 
             if (adjTile.isSolverFoundBomb()) {
                 chordClick = 1;
@@ -278,7 +265,7 @@ class EfficiencyHelper {
 
             // if adjacent to chord1
             if (chord1Tile.isAdjacent(adjTile)) {
-                alreadyCounted++;
+                //alreadyCounted++;
             } else if (adjTile.isSolverFoundBomb() && !adjTile.isFlagged()) {
                 needsFlag++;
             } else if (!adjTile.isSolverFoundBomb() && adjTile.isCovered()) {
@@ -286,16 +273,16 @@ class EfficiencyHelper {
             }
         }
 
-        var secondBenefit = clearable - needsFlag - chordClick;  // tiles cleared - flags placed - the chord click (which isn't needed if a zero is expected)
+        const secondBenefit = clearable - needsFlag - chordClick;  // tiles cleared - flags placed - the chord click (which isn't needed if a zero is expected)
 
-        var score = BigInt(failedBenefit) * total + BigInt(secondBenefit) * occurs;
+        const score = BigInt(failedBenefit) * total + BigInt(secondBenefit) * occurs;
 
-        var expected = failedBenefit + divideBigInt(occurs, total, 6) * secondBenefit;
+        const expected = failedBenefit + divideBigInt(occurs, total, 6) * secondBenefit;
 
         console.log("Chord " + chord1Tile.asText() + " followed by Chord " + chord2Tile.asText() + ": Chord 1: benefit " + chord1.netBenefit + ", Chord2: H=" + clearable + ", to F=" + needsFlag + ", Chord=" + chordClick
             + ", Benefit=" + secondBenefit + " ==> expected benefit " + expected);
 
-        var score = BigInt(failedBenefit) * total + BigInt(secondBenefit) * occurs;
+        //var score = BigInt(failedBenefit) * total + BigInt(secondBenefit) * occurs;
 
         return score;
 
