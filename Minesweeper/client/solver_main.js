@@ -276,6 +276,21 @@ async function solver(board, options) {
                 //showMessage("The solver has determined all off edge tiles must be safe");
                 //return result;
             }
+
+        } else if (pe.offEdgeProbability == 0) {
+            writeToConsole("The Probability Engine has determined all off edge tiles must be mines");
+            const edgeSet = new Set();  // build a set containing all the on edge tiles
+            for (let i = 0; i < witnessed.length; i++) {
+                edgeSet.add(witnessed[i].index);
+            }
+            // any tiles not on the edge are a mine
+            for (let i = 0; i < allCoveredTiles.length; i++) {
+                const tile = allCoveredTiles[i];
+                if (!edgeSet.has(tile.index) && !tile.isFlagged()) {
+                    pe.minesFound.push(tile)
+                    //tile.setFoundBomb();
+                }
+            }
         }
 
         // If we have a full analysis then set the probabilities on the tile tooltips
