@@ -277,7 +277,7 @@ async function solver(board, options) {
                 //return result;
             }
 
-        } else if (pe.offEdgeProbability == 0) {
+        } else if (pe.offEdgeProbability == 0 && pe.fullAnalysis) {  
             writeToConsole("The Probability Engine has determined all off edge tiles must be mines");
             const edgeSet = new Set();  // build a set containing all the on edge tiles
             for (let i = 0; i < witnessed.length; i++) {
