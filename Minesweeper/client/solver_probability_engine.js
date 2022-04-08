@@ -1313,14 +1313,16 @@ class ProbabilityEngine {
             //console.log("Mine count is " + pl.mineCount + " with solution count " + pl.solutionCount + " mineBoxCount = " + pl.mineBoxCount);
 
             if (pl.mineCount >= this.minTotalMines) {    // if the mine count for this solution is less than the minimum it can't be valid
-
-                this.writeToConsole("Mines on Perimeter " + pl.mineCount);
+ 
                 const mult = combination(this.minesLeft - pl.mineCount, this.TilesOffEdge);  //# of ways the rest of the board can be formed
+                const newSolutions = mult * pl.solutionCount;
+
+                this.writeToConsole(newSolutions + " solutions with " + pl.mineCount + " mines on Perimeter");
 
                 outsideTally = outsideTally + mult * BigInt(this.minesLeft - pl.mineCount) * (pl.solutionCount);
 
                 // this is all the possible ways the mines can be placed across the whole game
-                totalTally = totalTally + mult * (pl.solutionCount);
+                totalTally = totalTally + newSolutions;
 
                 for (let j = 0; j < tally.length; j++) {
                     //console.log("mineBoxCount " + j + " is " + pl.mineBoxCount[j]);

@@ -183,8 +183,8 @@ async function startup() {
 
     if (start != null) {
         showHintsCheckBox.checked = false;
-        var tile = board.getTile(start);
-        var message = buildMessageFromActions([new Action(tile.x, tile.y, 1, ACTION_CLEAR)], true);
+        const tile = board.getTile(start);
+        const message = buildMessageFromActions([new Action(tile.x, tile.y, 1, ACTION_CLEAR)], true);
         await sendActionsMessage(message);
         board.setStarted();
     }
@@ -421,7 +421,7 @@ function renderHints(hints, otherActions) {
                         value1 = value.toFixed(0);
                     }
 
-                    var offsetX = (TILE_SIZE - ctxHints.measureText(value1).width) / 2;
+                    const offsetX = (TILE_SIZE - ctxHints.measureText(value1).width) / 2;
 
                     ctxHints.fillText(value1, tile.x * TILE_SIZE + offsetX, (tile.y + 0.7) * TILE_SIZE, TILE_SIZE);
 
@@ -723,6 +723,7 @@ async function newBoardFromFile(file) {
         lockMineCount.checked = true;
 
         showMessage("Position loaded from file " + file.name);
+        checkBoard();
 
     };
 
@@ -1047,8 +1048,8 @@ function keyPressedEvent(e) {
         return;
     }
 
-    var flagCount = board.adjacentFoundMineCount(tile);
-    var covered = board.adjacentCoveredCount(tile);
+    const flagCount = board.adjacentFoundMineCount(tile);
+    const covered = board.adjacentCoveredCount(tile);
 
     // check it is a legal value
     if (newValue < flagCount || newValue > flagCount + covered) {
@@ -1148,7 +1149,14 @@ async function checkBoard() {
     if (solutionCounter.finalSolutionsCount != 0) {
         analysisButton.disabled = false;
         //showMessage("The board has" + solutionCounter.finalSolutionsCount + " possible solutions");
-        showMessage("The board is valid. " + board.getFlagsPlaced() + " Mines placed. " + formatSolutions(solutionCounter.finalSolutionsCount));
+        let logicText;
+        if (solutionCounter.clearCount != 0) {
+            logicText = "There are safe tile(s). ";
+        } else {
+            logicText = "There are no safe tiles. ";
+        }
+
+        showMessage("The board is valid. " + board.getFlagsPlaced() + " Mines placed. " + logicText + formatSolutions(solutionCounter.finalSolutionsCount));
         
     } else {
         analysisButton.disabled = true;
@@ -1271,7 +1279,7 @@ function on_click(event) {
 
     //console.log("Resolved to Col=" + col + ", row=" + row);
 
-    var message;
+    let message;
 
     if (row >= board.height || row < 0 || col >= board.width || col < 0) {
         console.log("Click outside of game boundaries!!");
@@ -1301,7 +1309,7 @@ function on_click(event) {
             dragTile = tile;
 
             if (tile.isCovered()) {
-                var flagCount = board.adjacentFoundMineCount(tile);
+                const flagCount = board.adjacentFoundMineCount(tile);
                 tile.setValue(flagCount);
             } else {
                 tile.setCovered(true);
@@ -1315,6 +1323,10 @@ function on_click(event) {
             tiles = analysis_toggle_flag(tile);
 
             console.log("Number of bombs " + board.num_bombs + "  bombs left to find " + board.bombs_left);
+
+        } else {
+            console.log("Mouse button " + button + " ignored");
+            return;
         }
 
         // update the graphical board
@@ -1354,7 +1366,7 @@ function on_click(event) {
                 message = { "header": board.getMessageHeader(), "actions": [{ "index": board.xy_to_index(col, row), "action": 1 }] }; // click
             }
 
-         } else if (button == 3) {  // right mouse button
+        } else if (button == 3) {  // right mouse button
 
             if (!tile.isCovered()) {  // no point flagging an already uncovered tile
                 return;
@@ -1366,6 +1378,10 @@ function on_click(event) {
             } else {
                 message = { "header": board.getMessageHeader(), "actions": [{ "index": board.xy_to_index(col, row), "action": 2 }] };
             }
+
+        } else {
+            console.log("Mouse button " + button + " ignored");
+            return;
         }
     }
 
@@ -1381,7 +1397,7 @@ function on_click(event) {
 
         justPressedAnalyse = false;
 
-        var reply = sendActionsMessage(message);
+        sendActionsMessage(message);
     }
 
 }
