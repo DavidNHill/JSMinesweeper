@@ -32,12 +32,12 @@ class EfficiencyHelper {
                 // how many hidden tiles are next to the mine(s) we would have flagged, the more the better
                 // this favours flags with many neighbours over flags buried against cleared tiles.
                 const hiddenMineNeighbours = new Set();  
-                for (let adjMine of board.getAdjacent(tile)) {
+                for (let adjMine of this.board.getAdjacent(tile)) {
 
                     if (!adjMine.isSolverFoundBomb()) {
                         continue;
                     }
-                    for (let adjTile of board.getAdjacent(adjMine)) {
+                    for (let adjTile of this.board.getAdjacent(adjMine)) {
                         if (!adjTile.isSolverFoundBomb() && adjTile.isCovered()) {
                             hiddenMineNeighbours.add(adjTile.index);
                         }
@@ -98,7 +98,7 @@ class EfficiencyHelper {
             let bestAction = null;
             let highest = BigInt(0);
 
-            const currSolnCount = solver.countSolutions(board);
+            const currSolnCount = solver.countSolutions(this.board);
             if (witnessReward != 0) {
                 highest = currSolnCount.finalSolutionsCount * BigInt(witnessReward);
             } else {
@@ -114,7 +114,7 @@ class EfficiencyHelper {
                         firstClear = act;
                     }
 
-                    const tile = board.getTileXY(act.x, act.y);
+                    const tile = this.board.getTileXY(act.x, act.y);
 
                     // find the best chord adjacent to this clear if there is one
                     let adjChord = null;
@@ -156,7 +156,7 @@ class EfficiencyHelper {
                     if (reward > witnessReward) {
 
                         tile.setValue(adjMines);
-                        const counter = solver.countSolutions(board);
+                        const counter = solver.countSolutions(this.board);
                         tile.setCovered(true);
 
                         const prob = divideBigInt(counter.finalSolutionsCount, currSolnCount.finalSolutionsCount, 4);
@@ -218,7 +218,7 @@ class EfficiencyHelper {
             if (bestChord != null) {
                 result = []
                 // add the required flags
-                for (let adjTile of board.getAdjacent(bestChord.tile)) {
+                for (let adjTile of this.board.getAdjacent(bestChord.tile)) {
                     if (adjTile.isSolverFoundBomb() && !adjTile.isFlagged()) {
                         result.push(new Action(adjTile.getX(), adjTile.getY(), 0, ACTION_FLAG));
                     }
@@ -257,7 +257,7 @@ class EfficiencyHelper {
         let needsFlag = 0;
         let clearable = 0;
         let chordClick = 0;
-        for (let adjTile of board.getAdjacent(chord2Tile)) {
+        for (let adjTile of this.board.getAdjacent(chord2Tile)) {
 
             if (adjTile.isSolverFoundBomb()) {
                 chordClick = 1;

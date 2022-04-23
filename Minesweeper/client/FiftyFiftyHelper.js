@@ -56,7 +56,7 @@ class FiftyFiftyHelper {
                 // is both hidden tiles being mines a valid option?
                 tile1.setFoundBomb();
                 tile2.setFoundBomb();
-                var counter = solver.countSolutions(board, null);
+                var counter = solver.countSolutions(this.board, null);
                 tile1.unsetFoundBomb();
                 tile2.unsetFoundBomb();
 
@@ -92,7 +92,7 @@ class FiftyFiftyHelper {
                 // is both hidden tiles being mines a valid option?
                 tile1.setFoundBomb();
                 tile2.setFoundBomb();
-                var counter = solver.countSolutions(board, null);
+                var counter = solver.countSolutions(this.board, null);
                 tile1.unsetFoundBomb();
                 tile2.unsetFoundBomb();
 
@@ -212,7 +212,7 @@ class FiftyFiftyHelper {
 					}
 
 					// see if the position is valid
-					const counter = solver.countSolutions(board, noMines);
+					const counter = solver.countSolutions(this.board, noMines);
 
 					// remove the mines
 					for (let tile of mines) {
