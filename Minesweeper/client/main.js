@@ -1082,8 +1082,10 @@ async function doAnalysis() {
     await sleep(1);
 
     // this will set all the obvious mines which makes the solution counter a lot more efficient on very large boards
-    board.resetForAnalysis();
-    board.findAutoMove();
+    if (analysisMode) {
+        board.resetForAnalysis();
+        board.findAutoMove();
+    }
  
     const solutionCounter = solver.countSolutions(board);
 

@@ -1508,6 +1508,32 @@ class ProbabilityEngine {
          return this.deadTiles;
     }
 
+    getProbability(l) {
+
+        for (const b of this.boxes) {
+            if (b.contains(l)) {
+                return this.boxProb[b.uid];
+            }
+        }
+
+        return this.offEdgeProbability;
+    }
+
+    getFiftyPercenters() {
+
+        const picks = [];
+
+        for (let i = 0; i < this.boxProb.length; i++) {
+            if (this.boxProb[i] == 0.5) {
+                picks.push(...this.boxes[i].tiles);
+            }
+        }
+
+        return picks;
+
+    }
+
+
     // forces a box to contain a tile which isn't a mine.  If the location isn't in a box false is returned.
     setMustBeEmpty(tile) {
 

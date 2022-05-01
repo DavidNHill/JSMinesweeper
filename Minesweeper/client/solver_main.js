@@ -551,6 +551,12 @@ async function solver(board, options) {
 
         const start = Date.now();
 
+        writeToConsole("Long term risks ==>");
+        const ltr = new LongTermRiskHelper(board, pe, options);
+        ltr.findRisks();
+        actions.push(...ltr.get5050Breakers());  // Tiles which break a 50/50 should be considered
+        writeToConsole("<==");
+
         let best;
         for (let action of actions) {
 
@@ -567,7 +573,7 @@ async function solver(board, options) {
 
             //fullAnalysis(pe, board, action, best);  // updates variables in the Action class
 
-            secondarySafetyAnalysis(pe, board, action, best) // updates variables in the Action class
+            secondarySafetyAnalysis(pe, board, action, best, ltr) // updates variables in the Action class
 
             if (best == null || best.weight < action.weight) {
                 best = action;
@@ -981,7 +987,7 @@ async function solver(board, options) {
 
     }
 
-    function secondarySafetyAnalysis(pe, board, action, best) {
+    function secondarySafetyAnalysis(pe, board, action, best, ltr) {
 
         const tile = board.getTileXY(action.x, action.y);
 
@@ -1054,10 +1060,12 @@ async function solver(board, options) {
                     commonClears = andClearTiles(commonClears, work.localClears);
                 }
 
-                const probThisTileValue = divideBigInt(work.finalSolutionsCount, pe.finalSolutionsCount, 6);
-                secondarySafety = secondarySafety + probThisTileValue * work.bestProbability;
+                const longTermSafety = ltr.getLongTermSafety(tile, work);
 
-                writeToConsole(tile.asText() + " with value " + value + " has probability " + probThisTileValue + ", secondary safety " + work.bestProbability + ", clears " + work.clearCount);
+                const probThisTileValue = divideBigInt(work.finalSolutionsCount, pe.finalSolutionsCount, 6);
+                secondarySafety = secondarySafety + probThisTileValue * work.bestProbability * longTermSafety;
+
+                writeToConsole(tile.asText() + " with value " + value + " has probability " + probThisTileValue + ", secondary safety " + work.bestProbability + ", clears " + work.clearCount + ", long term safety " + longTermSafety);
 
                 probThisTileLeft = probThisTileLeft - probThisTileValue;
              }
