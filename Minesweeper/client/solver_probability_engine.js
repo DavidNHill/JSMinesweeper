@@ -47,6 +47,8 @@ class ProbabilityEngine {
         this.bestOnEdgeProbability;
         this.finalSolutionsCount = BigInt(0);
 
+        this.bestLivingProbability = 0;
+
         // details about independent witnesses
         this.independentWitnesses = [];
         this.dependentWitnesses = [];
@@ -1367,7 +1369,8 @@ class ProbabilityEngine {
         // see if the lonely tiles are dead
         for (let i = 0; i < this.lonelyTiles.length; i++) {
             const dc = this.lonelyTiles[i];
-            if (this.boxProb[dc.myBox.uid] != 0 && this.boxProb[dc.myBox.uid] != 1) {   // a lonely tile is dead if not a definite mine or safe
+            //if (this.boxProb[dc.myBox.uid] != 0 && this.boxProb[dc.myBox.uid] != 1) {   // a lonely tile is dead if not a definite mine or safe
+            if (this.boxProb[dc.myBox.uid] != 0) {
                 this.writeToConsole("PE found Lonely tile " + dc.candidate.asText() + " is dead with value +" + dc.total);
                 this.deadTiles.push(dc.candidate);
             }
@@ -1376,7 +1379,8 @@ class ProbabilityEngine {
         // add the dead locations we found
         for (let i = 0; i < this.deadCandidates.length; i++) {
             const dc = this.deadCandidates[i];
-            if (!dc.isAlive && this.boxProb[dc.myBox.uid] != 0 && this.boxProb[dc.myBox.uid] != 1) {   // if it is dead and not a definite mine or safe
+            //if (!dc.isAlive && this.boxProb[dc.myBox.uid] != 0 && this.boxProb[dc.myBox.uid] != 1) {   // if it is dead and not a definite mine or safe
+            if (!dc.isAlive && this.boxProb[dc.myBox.uid] != 0) {
                 this.writeToConsole("PE found " + dc.candidate.asText() + " to be dead with value +" + dc.total);
                 this.deadTiles.push(dc.candidate);
             }
@@ -1405,6 +1409,8 @@ class ProbabilityEngine {
 
         // see if we can find a guess which is better than outside the boxes
         let hwm = 0;
+
+        this.bestLivingProbability = this.offEdgeProbability;  // seee if we can do better than the off edge probability
 
         for (let i = 0; i < this.boxes.length; i++) {
 
@@ -1435,10 +1441,13 @@ class ProbabilityEngine {
 
             var prob = this.boxProb[b.uid];
             if (boxLiving || prob == 1) {   // if living or 100% safe then consider this probability
-
                 if (hwm < prob) {
                      hwm = prob;
                 }
+                if (boxLiving && prob > this.bestLivingProbability) {
+                    this.bestLivingProbability = prob;
+                }
+
             }
         }
 

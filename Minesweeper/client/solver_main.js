@@ -1063,9 +1063,9 @@ async function solver(board, options) {
                 const longTermSafety = ltr.getLongTermSafety(tile, work);
 
                 const probThisTileValue = divideBigInt(work.finalSolutionsCount, pe.finalSolutionsCount, 6);
-                secondarySafety = secondarySafety + probThisTileValue * work.bestProbability * longTermSafety;
+                secondarySafety = secondarySafety + probThisTileValue * work.bestLivingProbability * longTermSafety;
 
-                writeToConsole(tile.asText() + " with value " + value + " has probability " + probThisTileValue + ", secondary safety " + work.bestProbability + ", clears " + work.clearCount + ", long term safety " + longTermSafety);
+                writeToConsole(tile.asText() + " with value " + value + " has probability " + probThisTileValue + ", secondary safety " + work.bestLivingProbability + ", clears " + work.clearCount + ", long term safety " + longTermSafety);
 
                 probThisTileLeft = probThisTileLeft - probThisTileValue;
              }
