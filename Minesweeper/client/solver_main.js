@@ -358,6 +358,7 @@ async function solver(board, options) {
         }
 
         // if we don't have a certain guess then look for ...
+        let ltr;
         if (pe.bestOnEdgeProbability != 1 && minesLeft > 1) {
 
             // See if there are any unavoidable 2 tile 50/50 guesses 
@@ -369,7 +370,10 @@ async function solver(board, options) {
             }
 
             // look for any 50/50 or safe guesses 
-            const unavoidable5050b = new FiftyFiftyHelper(board, pe.minesFound, options, pe.getDeadTiles(), witnessed, minesLeft).process();
+            //const unavoidable5050b = new FiftyFiftyHelper(board, pe.minesFound, options, pe.getDeadTiles(), witnessed, minesLeft).process();
+
+            ltr = new LongTermRiskHelper(board, pe, minesLeft, options);
+            const unavoidable5050b = ltr.findInfluence();
             if (unavoidable5050b != null) {
                 result.push(new Action(unavoidable5050b.getX(), unavoidable5050b.getY(), unavoidable5050b.probability, ACTION_CLEAR));
                 showMessage(unavoidable5050b.asText() + " is an unavoidable 50/50 guess, or safe." + formatSolutions(pe.finalSolutionsCount));
@@ -514,7 +518,7 @@ async function solver(board, options) {
             } else {
                 showMessage("The solver has found the best guess on the edge using the probability engine." + formatSolutions(pe.finalSolutionsCount));
                 if (pe.duration < 50) {  // if the probability engine didn't take long then use some tie-break logic
-                    result = tieBreak(pe, result, partialBFDA);
+                    result = tieBreak(pe, result, partialBFDA, ltr);
                 }
             }
 
@@ -547,14 +551,27 @@ async function solver(board, options) {
 
     }
 
-    function tieBreak(pe, actions, bfda) {
+    function tieBreak(pe, actions, bfda, ltr) {
 
         const start = Date.now();
 
         writeToConsole("Long term risks ==>");
-        const ltr = new LongTermRiskHelper(board, pe, options);
-        ltr.findRisks();
-        actions.push(...ltr.get5050Breakers());  // Tiles which break a 50/50 should be considered
+
+        const alreadyIncluded = new Set();
+        for (let action of actions) {
+            alreadyIncluded.add(board.getTileXY(action.x, action.y));
+        }
+
+        const extraTiles = ltr.getInfluencedTiles(pe.bestProbability * 0.9);
+        for (let tile of extraTiles) {
+            if (alreadyIncluded.has(tile)) {
+                //writeToConsole(tile.asText() + " is already in the list of candidates to be analysed");
+            } else {
+                alreadyIncluded.add(tile);
+                actions.push(new Action(tile.getX(), tile.getY(), pe.getProbability(tile), ACTION_CLEAR));
+                writeToConsole(tile.asText() + " added to the list of candidates to be analysed");
+            }
+        }
         writeToConsole("<==");
 
         let best;
@@ -563,13 +580,6 @@ async function solver(board, options) {
             if (action.action == ACTION_FLAG) { // ignore the action if it is a flagging request
                 continue;
             }
-
-            //if (best != null) {
-            //   if (action.prob * (1 + PROGRESS_CONTRIBUTION) < best.weight) {
-            //        writeToConsole("(" + action.x + "," + action.y + ") is ignored because it can never do better than the best");
-            //        continue;
-            //    }
-            //}
 
             //fullAnalysis(pe, board, action, best);  // updates variables in the Action class
 
@@ -977,7 +987,9 @@ async function solver(board, options) {
         // let the solution counter know which tiles mustn't contain mines
         if (notMines != null) {
             for (let tile of notMines) {
-                solutionCounter.setMustBeEmpty(tile);
+                if (!solutionCounter.setMustBeEmpty(tile)) {
+                    writeToConsole("Tile " + tile.asText() + " failed to set must be empty");
+                }
             }
         }
 
@@ -988,6 +1000,8 @@ async function solver(board, options) {
     }
 
     function secondarySafetyAnalysis(pe, board, action, best, ltr) {
+
+        const progressContribution = 0.052;
 
         const tile = board.getTileXY(action.x, action.y);
 
@@ -1012,7 +1026,7 @@ async function solver(board, options) {
         // a dominated tile doesn't need any further resolution
         if (dominated) {
             action.progress = action.prob;    // progress is total
-            action.weight = action.prob * (1 + action.prob * 0.1);
+            action.weight = action.prob * (1 + action.prob * progressContribution);
             action.maxSolutions = safePe.finalSolutionsCount;
             action.commonClears = safePe.localClears;
 
@@ -1020,6 +1034,20 @@ async function solver(board, options) {
 
             return;
         }
+
+        const tileBox = pe.getBox(tile);
+        let safetyTally;
+        if (tileBox == null) {
+            safetyTally = pe.finalSolutionsCount - pe.offEdgeMineTally;
+        } else {
+            safetyTally = pe.finalSolutionsCount - tileBox.mineTally;
+        }
+
+        const tileInfluenceTally = ltr.findTileInfluence(tile);
+        //console.log("Safety Tally " + safetyTally + ", tileInfluenceTally " + tileInfluenceTally);
+
+        const fiftyFiftyInfluenceTally = safetyTally + tileInfluenceTally;
+        const fiftyFiftyInfluence = divideBigInt(fiftyFiftyInfluenceTally, safetyTally, 6);
 
         let solutionsWithProgess = BigInt(0);
         let expectedClears = BigInt(0);
@@ -1037,11 +1065,11 @@ async function solver(board, options) {
         for (let value = adjFlags; value <= adjCovered + adjFlags; value++) {
 
             const progress = divideBigInt(solutionsWithProgess, pe.finalSolutionsCount, 6);
-            const bonus = 1 + (progress + probThisTileLeft) * 0.1;
-            const weight = (secondarySafety + probThisTileLeft) * bonus;
+            const bonus = 1 + (progress + probThisTileLeft) * progressContribution;
+            const weight = (secondarySafety + probThisTileLeft * fiftyFiftyInfluence) * bonus;
 
             if (best != null && weight < best.weight) {
-                writeToConsole("(" + action.x + "," + action.y + ") is being pruned");
+                writeToConsole("Tile (" + action.x + "," + action.y + ") is being pruned,  50/50 influence = " + fiftyFiftyInfluence + ", max score possible is " + weight);
                 action.weight = weight;
                 action.pruned = true;
 
@@ -1060,12 +1088,12 @@ async function solver(board, options) {
                     commonClears = andClearTiles(commonClears, work.localClears);
                 }
 
-                const longTermSafety = ltr.getLongTermSafety(tile, work);
+                //const longTermSafety = ltr.getLongTermSafety(tile, work);
 
                 const probThisTileValue = divideBigInt(work.finalSolutionsCount, pe.finalSolutionsCount, 6);
-                secondarySafety = secondarySafety + probThisTileValue * work.bestLivingProbability * longTermSafety;
+                secondarySafety = secondarySafety + probThisTileValue * work.bestLivingProbability * fiftyFiftyInfluence;
 
-                writeToConsole(tile.asText() + " with value " + value + " has probability " + probThisTileValue + ", secondary safety " + work.bestLivingProbability + ", clears " + work.clearCount + ", long term safety " + longTermSafety);
+                writeToConsole("Tile " + tile.asText() + " with value " + value + " has probability " + probThisTileValue + ", next guess safety " + work.bestLivingProbability + ", clears " + work.clearCount);
 
                 probThisTileLeft = probThisTileLeft - probThisTileValue;
              }
@@ -1093,12 +1121,15 @@ async function solver(board, options) {
 
         action.progress = progress;
 
-        action.weight = secondarySafety * (1 + progress * 0.1);
+        action.weight = secondarySafety * (1 + progress * progressContribution);
         action.maxSolutions = maxSolutions;
         action.commonClears = commonClears;
 
         tile.setProbability(action.prob, action.progress);
-        writeToConsole("Tile " + tile.asText() + ", secondary safety = " + secondarySafety + ",  progress = " + action.progress + ", weight = " + action.weight + ", expected clears = " + action.expectedClears + ", common clears = " + commonClears.length);
+
+        const realSecondarySafety = (secondarySafety / fiftyFiftyInfluence).toFixed(6);
+        writeToConsole("Tile " + tile.asText() + ", secondary safety = " + realSecondarySafety + ",  progress = " + action.progress + ", 50/50 influence = " + fiftyFiftyInfluence
+            + ", expected clears = " + action.expectedClears + ", always clear = " + commonClears.length + ", final score = " + action.weight);
 
     }
 

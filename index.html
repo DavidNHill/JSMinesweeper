@@ -32,7 +32,7 @@
             <div class="checkboxes" style="margin-top: 10px;">
                 <label><input type="checkbox" class="checkbox" id="gameTypeZero" /> <span>Opening on start</span></label>
                 <label><input type="checkbox" class="checkbox" id="fastPlay" /> <span>Fast mode</span></label>
-                <label><input type="checkbox" class="checkbox" id="noGuessMode" /> <span>No Guess (beta)</span></label>
+                <label><input type="checkbox" class="checkbox" id="noGuessMode" /> <span>No Guess</span></label>
             </div>
         </div>
 
@@ -97,12 +97,6 @@
 
         </div>
 
-        <!--
-        <div style="margin-top: 1em;" class="checkboxes">
-            <label><input type="checkbox" class="checkbox" id="showProbability" /> <span>Probability overlay</span></label>
-        </div>
-        -->
-
         <div style="margin-top: 10px;">
             <label>Overlay:</label>
             <select id="overlay">
@@ -131,8 +125,12 @@
                 <canvas id="myHints" width="500" height="500" oncontextmenu="return false" style="position: absolute; top: 0px; left: 0px; pointer-events: none;"></canvas>
             </div>
             <span id="tooltip" class="tooltiptext" style="pointer-events: none;">Tooltip text</span>
-            <!-- A hyperlimnk to download the board -->
-            <a id="downloadmbf" style="position: relative; left: 3px; top: 5px" onclick="downloadAsMBF(event)" download="" href="">Download as MBF</a>
+            <!-- A hyperlink to download the board -->
+            <div>
+                <a id="saveposition" style="float: left; width: 100px; margin-right: 30px;" onclick="savePosition(event)" download="" href="">Save position</a>
+                <a id="downloadmbf" style="float: left; width: 130px" onclick="downloadAsMBF(event)" download="" href="">Download as MBF</a>
+            </div>
+
         </section>
     </div>
 

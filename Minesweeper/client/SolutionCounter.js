@@ -19,9 +19,9 @@ class SolutionCounter {
 
         // constraints in the game
         this.minesLeft = minesLeft;
-        this.tilesLeft = squaresLeft;
-        this.TilesOffEdge = squaresLeft - allWitnessed.length;   // squares left off the edge and unrevealed
-        this.minTotalMines = minesLeft - this.TilesOffEdge;   // //we can't use so few mines that we can't fit the remainder elsewhere on the board
+        //this.tilesLeft = squaresLeft;
+        this.tilesOffEdge = squaresLeft - allWitnessed.length;   // squares left off the edge and unrevealed
+        this.minTotalMines = minesLeft - this.tilesOffEdge;   // //we can't use so few mines that we can't fit the remainder elsewhere on the board
         this.maxTotalMines = minesLeft;
 
         this.boxes = [];
@@ -30,18 +30,20 @@ class SolutionCounter {
 
 		this.workingProbs = []; 
         this.heldProbs = [];
+        this.offEdgeMineTally = BigInt(0);
         this.finalSolutionsCount = BigInt(0);
         this.clearCount = 0;
         this.localClears = [];
 
         this.validWeb = true;
 
+        this.recursions = 0;
+
         // can't have less than zero mines
         if (minesLeft < 0) {
             this.validWeb = false;
             return;
         }
-
 
         // generate a BoxWitness for each witness tile and also create a list of pruned witnesses for the brute force search
         var pruned = 0;
@@ -123,6 +125,7 @@ class SolutionCounter {
             //console.log("Witness " + boxWit.tile.asText() + " is adjacent to " + boxWit.boxes.length + " boxes and has " + boxWit.minesToFind + " mines to find");
         }
 
+        Object.seal(this) // prevent new properties being created
  	}
 
 
@@ -139,9 +142,6 @@ class SolutionCounter {
 
         // create an array showing which boxes have been procesed this iteration - none have to start with
         this.mask = Array(this.boxes.length).fill(false);
-        //for (var i = 0; i < this.boxes.length; i++) {
-        //    this.mask.push(false);
-        //}
 
 		// create an initial solution of no mines anywhere 
         this.heldProbs.push(new ProbabilityLine(this.boxes.length, BigInt(1)));
@@ -153,7 +153,7 @@ class SolutionCounter {
 
         while (nextWitness != null) {
 
-            //console.log("Probability engine processing witness " + nextWitness.boxWitness.tile.asText());
+            //console.log("Solution counter processing witness " + nextWitness.boxWitness.tile.asText());
 
             // mark the new boxes as processed - which they will be soon
             for (var i = 0; i < nextWitness.newBoxes.length; i++) {
@@ -166,6 +166,8 @@ class SolutionCounter {
 
         }
 
+        //this.calculateBoxProbabilities();
+
         // if this isn't a valid board than nothing to do
         if (this.heldProbs.length != 0) {
             this.calculateBoxProbabilities();
@@ -173,8 +175,7 @@ class SolutionCounter {
             this.finalSolutionsCount = BigInt(0);
             this.clearCount = 0;
         }
- 
-		
+  		
 	}
 
 
@@ -262,8 +263,8 @@ class SolutionCounter {
         //console.log("Distributing " + missingMines + " missing mines to box " + nw.newBoxes[index].uid);
 
         this.recursions++;
-        if (this.recursions % 100 == 0) {
-            console.log("Probability Engine recursision = " + recursions);
+        if (this.recursions % 1000 == 0) {
+            console.log("Solution Counter recursision = " + this.recursions);
         }
 
         var result = [];
@@ -313,7 +314,11 @@ class SolutionCounter {
         //console.log("Extended probability line: Adding " + mines + " mines to box " + newBox.uid);
         //console.log("Extended probability line before" + pl.mineBoxCount);
 
-        var combination = SolutionCounter.SMALL_COMBINATIONS[newBox.tiles.length][mines];
+        // there are less ways to place the mines if we know one of the tiles doesn't contain a mine
+        const modifiedTilesCount = newBox.tiles.length - newBox.emptyTiles;
+
+        //var combination = SolutionCounter.SMALL_COMBINATIONS[newBox.tiles.length][mines];
+        var combination = SolutionCounter.SMALL_COMBINATIONS[modifiedTilesCount][mines];
         var bigCom = BigInt(combination);
 
         var newSolutionCount = pl.solutionCount * bigCom;
@@ -562,34 +567,34 @@ class SolutionCounter {
     // sum them together to create a definitive probability for each box
     calculateBoxProbabilities() {
 
-        var emptyBox = Array(this.boxes.length).fill(true);
+        const emptyBox = Array(this.boxes.length).fill(true);
 
         // total game tally
-        var totalTally = BigInt(0);
+        let totalTally = BigInt(0);
 
         // outside a box tally
-        var outsideTally = BigInt(0);
+        let outsideTally = BigInt(0);
 
         //console.log("There are " + this.heldProbs.length + " different mine counts on the edge");
 
         // calculate how many mines 
-        for (var i = 0; i < this.heldProbs.length; i++) {
+        for (let i = 0; i < this.heldProbs.length; i++) {
 
-            var pl = this.heldProbs[i];
+            const pl = this.heldProbs[i];
 
             //console.log("Mine count is " + pl.mineCount + " with solution count " + pl.solutionCount + " mineBoxCount = " + pl.mineBoxCount);
 
             if (pl.mineCount >= this.minTotalMines) {    // if the mine count for this solution is less than the minimum it can't be valid
 
                 //console.log("Mines left " + this.minesLeft + " mines on PL " + pl.mineCount + " squares left = " + this.squaresLeft);
-                var mult = combination(this.minesLeft - pl.mineCount, this.TilesOffEdge);  //# of ways the rest of the board can be formed
+                var mult = combination(this.minesLeft - pl.mineCount, this.tilesOffEdge);  //# of ways the rest of the board can be formed
 
                 outsideTally = outsideTally + mult * BigInt(this.minesLeft - pl.mineCount) * (pl.solutionCount);
 
                 // this is all the possible ways the mines can be placed across the whole game
                 totalTally = totalTally + mult * (pl.solutionCount);
 
-                for (var j = 0; j < emptyBox.length; j++) {
+                for (let j = 0; j < emptyBox.length; j++) {
                     if (pl.mineBoxCount[j] != 0) {
                         emptyBox[j] = false;
                     }
@@ -600,7 +605,7 @@ class SolutionCounter {
 
         // count how many clears we have
         if (totalTally > 0) {
-            for (var i = 0; i < this.boxes.length; i++) {
+            for (let i = 0; i < this.boxes.length; i++) {
                 if (emptyBox[i]) {
                     this.clearCount = this.clearCount + this.boxes[i].tiles.length;
                     this.localClears.push(...this.boxes[i].tiles);
@@ -608,20 +613,34 @@ class SolutionCounter {
             }
         }
 
+        if (this.tilesOffEdge != 0) {
+            this.offEdgeMineTally = outsideTally / BigInt(this.tilesOffEdge);
+        } else {
+            this.offEdgeMineTally = 0;
+        }
+ 
         this.finalSolutionsCount = totalTally;
 
          //console.log("Game has  " + this.finalSolutionsCount + " candidate solutions and " + this.clearCount + " clears");
 
     }
 
-    // forces a box to contain a tile which isn't a mine.  If the location isn't in a box false is returned.
+    // forces a box to contain a tile which isn't a mine.  If the location isn't in a box then reduce the off edge details.
+
     setMustBeEmpty(tile) {
 
         const box = this.getBox(tile);
 
-        if (box == null) {
+        if (box == null) {  // if the tiles isn't on the edge then adjust the off edge values
+            this.tilesOffEdge--;
+            this.minTotalMines = Math.max(0, this.minesLeft - this.tilesOffEdge);
+
+            //this.validWeb = false;
+            //return false;
+        } else if (box.minMines != 0) {
             this.validWeb = false;
             return false;
+
         } else {
             box.incrementEmptyTiles();
         }

@@ -2,362 +2,527 @@
 
 class LongTermRiskHelper {
 
-	constructor(board, pe, options) {
+	constructor(board, pe, minesLeft, options)  {
 
-		this.options = options;
 		this.board = board;
+		//this.wholeEdge = wholeEdge;
 		this.currentPe = pe;
-		this.deadTiles = pe.getDeadTiles();
-		this.fifty = pe.getFiftyPercenters();
-		this.currentLongTermSafety = 1;
-		this.risk5050s = [];
+		this.minesLeft = minesLeft
+		this.options = options;
 
-		// sort into location order
-		this.fifty.sort(function (a, b) { return (a.y * 10000 + a.x) - (b.y * 10000 + b.x)});
+		this.pseudo = null;
 
-		console.log("Fifty percenters " + this.fifty.length);
+		this.influences = new Array(this.board.width * this.board.height)
 
-	}
-
-	findRisks() {
-
-		let longTermSafety = 1;
-
-		for (let i = 0; i < this.fifty.length; i++) {
-
-			const tile1 = this.fifty[i];
-			let tile2;
-
-			let info = null;
-			let risk = null;
-
-			for (let j = i + 1; j < this.fifty.length; j++) {
-				tile2 = this.fifty[j];
-
-				// tile2 is below tile1
-				if (tile1.x == tile2.x && tile1.y == tile2.y - 1) {
-					info = this.checkVerticalInfo(tile1, tile2);
-
-					if (info == null) { // try extending it
-
-						const tile3 = this.getFifty(tile2.x, tile2.y + 2);
-						const tile4 = this.getFifty(tile2.x, tile2.y + 3);
-
-						if (tile3 != null && tile4 != null) {
-							info = this.checkVerticalInfo(tile1, tile4);
-							if (info != null) {
-								const tiles = [tile1, tile2, tile3, tile4];
-								risk = new Risk5050(info, tiles, this.filterDead(tiles));
-							}
-						}
-
-					} else {
-						const tiles = [tile1, tile2];
-						risk = new Risk5050(info, tiles, this.filterDead(tiles));
-					}
-
-					break;
-				}
-
-				// tile 2 is right of tile1
-				if (tile1.x == tile2.x - 1 && tile1.y == tile2.y) {
-					info = this.checkHorizontalInfo(tile1, tile2);
-
-					if (info == null) { // try extending it
-
-						const tile3 = this.getFifty(tile2.x + 2, tile2.y);
-						const tile4 = this.getFifty(tile2.x + 3, tile2.y);
-
-						if (tile3 != null && tile4 != null) {
-							info = this.checkHorizontalInfo(tile1, tile4);
-							if (info != null) {
-								const tiles = [tile1, tile2, tile3, tile4];
-								risk = new Risk5050(info, tiles, this.filterDead(tiles));
-							}
-						}
-
-					} else {
-						const tiles = [tile1, tile2];
-						risk = new Risk5050(info, tiles, this.filterDead(tiles));
-					}
-
-					break;
-				}
-
-			}
-
-			// if the 2 fifties form a pair with only 1 remaining source of information
-			if (risk != null) {
-				this.risk5050s.push(risk);  // store the positions of interest
-
-				const safety = 1 - (1 - this.currentPe.getProbability(info)) * 0.5;
-
-				this.writeToConsole(tile1.asText() + " " + tile2.asText() + " has 1 remaining source of information - tile " + info.asText() + " " + safety);
-				longTermSafety = longTermSafety * safety;
-			}
-
-		}
-
-		if (longTermSafety != 1) {
-			this.writeToConsole("Total long term safety " + longTermSafety);
-		}
-
-
-		this.currentLongTermSafety = longTermSafety;
+		Object.seal(this) // prevent new properties being created
 
 	}
 
+	/**
+	 * Scan whole board looking for tiles heavily influenced by 50/50s
+	 */
+	findInfluence() {
 
-	getFifty(x, y) {
+		//TODO place mines found by the probability engine
 
-		for (const loc of this.fifty) {
-			if (loc.x == x && loc.y == y) {
-				return loc;
-			}
+		this.checkFor2Tile5050();
+
+		this.checkForBox5050();
+
+		if (this.pseudo != null) {
+			this.writeToConsole("Tile " + this.pseudo.asText() + " is a 50/50, or safe");
 		}
 
-		return null;
+		//TODO remove mines found by the probability engine
+
+		return this.pseudo;
 
 	}
 
-	get5050Breakers() {
-		const breakers = [];
+	/**
+	 * Get the 50/50 influence for a particular tile
+	 */
+	findTileInfluence(tile) {
+		
+		let influence = BigInt(0);
+		
+		// 2-tile 50/50
+		const tile1 = this.board.getTileXY(tile.getX() - 1, tile.getY());
 
-		for (const risk of this.risk5050s) {
-			for (const tile of risk.livingArea) {
-				breakers.push(new Action(tile.x, tile.y, this.currentPe.getProbability(tile), ACTION_CLEAR));
-            }
-			//breakers.push(...risk.livingArea);
+		influence = this.addNotNull(influence, this.getHorizontal(tile, 4));
+		influence = this.addNotNull(influence, this.getHorizontal(tile1, 4));
+
+		const tile2 = this.board.getTileXY(tile.getX(), tile.getY() - 1);
+		influence = this.addNotNull(influence, this.getVertical(tile, 4));
+		influence = this.addNotNull(influence, this.getVertical(tile2, 4));
+
+		// 4-tile 50/50
+		const tile3 = this.board.getTileXY(tile.getX() - 1, tile.getY() - 1);
+		influence = this.addNotNull(influence, this.getBoxInfluence(tile, 5));
+		influence = this.addNotNull(influence, this.getBoxInfluence(tile1, 5));
+		influence = this.addNotNull(influence, this.getBoxInfluence(tile2, 5));
+		influence = this.addNotNull(influence, this.getBoxInfluence(tile3, 5));
+
+		// enablers also get influence, so consider that as well as the 50/50
+		if (this.influences[tile.index] != null) {
+			influence = this.bigIntMax(influence, this.influences[tile.index]);
 		}
-
-		return breakers;
-	}
-
-	getLongTermSafety() {
-		return this.currentLongTermSafety;
-	}
-
-	getLongTermSafety(candidate, pe) {
-
-		let longTermSafety = 1;
-
-		for (const risk of this.risk5050s) {
-			let safety = null;
-
-			// is the candidate part of the 50/50 - if so it is being broken
-			for (const loc of risk.area) {
-				if (loc.isEqual(candidate)) {
-					safety = 1;
-					break;
-				}
-			}
-
-			if (safety == null) {
-				if (risk.poi.isEqual(candidate)) {
-					safety = 1;
-				} else {
-					safety = 1 - (1 - pe.getProbability(risk.poi)) * 0.5;
-				}
-			}
-
-			longTermSafety = longTermSafety * safety;
-		}
-
-		return longTermSafety;
-
-	}
-
-
-	// returns the location of the 1 tile which can still provide information, or null
-	checkVerticalInfo(tile1, tile2) {
-
-		let info = null;
-
-		const top = tile1.y - 1;
-		const bottom = tile2.y + 1;
-
-		const left = tile1.x - 1;
-
-		if (this.isPotentialInfo(left, top)) {
-			if (this.board.getTileXY(left, top)) {
-				return null;
-			} else {
-				info = this.board.getTileXY(left, top);
-			}
-		}
-
-		if (this.isPotentialInfo(left + 1, top)) {
-			if (!this.board.getTileXY(left + 1, top).isCovered()) {  // info is certain
-				return null;
-			} else {
-				if (info != null) {  // more than 1 tile giving possible info
-					return null;
-				}
-			}
-			info = this.board.getTileXY(left + 1, top);
-		}
-
-		if (this.isPotentialInfo(left + 2, top)) {
-			if (!this.board.getTileXY(left + 2, top).isCovered()) {  // info is certain
-				return null;
-			} else {
-				if (info != null) {  // more than 1 tile giving possible info
-					return null;
-				}
-			}
-			info = this.board.getTileXY(left + 2, top);
-		}
-
-		if (this.isPotentialInfo(left, bottom)) {
-			if (!this.board.getTileXY(left, bottom).isCovered()) {  // info is certain
-				return null;
-			} else {
-				if (info != null) {  // more than 1 tile giving possible info
-					return null;
-				}
-			}
-			info = this.board.getTileXY(left, bottom);
-		}
-
-		if (this.isPotentialInfo(left + 1, bottom)) {
-			if (!this.board.getTileXY(left + 1, bottom).isCovered()) {  // info is certain
-				return null;
-			} else {
-				if (info != null) {  // more than 1 tile giving possible info
-					return null;
-				}
-			}
-			info = this.board.getTileXY(left + 1, bottom);
-		}
-
-		if (this.isPotentialInfo(left + 2, bottom)) {
-			if (!this.board.getTileXY(left + 2, bottom).isCovered()) {  // info is certain
-				return null;
-			} else {
-				if (info != null) {  // more than 1 tile giving possible info
-					return null;
-				}
-			}
-			info = this.board.getTileXY(left + 2, bottom);
-		}
-
-		return info;
-
-	}
-
-	// returns the location of the 1 tile which can still provide information, or null
-	checkHorizontalInfo(tile1, tile2) {
-
-		let info = null;
-
-		const top = tile1.y - 1;
-
-		const left = tile1.x - 1;
-		const right = tile2.x + 1;
-
-		if (this.isPotentialInfo(left, top)) {
-			if (!this.board.getTileXY(left, top).isCovered()) {
-				return null;
-			} else {
-				info = this.board.getTileXY(left, top);
-			}
-		}
-
-		if (this.isPotentialInfo(left, top + 1)) {
-			if (!this.board.getTileXY(left, top + 1).isCovered()) {  // info is certain
-				return null;
-			} else {
-				if (info != null) {  // more than 1 tile giving possible info
-					return null;
-				}
-			}
-			info = this.board.getTileXY(left, top + 1);
-		}
-
-		if (this.isPotentialInfo(left, top + 2)) {
-			if (!this.board.getTileXY(left, top + 2).isCovered()) {  // info is certain
-				return null;
-			} else {
-				if (info != null) {  // more than 1 tile giving possible info
-					return null;
-				}
-			}
-			info = this.board.getTileXY(left, top + 2);
-		}
-
-		if (this.isPotentialInfo(right, top)) {
-			if (!this.board.getTileXY(right, top).isCovered()) {  // info is certain
-				return null;
-			} else {
-				if (info != null) {  // more than 1 tile giving possible info
-					return null;
-				}
-			}
-			info = this.board.getTileXY(right, top);
-		}
-
-		if (this.isPotentialInfo(right, top + 1)) {
-			if (!this.board.getTileXY(right, top + 1).isCovered()) {  // info is certain
-				return null;
-			} else {
-				if (info != null) {  // more than 1 tile giving possible info
-					return null;
-				}
-			}
-			info = this.board.getTileXY(right, top + 1);
-		}
-
-		if (this.isPotentialInfo(right, top + 2)) {
-			if (!this.board.getTileXY(right, top + 2).isCovered()) {  // info is certain
-				return null;
-			} else {
-				if (info != null) {  // more than 1 tile giving possible info
-					return null;
-				}
-			}
-			info = this.board.getTileXY(right, top + 2);
-		}
-
-		return info;
-
-	}
-
-	// returns whether there information to be had at this location; i.e. on the board and either unrevealed or revealed
-	isPotentialInfo(x, y) {
-
-		if (x < 0 || x >= this.board.width || y < 0 || y >= this.board.height) {
-			return false;
-		}
-
-		if (this.board.getTileXY(x, y).isSolverFoundBomb()) {
-			return false;
+		
+		let maxInfluence;
+		const box = this.currentPe.getBox(tile);
+		if (box == null) {
+			maxInfluence = this.currentPe.offEdgeMineTally;
 		} else {
-			return true;
+			maxInfluence = box.mineTally;
+		}
+
+		// 50/50 influence P(50/50)/2 can't be larger than P(mine) or P(safe)
+		const other = this.currentPe.finalSolutionsCount - maxInfluence;
+
+		maxInfluence = this.bigIntMin(maxInfluence, other);
+
+		influence = this.bigIntMin(influence, maxInfluence);
+
+		return influence;
+
+	}
+	
+	checkFor2Tile5050() {
+		
+		const maxMissingMines = 2;
+
+		this.writeToConsole("Checking for 2-tile 50/50 influence");
+    	
+		// horizontal 2x1
+		for (let i = 0; i < this.board.width - 1; i++) {
+			for (let j = 0; j < this.board.height; j++) {
+
+				const tile1 = this.board.getTileXY(i, j);
+				const tile2 = this.board.getTileXY(i + 1, j);
+				
+				const result = this.getHorizontal(tile1, maxMissingMines, this.minesLeft);
+
+				if (result != null) {
+					let influenceTally = this.addNotNull(BigInt(0), result);
+					//const influence = divideBigInt(influenceTally, this.currentPe.finalSolutionsCount, 4); 
+					//this.writeToConsole("Tile " + tile1.asText() + " and " + tile2.asText() + " have horiontal 2-tile 50/50 influence " + influence);
+
+					this.addInfluence(influenceTally, result.enablers, [tile1, tile2]);
+					if (this.pseudo != null) {  // if we've found a pseudo then we can stop here
+						return;
+					}
+				}
+
+
+
+			}
+		}
+
+		// vertical 2x1
+		for (let i = 0; i < this.board.width; i++) {
+			for (let j = 0; j < this.board.height - 1; j++) {
+
+				const tile1 = this.board.getTileXY(i, j);
+				const tile2 = this.board.getTileXY(i, j + 1);
+				
+				const result = this.getVertical(tile1, maxMissingMines, this.minesLeft);
+
+				if (result != null) {
+					
+					let influenceTally = this.addNotNull(BigInt(0), result);
+					//const influence = divideBigInt(influenceTally, this.currentPe.finalSolutionsCount, 4); 
+					//this.writeToConsole("Tile " + tile1.asText() + " and " + tile2.asText() + " have vertical 2-tile 50/50 influence " + influence);
+
+					this.addInfluence(influenceTally, result.enablers, [tile1, tile2]);
+					if (this.pseudo != null) {  // if we've found a pseudo then we can stop here
+						return;
+					}
+				}
+
+			}
+		}
+	}
+
+	getHorizontal(subject, maxMissingMines) {
+
+		if (subject == null) {
+			return null;
+        }
+
+		const i = subject.x;
+		const j = subject.y;
+
+		if (i < 0 || i + 1 >= this.board.width) {
+			return null;
+		}
+
+		// need 2 hidden tiles
+		if (!this.isHidden(i, j) || !this.isHidden(i + 1, j)) {
+			return null;
+		}
+
+		const missingMines = this.getMissingMines([this.board.getTileXY(i - 1, j - 1), this.board.getTileXY(i - 1, j), this.board.getTileXY(i - 1, j + 1),
+			this.board.getTileXY(i + 2, j - 1), this.board.getTileXY(i + 2, j), this.board.getTileXY(i + 2, j + 1)]);
+
+		// only consider possible 50/50s with less than 3 missing mines or requires more mines then are left in the game (plus 1 to allow for the extra mine in the 50/50)
+		if (missingMines == null || missingMines.length + 1 > maxMissingMines || missingMines.length + 1 > this.minesLeft) {
+			return null;
+		}
+		
+		const tile1 = subject;
+		const tile2 = this.board.getTileXY(i + 1, j);
+
+		this.writeToConsole("Evaluating candidate 50/50 - " + tile1.asText() + " " + tile2.asText());
+
+		// add the missing Mines and the mine required to form the 50/50
+		//missingMines.push(tile1);
+
+		const mines = [...missingMines, tile1];
+		const notMines = [tile2];
+
+		// place the mines
+		for (let tile of mines) {
+			tile.setFoundBomb();
+		}
+
+		// see if the position is valid
+		const counter = solver.countSolutions(this.board, notMines);
+
+		// remove the mines
+		for (let tile of mines) {
+			tile.unsetFoundBomb();
+		}
+
+		return new LTResult(counter.finalSolutionsCount, missingMines);
+
+	}
+	
+	getVertical(subject, maxMissingMines) {
+
+		if (subject == null) {
+			return null;
+		}
+
+		const i = subject.getX();
+		const j = subject.getY();
+
+		if (j < 0 || j + 1 >= this.board.height) {
+			return null;
+		}
+
+		// need 2 hidden tiles
+		if (!this.isHidden(i, j) || !this.isHidden(i, j + 1)) {
+			return null;
+		}
+
+		const missingMines = this.getMissingMines([this.board.getTileXY(i - 1, j - 1), this.board.getTileXY(i, j - 1), this.board.getTileXY(i + 1, j - 1),
+			this.board.getTileXY(i - 1, j + 2), this.board.getTileXY(i, j + 2), this.board.getTileXY(i + 1, j + 2)]);
+
+		// only consider possible 50/50s with less than 3 missing mines or requires more mines then are left in the game (plus 1 to allow for the extra mine in the 50/50)
+		if (missingMines == null || missingMines.length + 1 > maxMissingMines || missingMines.length + 1 > this.minesLeft) {
+			return null;
+		}
+		
+		const tile1 = this.board.getTileXY(i, j);
+		const tile2 = this.board.getTileXY(i, j + 1);
+
+		this.writeToConsole("Evaluating candidate 50/50 - " + tile1.asText() + " " + tile2.asText());
+
+		// add the missing Mines and the mine required to form the 50/50
+		//missingMines.push(tile1);
+
+		const mines = [...missingMines, tile1];
+		const notMines = [tile2];
+
+		// place the mines
+		for (let tile of mines) {
+			tile.setFoundBomb();
+		}
+
+		// see if the position is valid
+		const counter = solver.countSolutions(this.board, notMines);
+
+		// remove the mines
+		for (let tile of mines) {
+			tile.unsetFoundBomb();
+		}
+
+		return new LTResult(counter.finalSolutionsCount, missingMines);
+
+	}
+
+	checkForBox5050() {
+		
+		const maxMissingMines = 2;
+		
+		this.writeToConsole("Checking for 4-tile 50/50 influence");
+
+		// box 2x2 
+		for (let i = 0; i < this.board.width - 1; i++) {
+			for (let j = 0; j < this.board.height - 1; j++) {
+
+				const tile1 = this.board.getTileXY(i, j);
+				const tile2 = this.board.getTileXY(i, j + 1);
+				const tile3 = this.board.getTileXY(i + 1, j);
+				const tile4 = this.board.getTileXY(i + 1, j + 1);
+				
+				const result = this.getBoxInfluence(tile1, maxMissingMines);
+
+				if (result != null) {
+					
+					const influenceTally = this.addNotNull(BigInt(0), result);
+					
+					const influence = divideBigInt(influenceTally, this.currentPe.finalSolutionsCount, 4); 
+					//this.writeToConsole("Tile " + tile1.asText() + " " + tile2.asText() + " " + tile3.asText() + " " + tile4.asText() + " have box 4-tile 50/50 influence " + influence);
+
+					this.addInfluence(influenceTally, result.enablers, [tile1, tile2, tile3, tile4]);
+					if (this.pseudo != null) {  // if we've found a pseudo then we can stop here
+						return;
+					}
+				}
+
+			}
+		}
+
+	}
+	
+	getBoxInfluence(subject, maxMissingMines) {
+
+		if (subject == null) {
+			return null;
+		}
+
+		const i = subject.getX();
+		const j = subject.getY();
+
+		if (j < 0 || j + 1 >= board.height || i < 0 || i + 1 >= board.width) {
+			return null;
+		}
+
+		// need 4 hidden tiles
+		if (!this.isHidden(i, j) || !this.isHidden(i, j + 1) || !this.isHidden(i + 1, j) || !this.isHidden(i + 1, j + 1)) {
+			return null;
+		}
+
+		const missingMines = this.getMissingMines([this.board.getTileXY(i - 1, j - 1), this.board.getTileXY(i + 2, j - 1), this.board.getTileXY(i - 1, j + 2), this.board.getTileXY(i + 2, j + 2)]);
+
+		// only consider possible 50/50s with less than 3 missing mines or requires more mines then are left in the game (plus 1 to allow for the extra mine in the 50/50)
+		if (missingMines == null || missingMines.length + 2 > maxMissingMines || missingMines.length + 2 > this.minesLeft) {
+			return null;
+		}
+		
+		const tile1 = this.board.getTileXY(i, j);
+		const tile2 = this.board.getTileXY(i, j + 1);
+		const tile3 = this.board.getTileXY(i + 1, j);
+		const tile4 = this.board.getTileXY(i + 1, j + 1);
+
+		this.writeToConsole("Evaluating candidate 50/50 - " + tile1.asText() + " " + tile2.asText() + " " + tile3.asText() + " " + tile4.asText());
+
+		// add the missing Mines and the mine required to form the 50/50
+		//missingMines.push(tile1);
+		//missingMines.push(tile4);
+
+		const mines = [...missingMines, tile1, tile4];
+		const notMines = [tile2, tile3];
+
+		// place the mines
+		for (let tile of mines) {
+			tile.setFoundBomb();
+		}
+
+		// see if the position is valid
+		const counter = solver.countSolutions(this.board, notMines);
+
+		this.writeToConsole("Candidate 50/50 - " + tile1.asText() + " " + tile2.asText() + " " + tile3.asText() + " " + tile4.asText() + " tally " + counter.finalSolutionsCount);
+		
+		// remove the mines
+		for (let tile of mines) {
+			tile.unsetFoundBomb();
+		}
+
+		return new LTResult(counter.finalSolutionsCount, missingMines);
+
+	}
+	
+	addNotNull(influence, result) {
+
+		if (result == null) {
+			return influence;
+		} else {
+			return influence + result.influence;
+		}
+
+	}
+	
+	addInfluence(influence, enablers, tiles) {
+
+		// the tiles which enable a 50/50 but aren't in it also get an influence
+		if (enablers != null) {
+			for (let loc of enablers) {
+
+				// store the influence
+				if (this.influences[loc.index] == null) {
+					this.influences[loc.index] = influence;
+				} else {
+					this.influences[loc.index] = this.influences[loc.index] + influence;
+				}
+				//this.writeToConsole("Enabler " + loc.asText() + " has influence " + this.influences[loc.index]);
+			}
+		}
+
+		for (let loc of tiles) {
+			
+			const b = this.currentPe.getBox(loc);
+			let mineTally;
+			if (b == null) {
+				mineTally = this.currentPe.offEdgeMineTally;
+			} else {
+				mineTally = b.mineTally;
+			}
+			// If the mine influence covers the whole of the mine tally then it is a pseudo-5050
+			if (influence == mineTally && this.pseudo == null) {
+				if (!this.currentPe.isDead(loc)) {  // don't accept dead tiles
+					this.pseudo = loc;
+				}
+			}
+
+			// store the influence
+			if (this.influences[loc.index] == null) {
+				this.influences[loc.index] = influence;
+			} else {
+				//influences[loc.x][loc.y] = influences[loc.x][loc.y].max(influence);
+				this.influences[loc.index] = this.influences[loc.index] + influence;
+			}
+			//this.writeToConsole("Interior " + loc.asText() + " has influence " + this.influences[loc.index]);
 		}
 
 	}
 
-	filterDead(tiles) {
+	/**
+	 * Get how many solutions have common 50/50s at this location
+	 */
+	get5050Influence(loc) {
+
+		if (influences[loc.index] == null) {
+			return BigInt(0);
+		} else {
+			return influences[loc.index];
+		}
+
+	}
+
+	/**
+	 * Return all the locations with 50/50 influence
+	 */
+	getInfluencedTiles(threshold) {
+		
+		const cutoffTally = BigInt(Math.floor(threshold * Number(this.currentPe.finalSolutionsCount)));
 
 		const result = [];
 
-		for (const tile of tiles) {
-			//  is the tile dead
-			let dead = false;
-			for (let k = 0; k < this.deadTiles.length; k++) {
-				if (this.deadTiles[k].isEqual(tile)) {
-					dead = true;
-					break;
+		//for (let i = 0; i < this.board.width; i++) {
+		//	for (let j = 0; j < this.board.height; j++) {
+
+		for (let tile of this.board.tiles) {
+
+			if (this.influences[tile.index] != null) {	  // if we are influenced by 50/50s
+
+				//const loc = this.board.getTileXY(i, j);
+
+				if (!this.currentPe.isDead(tile)) {  // and not dead
+
+					const b = this.currentPe.getBox(tile);
+					let mineTally;
+					if (b == null) {
+						mineTally = this.currentPe.offEdgeMineTally;
+					} else {
+						mineTally = b.mineTally;
+					}
+
+					const safetyTally = this.currentPe.finalSolutionsCount - mineTally + this.influences[tile.index];
+
+					if (safetyTally > cutoffTally) {
+						//this.writeToConsole("Tile " + tile.asText() + " has mine tally " + mineTally + " influence " + this.influences[tile.index]);
+						//this.writeToConsole("Tile " + tile.asText() + " has  modified tally  " + safetyTally + " cutoff " + cutoffTally);
+						result.push(tile);
+					}
+
 				}
 			}
-			if (!dead) {
-				result.push(tile);
-            }
-        }
+		}
+		//	}
+		//}
 
 		return result;
+	}
+
+	// given a list of tiles return those which are on the board but not a mine
+	// if any of the tiles are revealed then return null
+	getMissingMines(tiles) {
+
+		const result = [];
+
+		for (let loc of tiles) {
+
+			if (loc == null) {
+				continue;
+            }
+
+			// if out of range don't return the location
+			if (loc.getX() >= this.board.width || loc.getX() < 0 || loc.getY() < 0 || loc.getY() >= this.board.getHeight) {
+				continue;
+			}
+
+			// if the tile is revealed then we can't form a 50/50 here
+			if (!loc.isCovered()) {
+				return null;
+			}
+
+			// if the location is already a mine then don't return the location
+			if (loc.isSolverFoundBomb()) {
+				continue;
+			}
+
+			result.push(loc);
+		}
+
+		return result;
+	}
+
+
+
+	// not a certain mine or revealed
+	isHidden(x, y) {
+
+		const tile = this.board.getTileXY(x, y);
+
+		if (tile.isSolverFoundBomb()) {
+			return false;
+		}
+
+		if (!tile.isCovered()) {
+			return false;
+		}
+
+		return true;
 
 	}
+
+	bigIntMin(a, b) {
+		if (a < b) {
+			return a;
+		} else {
+			return b;
+        }
+    }
+
+	bigIntMax(a, b) {
+		if (a > b) {
+			return a;
+		} else {
+			return b;
+        }
+    }
 
 	writeToConsole(text, always) {
 
@@ -372,14 +537,11 @@ class LongTermRiskHelper {
 	}
 }
 
-class Risk5050 {
+class LTResult {
+	constructor(influence, enablers) {
+		this.influence = influence;
+		this.enablers = enablers;
 
-	constructor(poi, locs, livingLocs) {
-		this.poi = poi;
-		this.area = locs;
-		this.livingArea = livingLocs;
+		Object.seal(this) // prevent new properties being created
 	}
-
 }
-
-

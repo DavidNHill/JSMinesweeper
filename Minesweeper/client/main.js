@@ -92,6 +92,8 @@ let dragTile;          // the last tile dragged over
 let hoverTile;         // tile the mouse last moved over
 let analysing = false;  // try and prevent the analyser running twice if pressed more than once
 
+let lastFileHandle = null;
+
 // things to do when exiting the page
 function exiting() {
 
@@ -189,7 +191,7 @@ async function startup() {
         board.setStarted();
     }
 
-    //bulkRun(21, 12500);
+    //bulkRun(21, 12500);  // seed '21' Played 12500 won 5195
 
     showMessage("Welcome to minesweeper solver dedicated to Annie");
 }
@@ -304,6 +306,54 @@ async function downloadAsMBF(e) {
 
 }
 
+// pop up a file save dialogue to store the board details
+async function savePosition(e) {
+
+    e.preventDefault();
+
+    let filename;
+    if (analysisMode) {
+        filename = "JSM_" + new Date().toISOString() + ".mine";
+    } else {
+        filename = "JSM_Seed_" + board.seed + ".mine";
+    }
+ 
+    const data = board.getPositionData()
+
+    const options = {
+        excludeAcceptAllOption: true,
+        suggestedName: filename,
+        startIn: 'documents',
+        types: [
+            {
+                description: 'Minesweeper board',
+                accept: {
+                    'text/plain': ['.mine'],
+                },
+            },
+        ],
+    };
+
+    if (lastFileHandle != null) {
+        options.startIn = lastFileHandle;
+    }
+
+    try {
+        const fileHandle = await window.showSaveFilePicker(options);
+
+        const writable = await fileHandle.createWritable();
+        await writable.write(data);
+        await writable.close();
+
+        lastFileHandle = fileHandle;
+
+    } catch(err) {
+        console.log("Save file picker exception: " + err.message);
+    }
+
+}
+
+
 function switchToAnalysis(doAnalysis) {
 
     if (doAnalysis) {
@@ -415,7 +465,7 @@ function renderHints(hints, otherActions) {
                     }
 
                     let value1;
-                    if (value < 10) {
+                    if (value < 9.95) {
                         value1 = value.toFixed(1);
                     } else {
                         value1 = value.toFixed(0);
@@ -690,19 +740,7 @@ async function newGameFromBlob(blob) {
 
     changeTileSize();
 
-    //TILE_SIZE = parseInt(docTileSize.value);
-
-    //resizeCanvas(board.width, board.height);
-
     showDownloadLink(false, ""); // remove the download link
-
-    //browserResized();
-
-    //for (let y = 0; y < board.height; y++) {
-    //    for (let x = 0; x < board.width; x++) {
-    //        draw(x, y, HIDDEN);
-    //    }
-    //}
 
     updateMineCount(board.num_bombs);
 
@@ -767,7 +805,7 @@ async function newBoardFromString(data) {
             const char = line.charAt(x);
             const tile = newBoard.getTileXY(x, y);
 
-            if (char == "F") {
+            if (char == "F" || char == "M") {
                 tile.toggleFlag();
                 newBoard.bombs_left--;
             } else if (char == "0") {
@@ -853,20 +891,6 @@ async function newGame(width, height, mines, seed) {
     } else {
         board = new Board(id, width, height, mines, seed, gameType);
     }
-
-    /*
-    TILE_SIZE = parseInt(docTileSize.value);
-
-    resizeCanvas(width, height);
-
-    browserResized();
-
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            draw(x, y, drawTile);
-        }
-    }
-    */
 
     changeTileSize();
 

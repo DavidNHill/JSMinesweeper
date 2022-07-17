@@ -85,7 +85,11 @@ class Board {
 	}
 	
 	getTileXY(x, y) {
-		
+
+		if (x < 0 || x >= this.width || y < 0 || y >= height) {
+			return null;
+        }
+
 		const index = this.xy_to_index(x,y);
 		
 		return this.tiles[index];
@@ -331,7 +335,7 @@ class Board {
 	getFormatMBF() {
 
 		if (this.width > 255 || this.height > 255) {
-			console.log("Board to large to save as MBF format");
+			console.log("Board too large to save as MBF format");
 			return null;
         }
 
@@ -369,6 +373,32 @@ class Board {
 		console.log(...mbfView);
 
 		return mbf;
+
+    }
+
+	getPositionData() {
+
+		const newLine = "\n";
+
+		let data = this.width + "x" + this.height + "x" + this.num_bombs + newLine;
+
+		for (let y = 0; y < this.height; y++) {
+			for (let x = 0; x < this.width; x++) {
+				const tile = this.getTileXY(x, y);
+				if (tile.isFlagged()) {
+					data = data + "F";
+
+				} else if (tile.isCovered() || tile.isBomb()) {
+					data = data + "H";
+
+				} else {
+					data = data + tile.getValue();
+                } 
+			}
+			data = data + newLine;
+        }
+
+		return data;
 
     }
 

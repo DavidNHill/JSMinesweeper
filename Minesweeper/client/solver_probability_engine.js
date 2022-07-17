@@ -44,7 +44,8 @@ class ProbabilityEngine {
         this.heldProbs = [];
         this.bestProbability = 0;  // best probability of being safe
         this.offEdgeProbability = 0;
-        this.bestOnEdgeProbability;
+        this.offEdgeMineTally = 0;
+        this.bestOnEdgeProbability = BigInt(0);
         this.finalSolutionsCount = BigInt(0);
 
         this.bestLivingProbability = 0;
@@ -64,9 +65,10 @@ class ProbabilityEngine {
 
         this.canDoDeadTileAnalysis = true;
 
-        this.isolatedEdgeBruteForce;
+        this.isolatedEdgeBruteForce = null;
 
         this.validWeb = true;
+        this.recursions = 0;
 
         // can't have less than zero mines
         if (minesLeft < 0) {
@@ -152,11 +154,13 @@ class ProbabilityEngine {
             //console.log("Box " + box.tiles[0].asText() + " has min mines = " + box.minMines + " and max mines = " + box.maxMines);
         }
 
-        // Report how many boxes each witness is adjacent to 
+        // Report how many boxes each witness is adjacent to
         //for (var i = 0; i < this.boxWitnesses.length; i++) {
         //    var boxWit = this.boxWitnesses[i];
         //      console.log("Witness " + boxWit.tile.asText() + " is adjacent to " + boxWit.boxes.length + " boxes and has " + boxWit.minesToFind + " mines to find");
         //}
+
+        Object.seal(this); // prevent new values being created
 
  	}
 
@@ -550,8 +554,8 @@ class ProbabilityEngine {
         //console.log("Distributing " + missingMines + " missing mines to box " + nw.newBoxes[index].uid);
 
         this.recursions++;
-        if (this.recursions % 100 == 0) {
-            console.log("Probability Engine recursision = " + recursions);
+        if (this.recursions % 1000 == 0) {
+            console.log("Probability Engine recursision = " + this.recursions);
         }
 
         const result = [];
@@ -603,7 +607,11 @@ class ProbabilityEngine {
         //console.log("Extended probability line: Adding " + mines + " mines to box " + newBox.uid);
         //console.log("Extended probability line before" + pl.mineBoxCount);
 
-        const combination = ProbabilityEngine.SMALL_COMBINATIONS[newBox.tiles.length][mines];
+        // there are less ways to place the mines if we know one of the tiles doesn't contain a mine
+        const modifiedTilesCount = newBox.tiles.length - newBox.emptyTiles;
+
+        const combination = SolutionCounter.SMALL_COMBINATIONS[modifiedTilesCount][mines];
+        //const combination = ProbabilityEngine.SMALL_COMBINATIONS[newBox.tiles.length][mines];
         const bigCom = BigInt(combination);
 
         const newSolutionCount = pl.solutionCount * bigCom;
@@ -1119,7 +1127,7 @@ class ProbabilityEngine {
             }
         }
 
-        this.writeToConsole("ERROR - tile " + tile.asText() + " doesn't belong to a box");
+        //this.writeToConsole("ERROR - tile " + tile.asText() + " doesn't belong to a box");
 
         return null;
     }
@@ -1351,8 +1359,11 @@ class ProbabilityEngine {
                     this.boxProb[i] = 1 - divideBigInt(tally[i], totalTally, 6);
                 }
 
+                this.boxes[i].mineTally = tally[i]; 
             } else {
                 this.boxProb[i] = 0;
+                this.boxes[i].mineTally = 0; 
+
             }
 
             //console.log("Box " + i + " has probabality " + this.boxProb[i]);
@@ -1389,8 +1400,10 @@ class ProbabilityEngine {
         // avoid divide by zero
         if (this.TilesOffEdge != 0 && totalTally != BigInt(0)) {
             this.offEdgeProbability = 1 - divideBigInt(outsideTally, totalTally * BigInt(this.TilesOffEdge), 6);
+            this.offEdgeMineTally = outsideTally / BigInt(this.TilesOffEdge);
         } else {
             this.offEdgeProbability = 0;
+            this.offEdgeMineTally = 0;
         }
 
         this.finalSolutionsCount = totalTally;
@@ -1517,6 +1530,17 @@ class ProbabilityEngine {
          return this.deadTiles;
     }
 
+    isDead(tile) {
+
+        for (let k = 0; k < this.deadTiles.length; k++) {
+            if (this.deadTiles[k].isEqual(tile)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     getProbability(l) {
 
         for (const b of this.boxes) {
@@ -1544,7 +1568,7 @@ class ProbabilityEngine {
 
 
     // forces a box to contain a tile which isn't a mine.  If the location isn't in a box false is returned.
-    setMustBeEmpty(tile) {
+     setMustBeEmpty(tile) {
 
         const box = this.getBox(tile);
 
@@ -1558,7 +1582,7 @@ class ProbabilityEngine {
         return true;
 
     }
-
+ 
     writeToConsole(text, always) {
 
         if (always == null) {
@@ -1782,7 +1806,9 @@ class Box {
         this.emptyTiles = 0;
 		
 		this.boxWitnesses = [];
-		
+
+        this.mineTally = BigInt(0);
+
 		for (let i=0; i < boxWitnesses.length; i++) {
 			if (tile.isAdjacent(boxWitnesses[i].tile)) {
                 this.boxWitnesses.push(boxWitnesses[i]);
@@ -1837,6 +1863,7 @@ class Box {
         if (this.maxMines > this.tiles.length - this.emptyTiles) {
             this.maxMines = this.tiles.length - this.emptyTiles;
         }
+
     }
 
 	// add a new tile to the box
