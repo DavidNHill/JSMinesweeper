@@ -1125,9 +1125,10 @@ async function solver(board, options) {
         action.maxSolutions = maxSolutions;
         action.commonClears = commonClears;
 
-        tile.setProbability(action.prob, action.progress);
-
         const realSecondarySafety = (secondarySafety / fiftyFiftyInfluence).toFixed(6);
+
+        tile.setProbability(action.prob, action.progress, realSecondarySafety);
+
         writeToConsole("Tile " + tile.asText() + ", secondary safety = " + realSecondarySafety + ",  progress = " + action.progress + ", 50/50 influence = " + fiftyFiftyInfluence
             + ", expected clears = " + action.expectedClears + ", always clear = " + commonClears.length + ", final score = " + action.weight);
 

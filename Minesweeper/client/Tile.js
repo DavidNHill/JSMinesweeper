@@ -79,7 +79,7 @@ class Tile {
 		return this.hasHint;
     }
 
-    setProbability(prob, progress) {
+    setProbability(prob, progress, safety2) {
         this.probability = prob;
         this.hasHint = true;
 
@@ -90,7 +90,7 @@ class Tile {
 		} else if (progress == null) {
 			this.hintText = "\n" + (prob * 100).toFixed(2) + "% safe";
 		} else {
-			this.hintText = "\n" + (prob * 100).toFixed(2) + "% safe" + "\n" + (progress * 100).toFixed(2) + "% progress"
+			this.hintText = "\n" + (prob * 100).toFixed(2) + "% safe" + "\n" + (safety2 * 100).toFixed(2) + "% 2nd safety" + "\n" + (progress * 100).toFixed(2) + "% progress"
         }
 
 	}
