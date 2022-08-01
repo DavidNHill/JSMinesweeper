@@ -1046,8 +1046,8 @@ async function solver(board, options) {
         const tileInfluenceTally = ltr.findTileInfluence(tile);
         //console.log("Safety Tally " + safetyTally + ", tileInfluenceTally " + tileInfluenceTally);
 
-        const fiftyFiftyInfluenceTally = safetyTally + tileInfluenceTally;
-        const fiftyFiftyInfluence = divideBigInt(fiftyFiftyInfluenceTally, safetyTally, 6);
+        //const fiftyFiftyInfluenceTally = safetyTally + tileInfluenceTally;
+        const fiftyFiftyInfluence = 1 + divideBigInt(tileInfluenceTally, safetyTally, 6) * 0.9;
 
         let solutionsWithProgess = BigInt(0);
         let expectedClears = BigInt(0);

@@ -12,7 +12,8 @@ class LongTermRiskHelper {
 
 		this.pseudo = null;
 
-		this.influences = new Array(this.board.width * this.board.height)
+		this.influence5050s = new Array(this.board.width * this.board.height);
+		this.influenceEnablers = new Array(this.board.width * this.board.height);
 
 		Object.seal(this) // prevent new properties being created
 
@@ -57,15 +58,22 @@ class LongTermRiskHelper {
 		influence = this.addNotNull(influence, this.getVertical(tile2, 4));
 
 		// 4-tile 50/50
+		let influence4 = BigInt(0);
 		const tile3 = this.board.getTileXY(tile.getX() - 1, tile.getY() - 1);
-		influence = this.addNotNull(influence, this.getBoxInfluence(tile, 5));
-		influence = this.addNotNull(influence, this.getBoxInfluence(tile1, 5));
-		influence = this.addNotNull(influence, this.getBoxInfluence(tile2, 5));
-		influence = this.addNotNull(influence, this.getBoxInfluence(tile3, 5));
+		influence4 = this.maxNotNull(influence4, this.getBoxInfluence(tile, 5));
+		influence4 = this.maxNotNull(influence4, this.getBoxInfluence(tile1, 5));
+		influence4 = this.maxNotNull(influence4, this.getBoxInfluence(tile2, 5));
+		influence4 = this.maxNotNull(influence4, this.getBoxInfluence(tile3, 5));
+
+		if (influence4 > 0) {
+			this.writeToConsole("Tile " + tile.asText() + " best 4-tile 50/50 has tally " + influence4);
+        }
+
+		influence = influence + influence4;
 
 		// enablers also get influence, so consider that as well as the 50/50
-		if (this.influences[tile.index] != null) {
-			influence = this.bigIntMax(influence, this.influences[tile.index]);
+		if (this.influenceEnablers[tile.index] != null) {
+			influence = influence + this.influenceEnablers[tile.index];
 		}
 		
 		let maxInfluence;
@@ -172,7 +180,7 @@ class LongTermRiskHelper {
 		const tile1 = subject;
 		const tile2 = this.board.getTileXY(i + 1, j);
 
-		this.writeToConsole("Evaluating candidate 50/50 - " + tile1.asText() + " " + tile2.asText());
+		//this.writeToConsole("Evaluating candidate 50/50 - " + tile1.asText() + " " + tile2.asText());
 
 		// add the missing Mines and the mine required to form the 50/50
 		//missingMines.push(tile1);
@@ -192,6 +200,9 @@ class LongTermRiskHelper {
 		for (let tile of mines) {
 			tile.unsetFoundBomb();
 		}
+
+		this.writeToConsole("Candidate 50/50 - " + tile1.asText() + " " + tile2.asText() + " has tally " + counter.finalSolutionsCount);
+		
 
 		return new LTResult(counter.finalSolutionsCount, missingMines);
 
@@ -226,7 +237,7 @@ class LongTermRiskHelper {
 		const tile1 = this.board.getTileXY(i, j);
 		const tile2 = this.board.getTileXY(i, j + 1);
 
-		this.writeToConsole("Evaluating candidate 50/50 - " + tile1.asText() + " " + tile2.asText());
+		//this.writeToConsole("Evaluating candidate 50/50 - " + tile1.asText() + " " + tile2.asText());
 
 		// add the missing Mines and the mine required to form the 50/50
 		//missingMines.push(tile1);
@@ -246,6 +257,8 @@ class LongTermRiskHelper {
 		for (let tile of mines) {
 			tile.unsetFoundBomb();
 		}
+
+		this.writeToConsole("Candidate 50/50 - " + tile1.asText() + " " + tile2.asText() + " has tally " + counter.finalSolutionsCount);
 
 		return new LTResult(counter.finalSolutionsCount, missingMines);
 
@@ -316,7 +329,7 @@ class LongTermRiskHelper {
 		const tile3 = this.board.getTileXY(i + 1, j);
 		const tile4 = this.board.getTileXY(i + 1, j + 1);
 
-		this.writeToConsole("Evaluating candidate 50/50 - " + tile1.asText() + " " + tile2.asText() + " " + tile3.asText() + " " + tile4.asText());
+		//this.writeToConsole("Evaluating candidate 50/50 - " + tile1.asText() + " " + tile2.asText() + " " + tile3.asText() + " " + tile4.asText());
 
 		// add the missing Mines and the mine required to form the 50/50
 		//missingMines.push(tile1);
@@ -353,7 +366,17 @@ class LongTermRiskHelper {
 		}
 
 	}
-	
+
+	maxNotNull(influence, result) {
+
+		if (result == null) {
+			return influence;
+		} else {
+			return this.bigIntMax(influence, result.influence);
+		}
+
+	}
+
 	addInfluence(influence, enablers, tiles) {
 
 		// the tiles which enable a 50/50 but aren't in it also get an influence
@@ -361,10 +384,10 @@ class LongTermRiskHelper {
 			for (let loc of enablers) {
 
 				// store the influence
-				if (this.influences[loc.index] == null) {
-					this.influences[loc.index] = influence;
+				if (this.influenceEnablers[loc.index] == null) {
+					this.influenceEnablers[loc.index] = influence;
 				} else {
-					this.influences[loc.index] = this.influences[loc.index] + influence;
+					this.influenceEnablers[loc.index] = this.influenceEnablers[loc.index] + influence;
 				}
 				//this.writeToConsole("Enabler " + loc.asText() + " has influence " + this.influences[loc.index]);
 			}
@@ -387,11 +410,11 @@ class LongTermRiskHelper {
 			}
 
 			// store the influence
-			if (this.influences[loc.index] == null) {
-				this.influences[loc.index] = influence;
+			if (this.influence5050s[loc.index] == null) {
+				this.influence5050s[loc.index] = influence;
 			} else {
 				//influences[loc.x][loc.y] = influences[loc.x][loc.y].max(influence);
-				this.influences[loc.index] = this.influences[loc.index] + influence;
+				this.influence5050s[loc.index] = this.influence5050s[loc.index] + influence;
 			}
 			//this.writeToConsole("Interior " + loc.asText() + " has influence " + this.influences[loc.index]);
 		}
@@ -401,6 +424,7 @@ class LongTermRiskHelper {
 	/**
 	 * Get how many solutions have common 50/50s at this location
 	 */
+	/*
 	get5050Influence(loc) {
 
 		if (influences[loc.index] == null) {
@@ -410,24 +434,32 @@ class LongTermRiskHelper {
 		}
 
 	}
+	*/
 
 	/**
 	 * Return all the locations with 50/50 influence
 	 */
 	getInfluencedTiles(threshold) {
-		
-		const cutoffTally = BigInt(Math.floor(threshold * Number(this.currentPe.finalSolutionsCount)));
+
+		const top = BigInt(Math.floor(threshold * 10000));
+		const bot = BigInt(10000);
+
+		const cutoffTally = this.currentPe.finalSolutionsCount * top / bot;
 
 		const result = [];
 
-		//for (let i = 0; i < this.board.width; i++) {
-		//	for (let j = 0; j < this.board.height; j++) {
-
 		for (let tile of this.board.tiles) {
 
-			if (this.influences[tile.index] != null) {	  // if we are influenced by 50/50s
+			let influence = BigInt(0);
 
-				//const loc = this.board.getTileXY(i, j);
+			if (this.influence5050s[tile.index] != null) {
+				influence = influence + this.influence5050s[tile.index];
+            }
+			if (this.influenceEnablers[tile.index] != null) {
+				influence = influence + this.influenceEnablers[tile.index];
+			}
+
+			if (influence != 0) {	  // if we are influenced by 50/50s
 
 				if (!this.currentPe.isDead(tile)) {  // and not dead
 
@@ -439,7 +471,7 @@ class LongTermRiskHelper {
 						mineTally = b.mineTally;
 					}
 
-					const safetyTally = this.currentPe.finalSolutionsCount - mineTally + this.influences[tile.index];
+					const safetyTally = this.currentPe.finalSolutionsCount - mineTally + influence;
 
 					if (safetyTally > cutoffTally) {
 						//this.writeToConsole("Tile " + tile.asText() + " has mine tally " + mineTally + " influence " + this.influences[tile.index]);
@@ -450,8 +482,6 @@ class LongTermRiskHelper {
 				}
 			}
 		}
-		//	}
-		//}
 
 		return result;
 	}
