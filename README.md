@@ -7,7 +7,7 @@ This readme explains how to use the software and what techniques the solver uses
 ## Overview
 This is a rewrite of my Java minesweeper solver in javascript. All the processing runs on the local (your) machine. The purpose of the rewrite was to make the solver more accessable since there was reluctance to download a java executable. The trade off is that javascript is significantly slower than java to execute. 
 
-The Java solver has a 40.9% win rate on classic expert (30x16/99 safe start in a corner) and 54.2% on modern expert (30x16/99 open start at (3,3)). The Javascript version is slightly weaker.
+The Java solver has a 41% win rate on classic expert (30x16/99 safe start in a corner) and 54.3% on modern expert (30x16/99 open start at (3,3)). The Javascript version is slightly weaker.
 
 ## How to use the player
 

@@ -379,6 +379,8 @@ class LongTermRiskHelper {
 
 	addInfluence(influence, enablers, tiles) {
 
+		const pseudos = [];
+
 		// the tiles which enable a 50/50 but aren't in it also get an influence
 		if (enablers != null) {
 			for (let loc of enablers) {
@@ -405,7 +407,7 @@ class LongTermRiskHelper {
 			// If the mine influence covers the whole of the mine tally then it is a pseudo-5050
 			if (influence == mineTally && this.pseudo == null) {
 				if (!this.currentPe.isDead(loc)) {  // don't accept dead tiles
-					this.pseudo = loc;
+					pseudos.push(loc);
 				}
 			}
 
@@ -419,7 +421,43 @@ class LongTermRiskHelper {
 			//this.writeToConsole("Interior " + loc.asText() + " has influence " + this.influences[loc.index]);
 		}
 
+		if (pseudos.length == 3) {
+			this.pickPseudo(pseudos);
+		} else if (pseudos.length != 0) {
+			this.pseudo = pseudos[0];
+        }
+
 	}
+
+	pickPseudo(locations) {
+
+		let maxX = 0;
+		let maxY = 0;
+
+		for (let loc of locations) {
+			maxX = Math.max(maxX, loc.getX());
+			maxY = Math.max(maxY, loc.getY());
+		}
+
+		const maxX1 = maxX - 1;
+		const maxY1 = maxY - 1;
+
+		let found = 0;
+		for (let loc of locations) {
+			if (loc.getX() == maxX && loc.getY() == maxY || loc.getX() == maxX1 && loc.getY() == maxY1) {
+				found++;
+			}
+		}
+
+		// if the 2 diagonals exist then choose the pseudo from those, other wise choose the pseudo from the other diagonal
+		if (found == 2) {
+			this.pseudo = this.board.getTileXY(maxX, maxY);
+		} else {
+			this.pseudo = this.board.getTileXY(maxX1, maxY);
+		}
+
+	}
+
 
 	/**
 	 * Get how many solutions have common 50/50s at this location

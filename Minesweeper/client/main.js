@@ -746,7 +746,7 @@ async function newGameFromBlob(blob) {
 
     canvasLocked = false;  // just in case it was still locked (after an error for example)
 
-    showMessage("Game "  + width + "x" + heigh + "/" + mines + " created from file");
+    showMessage("Game "  + width + "x" + height + "/" + mines + " created from file");
  
 }
 

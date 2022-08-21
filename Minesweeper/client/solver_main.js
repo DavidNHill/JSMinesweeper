@@ -358,7 +358,7 @@ async function solver(board, options) {
         }
 
         // if we don't have a certain guess then look for ...
-        let ltr;
+        //let ltr;
         if (pe.bestOnEdgeProbability != 1 && minesLeft > 1) {
 
             // See if there are any unavoidable 2 tile 50/50 guesses 
@@ -372,13 +372,13 @@ async function solver(board, options) {
             // look for any 50/50 or safe guesses 
             //const unavoidable5050b = new FiftyFiftyHelper(board, pe.minesFound, options, pe.getDeadTiles(), witnessed, minesLeft).process();
 
-            ltr = new LongTermRiskHelper(board, pe, minesLeft, options);
-            const unavoidable5050b = ltr.findInfluence();
-            if (unavoidable5050b != null) {
-                result.push(new Action(unavoidable5050b.getX(), unavoidable5050b.getY(), unavoidable5050b.probability, ACTION_CLEAR));
-                showMessage(unavoidable5050b.asText() + " is an unavoidable 50/50 guess, or safe." + formatSolutions(pe.finalSolutionsCount));
-                return addDeadTiles(result, pe.getDeadTiles());
-            }
+            //ltr = new LongTermRiskHelper(board, pe, minesLeft, options);
+            //const unavoidable5050b = ltr.findInfluence();
+            //if (unavoidable5050b != null) {
+            //    result.push(new Action(unavoidable5050b.getX(), unavoidable5050b.getY(), unavoidable5050b.probability, ACTION_CLEAR));
+            //   showMessage(unavoidable5050b.asText() + " is an unavoidable 50/50 guess, or safe." + formatSolutions(pe.finalSolutionsCount));
+            //    return addDeadTiles(result, pe.getDeadTiles());
+            //}
         }
 
 
@@ -475,6 +475,20 @@ async function solver(board, options) {
 
         } else {
             deadTiles = pe.getDeadTiles();  // use the dead tiles from the probability engine
+        }
+
+
+        // calculate 50/50 influence and check for a pseudo-50/50
+        let ltr;
+        if (pe.bestOnEdgeProbability != 1 && minesLeft > 1) {
+
+            ltr = new LongTermRiskHelper(board, pe, minesLeft, options);
+            const unavoidable5050b = ltr.findInfluence();
+            if (unavoidable5050b != null) {
+                result.push(new Action(unavoidable5050b.getX(), unavoidable5050b.getY(), unavoidable5050b.probability, ACTION_CLEAR));
+               showMessage(unavoidable5050b.asText() + " is an unavoidable 50/50 guess, or safe." + formatSolutions(pe.finalSolutionsCount));
+                return addDeadTiles(result, pe.getDeadTiles());
+            }
         }
 
         // ... otherwise we will use the probability engines results
