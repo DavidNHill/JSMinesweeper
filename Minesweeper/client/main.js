@@ -681,20 +681,6 @@ async function playAgain() {
 
         board = new Board(id, board.width, board.height, board.num_bombs, board.seed, board.gameType);
 
-        /*
-        TILE_SIZE = parseInt(docTileSize.value);
-
-        resizeCanvas(board.width, board.height);
-
-        browserResized();
-
-        for (let y = 0; y < board.height; y++) {
-            for (let x = 0; x < board.width; x++) {
-                draw(x, y, HIDDEN);
-            }
-        }
-        */
-
         changeTileSize();
 
         updateMineCount(board.num_bombs);
@@ -1115,13 +1101,15 @@ async function doAnalysis() {
 
     if (solutionCounter.finalSolutionsCount != 0) {
 
-        const options = {};
+         const options = {};
         if (docPlayStyle.value == "flag") {
             options.playStyle = PLAY_STYLE_FLAGS;
         } else if (docPlayStyle.value == "noflag") {
             options.playStyle = PLAY_STYLE_NOFLAGS;
-        } else {
+        } else if (docPlayStyle.value == "eff") {
             options.playStyle = PLAY_STYLE_EFFICIENCY;
+        } else {
+            options.playStyle = PLAY_STYLE_NOFLAGS_EFFICIENCY; 
         } 
 
         if (docOverlay.value != "none") {
@@ -1129,7 +1117,7 @@ async function doAnalysis() {
         } else {
             options.fullProbability = false;
         }
-
+ 
         //var hints = solver(board, options).actions;  // look for solutions
 
         const solve = await solver(board, options);  // look for solutions
@@ -1799,8 +1787,10 @@ async function sendActionsMessage(message) {
             options.playStyle = PLAY_STYLE_FLAGS;
         } else if (docPlayStyle.value == "noflag") {
             options.playStyle = PLAY_STYLE_NOFLAGS;
-        } else {
+        } else if (docPlayStyle.value == "eff") {
             options.playStyle = PLAY_STYLE_EFFICIENCY;
+        } else {
+            options.playStyle = PLAY_STYLE_NOFLAGS_EFFICIENCY;
         } 
 
         if (docOverlay.value != "none") {

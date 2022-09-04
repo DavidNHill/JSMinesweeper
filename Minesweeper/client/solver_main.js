@@ -18,6 +18,7 @@ const USE_HIGH_DENSITY_STRATEGY = false;  // I think "secondary safety" generall
 const PLAY_STYLE_FLAGS = 1;
 const PLAY_STYLE_NOFLAGS = 2;
 const PLAY_STYLE_EFFICIENCY = 3;
+const PLAY_STYLE_NOFLAGS_EFFICIENCY = 4;
 
 // solver entry point
 async function solver(board, options) {
@@ -62,7 +63,7 @@ async function solver(board, options) {
         const actions = await doSolve(board, options);  // look for solutions
         //console.log(actions);
 
-        if (options.playStyle == PLAY_STYLE_EFFICIENCY) {
+        if (options.playStyle == PLAY_STYLE_EFFICIENCY || options.playStyle == PLAY_STYLE_NOFLAGS_EFFICIENCY) {
             cleanActions = actions;
 
             // find all the other actions which could be played
@@ -188,7 +189,7 @@ async function solver(board, options) {
         let result = [];
 
         // if we are in flagged mode then flag any mines currently unflagged
-        if (options.playStyle != PLAY_STYLE_EFFICIENCY) {
+        if (options.playStyle != PLAY_STYLE_EFFICIENCY && options.playStyle != PLAY_STYLE_NOFLAGS_EFFICIENCY) {
             for (let tile of unflaggedMines) {
                 result.push(new Action(tile.getX(), tile.getY(), 0, ACTION_FLAG));
             }
@@ -201,13 +202,13 @@ async function solver(board, options) {
                 result.push(new Action(tile.getX(), tile.getY(), 1, ACTION_CLEAR))
             }
             showMessage("No mines left to find all remaining tiles are safe");
-            return new EfficiencyHelper(board, witnesses, result, options.playStyle).process();
+            return new EfficiencyHelper(board, witnesses, witnessed, result, options.playStyle, null).process();
         }
 
         const oldMineCount = result.length;
 
         // add any trivial moves we've found
-        if (options.fullProbability || options.playStyle == PLAY_STYLE_EFFICIENCY) {
+        if (options.fullProbability || options.playStyle == PLAY_STYLE_EFFICIENCY || options.playStyle == PLAY_STYLE_NOFLAGS_EFFICIENCY) {
             console.log("Skipping trivial analysis since Probability Engine analysis is required")
         } else {
             result.push(...trivial_actions(board, witnesses));
@@ -337,7 +338,7 @@ async function solver(board, options) {
             }
 
             showMessage("The probability engine has found " + pe.localClears.length + " safe clears and " + pe.minesFound.length + " mines");
-            return new EfficiencyHelper(board, witnesses, result, options.playStyle).process();
+            return new EfficiencyHelper(board, witnesses, witnessed, result, options.playStyle, pe).process();
         } 
 
 
@@ -528,7 +529,7 @@ async function solver(board, options) {
                     }
                 }
  
-                result = new EfficiencyHelper(board, witnesses, result, options.playStyle).process();
+                result = new EfficiencyHelper(board, witnesses, witnessed, result, options.playStyle, pe).process();
             } else {
                 showMessage("The solver has found the best guess on the edge using the probability engine." + formatSolutions(pe.finalSolutionsCount));
                 if (pe.duration < 50) {  // if the probability engine didn't take long then use some tie-break logic

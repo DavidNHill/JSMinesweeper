@@ -17,13 +17,16 @@ class Tile {
 
         this.onEdge = false;
         this.hint = false;
-        this.probability = 0;
+        this.probability = -1;  // of being safe
 		this.hintText = "";
 		this.hasHint = false;
 
 		this.efficiencyValue = "";   // the value we need to be to be chordable
 		this.efficiencyProbability = 0;  // the probability of being that value
 		this.efficiencyText = "";  
+
+		// is there an mine adjacent to this tile?  Set as part of the No flag efficiency logic
+		this.adjacentMine = false;
 
 		Object.seal(this); // prevent new values being created
 	}
@@ -113,7 +116,7 @@ class Tile {
 		this.efficiencyValue = null;
 		this.efficiencyProbability = 0;
 		this.efficiencyText = "";
-		this.probability = 0;
+		this.probability = -1;
     }
 
     setOnEdge() {

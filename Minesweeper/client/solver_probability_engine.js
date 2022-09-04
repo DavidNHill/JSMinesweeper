@@ -847,7 +847,7 @@ class ProbabilityEngine {
         // if we are down here then there is no witness which is on the boundary, so we have processed a complete set of independent witnesses 
 
         // if playing for efficiency check all edges, slower but we get better information
-        if (this.playStyle != PLAY_STYLE_EFFICIENCY && !analysisMode && !this.options.fullProbability) {
+        if (this.playStyle != PLAY_STYLE_EFFICIENCY && this.playStyle != PLAY_STYLE_NOFLAGS_EFFICIENCY && !analysisMode && !this.options.fullProbability) {
 
             // look to see if this sub-section of the edge has any certain clears
             for (let i = 0; i < this.mask.length; i++) {

@@ -5,16 +5,23 @@ class EfficiencyHelper {
     static ALLOW_ZERO_NET_GAIN_CHORD = true;
     static ALLOW_ZERO_NET_GAIN_PRE_CHORD = true;
 
-    constructor(board, witnesses, actions, playStyle) {
+    constructor(board, witnesses, witnessed, actions, playStyle, pe) {
 
         this.board = board;
         this.actions = actions;
         this.witnesses = witnesses;
+        this.witnessed = witnessed;
         this.playStyle = playStyle;
+        this.pe = pe;
 
     }
 
     process() {
+
+        // try the No flag efficiency strategy
+        if (this.playStyle == PLAY_STYLE_NOFLAGS_EFFICIENCY) {
+            return this.processNF(false);
+        }
 
         if (this.playStyle != PLAY_STYLE_EFFICIENCY || this.actions.length == 0) {
             return this.actions;
@@ -234,7 +241,16 @@ class EfficiencyHelper {
         if (result.length > 0) {
             return result;   // most efficient move
 
-        } else if (firstClear != null) {
+        } else {  // see if there are any safe tiles which are 3bv neutral
+            //const neutral = this.processNF(true);
+            //if (neutral.length > 0) {
+            //    result.push(neutral[0]);
+            //    return result;
+            //}
+        }
+
+
+        if (firstClear != null) {
             return [firstClear];  // first clear when no efficient move
         } else {
             return [];  // nothing when no clears available
@@ -288,6 +304,284 @@ class EfficiencyHelper {
 
     }
 
+
+    //
+    // Below here is the logic for No-flag efficiency
+    //
+    processNF(SafeOnly) {
+
+        const NFE_BLAST_PENALTY = 0.75;
+
+        // the first clear in the actions list
+        let firstClear = null;
+
+        // clear the adjacent mine indicator
+        for (let tile of this.board.tiles) {
+            tile.adjacentMine = false;
+        }
+
+        const alreadyChecked = new Set(); // set of tiles we've already checked to see if they can be zero
+
+        // set the adjacent mine indicator
+        for (let tile of this.board.tiles) {
+            if (tile.isSolverFoundBomb() || tile.probability == 0) {
+                for (let adjTile of this.board.getAdjacent(tile)) {
+                    if (!adjTile.isSolverFoundBomb() && adjTile.isCovered()) {
+                        adjTile.adjacentMine = true;
+                        adjTile.setValueProbability(0, 0);  // no chance of this tile being a zero
+
+                        alreadyChecked.add(adjTile.index);
+
+                    }
+ 
+                }
+            }
+        }
+
+        // find the current solution count
+        const currSolnCount = solver.countSolutions(this.board);
+
+        let result = [];
+        let zeroTile;
+        let zeroTileScore;
+
+
+
+        const onEdgeSet = new Set();
+        for (let tile of this.witnessed) {
+            onEdgeSet.add(tile.index);
+        }
+
+        // these are tiles adjacent to safe witnesses which aren't themselves safe
+        const adjacentWitnessed = new Set();
+
+        // do a more costly check for whether zero is possible, for those which haven't already be determined
+        for (let tile of this.witnessed) {
+
+            if (!alreadyChecked.has(tile.index) && !tile.isSolverFoundBomb() && !tile.probability == 0) { // already evaluated or a mine
+                tile.setValue(0);
+                const counter = solver.countSolutions(this.board);
+                tile.setCovered(true);
+
+                const zeroProb = divideBigInt(counter.finalSolutionsCount, currSolnCount.finalSolutionsCount, 6);
+
+                // set this information on the tile, so we can display it in the tooltip
+                tile.setValueProbability(0, zeroProb);
+
+                alreadyChecked.add(tile.index);
+
+                if (counter.finalSolutionsCount == 0) {  // no solution where this tile is zero means there must always be an adjacent mine
+                    tile.adjacentMine = true;
+                } else if (counter.finalSolutionsCount == currSolnCount.finalSolutionsCount) {
+                    console.log("Tile " + tile.asText() + " is a certain zero");
+                    result.push(new Action(tile.getX(), tile.getY(), 1, ACTION_CLEAR));
+                    break;
+                } else {
+
+                    const safety = this.pe.getProbability(tile);
+
+                    const score = zeroProb - (1 - safety) * NFE_BLAST_PENALTY;
+
+                    if (zeroTile == null || zeroTileScore < score) {
+                        zeroTile = tile;
+                        zeroTileScore = score;
+                    }
+ 
+                }
+            }
+
+            for (let adjTile of this.board.getAdjacent(tile)) {
+                if (adjTile.isCovered() && !adjTile.isSolverFoundBomb() && adjTile.probability != 0 && !onEdgeSet.has(adjTile.index)) {
+                    //console.log("Adding tile " + adjTile.asText() + " to extra tiles");
+                    adjacentWitnessed.add(adjTile.index);
+                } else {
+                    //console.log("NOT Adding tile " + adjTile.asText() + " to extra tiles: On edge " + adjTile.onEdge);
+                }
+            }
+
+        }
+
+         // do a more costly check for whether zero is possible for actions not already considered, for those which haven't already be determined
+        for (let act of this.actions) {
+
+            const tile = this.board.getTileXY(act.x, act.y);
+
+            if (act.action == ACTION_CLEAR && !alreadyChecked.has(tile.index) && !tile.isSolverFoundBomb() && !tile.probability == 0) { // already evaluated or a mine
+                tile.setValue(0);
+                const counter = solver.countSolutions(this.board);
+                tile.setCovered(true);
+
+                const zeroProb = divideBigInt(counter.finalSolutionsCount, currSolnCount.finalSolutionsCount, 6);
+
+                // set this information on the tile, so we can display it in the tooltip
+                tile.setValueProbability(0, zeroProb);
+
+                alreadyChecked.add(tile.index);
+
+                if (counter.finalSolutionsCount == 0) {  // no solution where this tile is zero means there must always be an adjacent mine
+                    tile.adjacentMine = true;
+                } else if (counter.finalSolutionsCount == currSolnCount.finalSolutionsCount) {
+                    console.log("Tile " + tile.asText() + " is a certain zero");
+                    result.push(act);
+                    break;
+                } else {
+
+                    const safety = this.pe.getProbability(tile);
+
+                    const score = zeroProb - (1 - safety) * NFE_BLAST_PENALTY;
+
+                    if (zeroTile == null || zeroTileScore < score) {
+                        zeroTile = tile;
+                        zeroTileScore = score;
+                    }
+                }
+            }
+
+            for (let adjTile of this.board.getAdjacent(tile)) {
+                if (adjTile.isCovered() && !adjTile.isSolverFoundBomb() && adjTile.probability != 0 && !onEdgeSet.has(adjTile.index)) {
+                    //console.log("Adding tile " + adjTile.asText() + " to extra tiles");
+                    adjacentWitnessed.add(adjTile.index);
+                } else {
+                    //console.log("NOT Adding tile " + adjTile.asText() + " to extra tiles: On edge " + adjTile.onEdge);
+                }
+            }
+
+        }
+
+        console.log("Extra tiles to check " + adjacentWitnessed.size);
+
+        // we have found a certain zero
+        if (result.length > 0) {
+            return result;
+        }
+
+        let offEdgeSafety;
+        if (this.pe == null) {
+            offEdgeSafety = 1;
+        } else {
+            offEdgeSafety = this.pe.offEdgeProbability;
+        }
+
+        // see if adjacent tiles can be zero or not
+        for (let index of adjacentWitnessed) {
+            const tile = board.getTile(index);
+
+            tile.setValue(0);
+            const counter = solver.countSolutions(this.board);
+            tile.setCovered(true);
+
+            const prob = divideBigInt(counter.finalSolutionsCount, currSolnCount.finalSolutionsCount, 6);
+
+            // set this information on the tile, so we can display it in the tooltip
+            tile.setValueProbability(0, prob);
+
+            if (counter.finalSolutionsCount == 0) {  // no solution where this tile is zero means there must always be an adjacent mine
+                tile.adjacentMine = true;
+            } else if (counter.finalSolutionsCount == currSolnCount.finalSolutionsCount) {
+                console.log("Tile " + tile.asText() + " is a certain zero");
+                result.push(new Action(tile.getX(), tile.getY(), 1, ACTION_CLEAR));
+                break;
+            } else {
+
+                const score = prob - (1 - offEdgeSafety) * NFE_BLAST_PENALTY;
+
+                if (zeroTile == null || zeroTileScore < score) {
+                    zeroTile = tile;
+                    zeroTileScore = score;
+                }
+            }
+
+        }
+
+        // we have found a certain zero
+        if (result.length > 0) {
+            return result;
+        }
+
+
+        let maxAllNotZeroProbability;
+        let bestAllNotZeroAction;
+        // see if any of the safe tiles are also surrounded by all non-zero tiles
+        for (let act of this.actions) {
+
+            if (act.action == ACTION_CLEAR) {
+
+                // this is the default move;
+                if (firstClear == null) {
+                    firstClear = act;
+                }
+
+                let valid = true;
+                let allNotZeroProbability = 1;
+                for (let adjTile of this.board.getAdjacent(act)) {
+                    if (adjTile.isCovered() && !adjTile.isSolverFoundBomb()) {
+                        valid = valid && adjTile.adjacentMine;
+                        allNotZeroProbability = allNotZeroProbability * (1 - adjTile.efficiencyProbability);
+                    }
+                }
+
+                if (bestAllNotZeroAction == null || maxAllNotZeroProbability < allNotZeroProbability) {
+                    bestAllNotZeroAction = act;
+                    maxAllNotZeroProbability = allNotZeroProbability;
+                }
+
+                if (valid) {
+                    console.log("Tile " + act.asText() + " is 3BV safe because it can't be next to a zero");
+                    result.push(act);
+                }
+            }
+ 
+        }
+
+        if (result.length > 0 || SafeOnly) {
+            return result;
+        }
+
+
+        if (bestAllNotZeroAction != null) {
+            console.log("Tile " + bestAllNotZeroAction.asText() + " has no adjacent zero approx " + maxAllNotZeroProbability);
+        }
+        if (zeroTile != null) {
+            console.log("Tile " + zeroTile.asText() + " has best zero chance score " + zeroTileScore);
+        }
+
+        if (zeroTile != null) {
+
+            let prob;
+            if (this.pe == null) {
+                prob = 1;
+            } else {
+                prob = this.pe.getProbability(zeroTile);
+            }
+
+            if (bestAllNotZeroAction != null) {
+                //const zeroTileProb = divideBigInt(zeroTileCount, currSolnCount.finalSolutionsCount, 6);
+                if (maxAllNotZeroProbability > zeroTileScore && zeroTileScore < 0.0) {
+                    result.push(bestAllNotZeroAction);
+                } else {
+                    result.push(new Action(zeroTile.getX(), zeroTile.getY(), prob, ACTION_CLEAR));
+                }
+            } else {
+                result.push(new Action(zeroTile.getX(), zeroTile.getY(), prob, ACTION_CLEAR));
+            }
+        } else {
+            if (bestAllNotZeroAction != null) {
+                result.push(bestAllNotZeroAction);
+            }
+        }
+
+        if (result.length > 0) {
+            return result;
+        }
+
+        if (firstClear != null) {
+            return [firstClear];  // first clear when no efficient move
+        } else {
+            return [];  // nothing when no clears available
+        }
+
+
+    }
 
 }
 

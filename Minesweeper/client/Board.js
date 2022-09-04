@@ -172,8 +172,8 @@ class Board {
 	// returns all the tiles adjacent to this tile
 	getAdjacent(tile) {
 		
-		const col = tile.getX();
-		const row = tile.getY();
+		const col = tile.x;
+		const row = tile.y;
 
 		const first_row = Math.max(0, row - 1);
 		const last_row = Math.min(this.height - 1, row + 1);
