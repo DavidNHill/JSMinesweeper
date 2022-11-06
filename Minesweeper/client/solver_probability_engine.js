@@ -277,7 +277,7 @@ class ProbabilityEngine {
                 }
                 if (unavoidable) {
                     this.writeToConsole("Tile " + link.tile1.asText() + " is an unavoidable 50/50 guess");
-                    return link.tile1;
+                    return this.notDead([link.tile1, link.tile2]);
                 }
 
                 links.push(link);
@@ -322,7 +322,7 @@ class ProbabilityEngine {
                                 if (extension.closed2) {
                                     if (extensions % 2 == 0 && this.noTrouble(link, area5050)) {
                                         this.writeToConsole("Tile " + openTile.asText() + " is an unavoidable guess, with " + extensions + " extensions");
-                                        return area5050[0];
+                                        return this.notDead(area5050);
                                     } else {
                                         this.writeToConsole("Tile " + openTile.asText() + " is a closed extension with " + (extensions + 1) + " parts");
                                         openTile = null;
@@ -344,7 +344,7 @@ class ProbabilityEngine {
                                 if (extension.closed1) {
                                     if (extensions % 2 == 0 && this.noTrouble(link, area5050)) {
                                         this.writeToConsole("Tile " + openTile.asText() + " is an unavoidable guess, with " + extensions + " extensions");
-                                        return area5050[0];
+                                        return this.notDead(area5050);
                                     } else {
                                         this.writeToConsole("Tile " + openTile.asText() + " is a closed extension with " + (extensions + 1) + " parts");
                                         openTile = null;
@@ -367,6 +367,26 @@ class ProbabilityEngine {
         }
 
         return null;
+    }
+
+    // return a tile which isn't dead
+    notDead(area) {
+
+        for (let tile of area) {
+            let dead = false;
+            for (let deadTile of this.deadTiles) {
+                if (deadTile.isEqual(tile)) {
+                    dead = true;
+                    break;
+                }
+            }
+            if (!dead) {
+                return tile;
+            }
+        }
+
+        // if they are all dead, return the first
+        return area[0];
     }
 
     noTrouble(link, area) {

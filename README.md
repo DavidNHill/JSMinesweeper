@@ -17,7 +17,7 @@ The landing screen provides access to the Minesweeper player.
 
 Basic Options:
 - Opening on start: Determines whether the first click is a guaranteed opening or only guaranteed safe.
-- No Guesss: Attempts to generate a board which contains no guesses. The board is generated on your first click.
+- No Guess: Attempts to generate a board which contains no guesses. The board is generated on your first click.
 - Beginner:  9x9/10.
 - Intermediate: 16x16/40.
 - Expert: 30x16/99.
@@ -28,6 +28,7 @@ Advanced options:
 - Style - Flagging: Put a flag on mines when the solver discovers them.
 - Style - No Flagging: Never place flags.
 - Style - Efficiency: This option allows the solver to use chording and flags are only placed in an attempt to minimize the number of clicks required to solve the game. **This mode seriously impacts performance.**
+- Style - NF Efficiency: The solver tries to minimise the number of clicks without chording. This involves clicking openings and avoiding tiles which are next to an opening. **This mode seriously impacts performance.**
 - Tile size: use this to select the tile size best suited for you.
 - Show hints: The solver will shadow your play and highlight safe plays and (if necessary) what it considers the best guess
 - Auto play: The solver will play the game for you until a guess is required.
@@ -37,7 +38,6 @@ The analysis button can be used to force the solver to analyse the current games
 
 The **Play again** button can be used to replay the same board. This is useful if you have made a no guess game you wish to replay without having to redo the generation step. If you don't start with the same tile you may blast or game may no longer be no guess.
 
-**New:**
 **Boards can be downloaded in mbf format to be stored locally or shared with friends.**
 **boards saved using MinesweeperX (mbf) or Arbitar (abf) can be loaded into the Player by dragging and dropping the file on the play area.**
 
@@ -58,6 +58,9 @@ From here you can construct the position you wish to analyse. This is best done 
 6. Use the mousewheel to adjust the mine count showing how many mines left to find.  The value can be adjusted by 10s or 1s depending on which digit the mouse is over
 
 If the board is valid the **Analyse** button will be enabled and pressing this (or the 'a' key) will start the analyser. 
+
+**New:**
+**Positions can be saved and stored on a local disc. They can be reloaded by dropping them onto the board grid.**
 
 ![Analysis screen](resources/ReadmeImages/AnalysisScreen.jpg)
 
