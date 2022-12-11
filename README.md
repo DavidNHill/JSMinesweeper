@@ -28,7 +28,7 @@ Advanced options:
 - Style - Flagging: Put a flag on mines when the solver discovers them.
 - Style - No Flagging: Never place flags.
 - Style - Efficiency: This option allows the solver to use chording and flags are only placed in an attempt to minimize the number of clicks required to solve the game. **This mode seriously impacts performance.**
-- Style - NF Efficiency: The solver tries to minimise the number of clicks without chording. This involves clicking openings and avoiding tiles which are next to an opening. **This mode seriously impacts performance.**
+- Style - NF Efficiency: The solver tries to minimise the number of clicks without chording. This involves clicking openings and avoiding tiles which are next to an opening. **This mode seriously impacts performance and win rate.**
 - Tile size: use this to select the tile size best suited for you.
 - Show hints: The solver will shadow your play and highlight safe plays and (if necessary) what it considers the best guess
 - Auto play: The solver will play the game for you until a guess is required.
