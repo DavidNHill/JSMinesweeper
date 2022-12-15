@@ -1052,7 +1052,7 @@ function keyPressedEvent(e) {
 
     const tile = hoverTile;
 
-    console.log('tile is' + tile);
+    //console.log('tile is' + tile);
     // can't replace a flag
     if (tile == null || tile.isFlagged()) {
         return;

@@ -1071,7 +1071,7 @@ async function solver(board, options) {
             action.maxSolutions = safePe.finalSolutionsCount;
             action.commonClears = safePe.localClears;
 
-            tile.setProbability(action.prob, action.progress);
+            tile.setProbability(action.prob, action.progress, action.progress);  // a dominated tile has 100% progress
 
             return;
         }
@@ -1166,7 +1166,7 @@ async function solver(board, options) {
         action.maxSolutions = maxSolutions;
         action.commonClears = commonClears;
 
-        const realSecondarySafety = (secondarySafety / fiftyFiftyInfluence).toFixed(6);
+        const realSecondarySafety = (secondarySafety / fiftyFiftyInfluence).toFixed(6);  // remove the 50/50 influence to get back to the real secondary safety
 
         tile.setProbability(action.prob, action.progress, realSecondarySafety);
 
