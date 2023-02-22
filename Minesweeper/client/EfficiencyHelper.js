@@ -166,7 +166,7 @@ class EfficiencyHelper {
                         const counter = solver.countSolutions(this.board);
                         tile.setCovered(true);
 
-                        const prob = divideBigInt(counter.finalSolutionsCount, currSolnCount.finalSolutionsCount, 4);
+                        const prob = divideBigInt(counter.finalSolutionsCount, currSolnCount.finalSolutionsCount, 6);
                         const expected = prob * reward;
 
                         // set this information on the tile, so we can display it in the tooltip
@@ -179,14 +179,18 @@ class EfficiencyHelper {
                         if (adjMines == 0 && prob == 1) {
                             console.log("(" + act.x + "," + act.y + ") is a certain zero no need for further analysis");
                             bestAction = act;
+                            bestChord = null;
                             break;
-                            //adjChord = null;
-                            //highest = 0;
                         }
 
                         const clickChordNetBenefit = BigInt(reward) * counter.finalSolutionsCount; // expected benefit from clicking the tile then chording it
 
                         let current;
+                        //if (adjMines == 0 && adjChord != null) {
+                        //   console.log("Not considering Chord Chord combo because we'd be chording into a zero");
+                        //    adjChord = null;
+                        //}
+
                         // if it is a chord/chord combo
                         if (adjChord != null) {
                             current = this.chordChordCombo(adjChord, tile, counter.finalSolutionsCount, currSolnCount.finalSolutionsCount);
@@ -269,7 +273,7 @@ class EfficiencyHelper {
         const chord1Tile = chord1.tile;
 
         // now check each tile around the tile to be chorded 2nd and see how many mines to flag and tiles will be cleared
-        //var alreadyCounted = 0;
+        //let alreadyCounted = 0;
         let needsFlag = 0;
         let clearable = 0;
         let chordClick = 0;
@@ -281,7 +285,7 @@ class EfficiencyHelper {
 
             // if adjacent to chord1
             if (chord1Tile.isAdjacent(adjTile)) {
-                //alreadyCounted++;
+               // alreadyCounted++;
             } else if (adjTile.isSolverFoundBomb() && !adjTile.isFlagged()) {
                 needsFlag++;
             } else if (!adjTile.isSolverFoundBomb() && adjTile.isCovered()) {
