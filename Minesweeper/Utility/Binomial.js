@@ -4,6 +4,8 @@ class Binomial {
 
 	constructor(max, lookup) {
 
+		const start = Date.now();
+
 		this.max = max;
 
 		this.ps = new PrimeSieve(this.max);
@@ -24,10 +26,10 @@ class Binomial {
 			for (let choose = 0; choose <= total / 2; choose++) {
 				this.binomialLookup[total][choose] = this.generate(choose, total);
 			}
-
-
 		}
 
+		console.log("Binomial coefficients look-up generated up to " + lookup + ", on demand up to " + max);
+		console.log("Processing took " + (Date.now() - start) + " milliseconds");
 	}
 
 

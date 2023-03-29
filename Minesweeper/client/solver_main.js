@@ -572,7 +572,8 @@ async function solver(board, options) {
 
         }
 
-        return addDeadTiles(result, pe.getDeadTiles());;
+        //return addDeadTiles(result, pe.getDeadTiles());
+        return addDeadTiles(result, deadTiles);
 
     }
 
@@ -626,7 +627,8 @@ async function solver(board, options) {
 
             secondarySafetyAnalysis(pe, board, action, best, ltr) // updates variables in the Action class
 
-            if (best == null || best.weight < action.weight) {
+            if (best == null || compare(best, action) > 0) {
+                writeToConsole(action.asText() + " is now the best with score " + action.weight);
                 best = action;
             }
 
@@ -649,16 +651,7 @@ async function solver(board, options) {
 
             });
         } else {
-            actions.sort(function (a, b) {
-
-                let c = b.weight - a.weight;
-                if (c != 0) {
-                    return c;
-                } else {
-                    return b.expectedClears - a.expectedClears;
-                }
-
-            });
+            actions.sort(function (a, b) { return compare(a, b) });
         }
 
         if (bfda != null && actions.length > 0) {
@@ -680,6 +673,33 @@ async function solver(board, options) {
 
     }
 
+    // 4139912032944127.5
+    function compare(a, b) {
+
+        // Move flag actions to the bottom
+        if (a.action == ACTION_FLAG && b.action != ACTION_FLAG) {
+            return 1;
+        } else if (a.action != ACTION_FLAG && b.action == ACTION_FLAG) {
+            return -1;
+        }
+
+        // move dead tiles to the bottom
+        if (a.dead && !b.dead) {
+            return 1;
+        } else if (!a.dead && b.dead) {
+            return -1;
+        }
+
+        // then more best score to the top
+        let c = b.weight - a.weight;
+        if (c != 0) {
+            return c;
+        } else {
+            return b.expectedClears - a.expectedClears;
+        }
+
+    }
+
     // find a move which 1) is safer than the move given and 2) when move is safe ==> the alternative is safe
     function findAlternativeMove(actions) {
 
@@ -690,8 +710,12 @@ async function solver(board, options) {
 
             const alt = actions[i];
 
+            if (alt.action == ACTION_FLAG) { // ignore the action if it is a flagging request
+                continue;
+            }
+
             if (alt.prob - action.prob > 0.001) {  // the alternative move is at least a bit safe than the current move
-                for (let tile of action.commonClears) {  // see if the move is in the list of common safe tiles
+                 for (let tile of action.commonClears) {  // see if the move is in the list of common safe tiles
                     if (alt.x == tile.x && alt.y == tile.y) {
                         writeToConsole("Replacing " + action.asText() + " with " + alt.asText() + " because it dominates");
 
@@ -1098,7 +1122,8 @@ async function solver(board, options) {
         let probThisTileLeft = action.prob;  // this is used to calculate when we can prune this action
 
         // this is used to hold the tiles which are clears for all the possible values
-        var commonClears = null;
+        let commonClears = null;
+        let validValues = 0;
 
         const adjFlags = board.adjacentFoundMineCount(tile);
         const adjCovered = board.adjacentCoveredCount(tile);
@@ -1109,7 +1134,7 @@ async function solver(board, options) {
             const bonus = 1 + (progress + probThisTileLeft) * progressContribution;
             const weight = (secondarySafety + probThisTileLeft * fiftyFiftyInfluence) * bonus;
 
-            if (best != null && weight < best.weight) {
+            if (best != null && !best.dead && weight < best.weight) {
                 writeToConsole("Tile (" + action.x + "," + action.y + ") is being pruned,  50/50 influence = " + fiftyFiftyInfluence + ", max score possible is " + weight);
                 action.weight = weight;
                 action.pruned = true;
@@ -1123,6 +1148,9 @@ async function solver(board, options) {
             const work = runProbabilityEngine(board, null);
 
             if (work.finalSolutionsCount > 0) {  // if this is a valid board state
+
+                validValues++;
+
                 if (commonClears == null) {
                     commonClears = work.localClears;
                 } else {
@@ -1161,6 +1189,11 @@ async function solver(board, options) {
         const progress = divideBigInt(solutionsWithProgess, pe.finalSolutionsCount, 6);
 
         action.progress = progress;
+
+        if (validValues == 1) {
+            action.dead = true;
+            writeToConsole("Tile " + tile.asText() + " has only only one possible value and is being marked as dead");
+        }
 
         action.weight = secondarySafety * (1 + progress * progressContribution);
         action.maxSolutions = maxSolutions;

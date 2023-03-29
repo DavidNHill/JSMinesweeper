@@ -142,7 +142,9 @@ async function startup() {
     docMinesLeft.width = DIGIT_WIDTH * DIGITS;
     docMinesLeft.height = DIGIT_HEIGHT;
 
-    BINOMIAL = new Binomial(50000, 200);
+    BINOMIAL = new Binomial(70000, 500);
+
+    console.log("Binomials calculated");
 
     window.addEventListener("beforeunload", (event) => exiting(event));
 
@@ -192,6 +194,7 @@ async function startup() {
     }
 
     //bulkRun(21, 12500);  // seed '21' Played 12500 won 5195
+    //bulkRun(321, 10000);  // seed 321 played 10000 won 4119
 
     showMessage("Welcome to minesweeper solver dedicated to Annie");
 }
@@ -1628,6 +1631,8 @@ function buildMessageFromActions(actions, safeOnly) {
 // send a JSON message to the server describing what action the user made
 async function sendActionsMessage(message) {
 
+    const solverStart = Date.now();
+
     const outbound = JSON.stringify(message);
 
     console.log("==> " + outbound);
@@ -1764,7 +1769,7 @@ async function sendActionsMessage(message) {
         return;
     }
 
-    const solverStart = Date.now();
+    //const solverStart = Date.now();
 
     let assistedPlay = docFastPlay.checked;
     let assistedPlayHints;
