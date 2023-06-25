@@ -17,7 +17,6 @@ const FLAGGED = 11;
 const FLAGGED_WRONG = 12;
 const EXPLODED = 13;
 
-//const PLAY_CLIENT_SIDE = (location.hostname == "");
 const PLAY_CLIENT_SIDE = true;
 
 const GAME_DESCRIPTION_KEY = "CURRENT_GAME_DESCRIPTION";
@@ -48,9 +47,6 @@ let gameBoard;
 let board;
 
 let oldrng = false;
-
-//docMinesLeft.width = DIGIT_WIDTH * DIGITS;
-//docMinesLeft.height = DIGIT_HEIGHT;
 
 const tooltip = document.getElementById('tooltip');
 const autoPlayCheckBox = document.getElementById("autoplay");
@@ -262,7 +258,7 @@ function propertiesOpen() {
     propertiesPanel.style.display = "block";
 }
 
-// download as MBF
+// download as MBF  - this has been replaced with a save file dialogue
 // create a BLOB of the data, insert a URL to it into the download link
 async function downloadAsMBF(e) {
 
@@ -308,6 +304,82 @@ async function downloadAsMBF(e) {
     downloadHyperlink.download = filename;
 
 }
+
+// pop up a file save dialogue to store the layout as MBF format
+async function saveMBF(e) {
+
+    e.preventDefault();
+
+    // if we are in analysis mode then create the url, otherwise the url was created when the game was generated
+    let mbf;
+    if (analysisMode) {
+        if (board == null) {
+            console.log("No Board defined, unable to generate MBF");
+            return false;
+        }
+
+        if (board.bombs_left != 0) {
+            showMessage("Mines left must be zero in order to download the board from Analysis mode.");
+            return false;
+        }
+
+        mbf = board.getFormatMBF();
+
+        if (mbf == null) {
+            console.log("Null data returned from getFormatMBF()");
+            return false;
+        }
+
+    } else {
+        mbf = getMbfData(board.id);   // this function is in MinesweeperGame.js
+        if (mbf == null) {
+            showMessage("No game data available to convert to an MBF file");
+            return false;
+        }
+    }
+
+    let filename;
+    if (analysisMode) {
+        filename = "JSM_" + new Date().toISOString() + ".mbf";
+    } else {
+        filename = "JSM_Seed_" + board.seed + ".mbf";
+    }
+
+    const data = mbf;
+
+    const options = {
+        excludeAcceptAllOption: true,
+        suggestedName: filename,
+        startIn: 'documents',
+        types: [
+            {
+                description: 'Minesweeper board format',
+                accept: {
+                    'application/blob': ['.mbf'],
+                },
+            },
+        ],
+    };
+
+    if (lastFileHandle != null) {
+        options.startIn = lastFileHandle;
+    }
+
+    try {
+        const fileHandle = await window.showSaveFilePicker(options);
+
+        const writable = await fileHandle.createWritable();
+        await writable.write(data);
+        await writable.close();
+
+        lastFileHandle = fileHandle;
+
+    } catch (err) {
+        console.log("Save file picker exception: " + err.message);
+    }
+
+}
+
 
 // pop up a file save dialogue to store the board details
 async function savePosition(e) {
@@ -574,15 +646,14 @@ function getDigitCount(mines) {
 // display or hide the download link 
 function showDownloadLink(show, url) {
 
-    if (show) {
-        downloadHyperlink.style.display = "block";
-        if (url != null) {
-            downloadHyperlink.href = url;
-        }
-
-    } else {
-        downloadHyperlink.style.display = "none";
-    }
+    //if (show) {
+    //    downloadHyperlink.style.display = "block";
+    //    if (url != null) {
+    //        downloadHyperlink.href = url;
+    //    }
+    //} else {
+    //   downloadHyperlink.style.display = "none";
+    //}
 
 }
 
@@ -697,11 +768,88 @@ async function playAgain() {
 
 }
 
+// take a .mine format string and try to create a MBF format from it
+function StringToMBF(data) {
+
+    const lines = data.split("\n");
+    const size = lines[0].split("x");
+
+    if (size.length != 3) {
+        console.log("Header line is invalid: " + lines[0]);
+        return null;
+    }
+
+    const width = parseInt(size[0]);
+    const height = parseInt(size[1]);
+    const mines = parseInt(size[2]);
+
+    console.log("width " + width + " height " + height + " mines " + mines);
+
+    if (width < 1 || height < 1 || mines < 1) {
+        console.log("Invalid dimensions for game");
+        return null;
+    }
+
+    if (lines.length < height + 1) {
+        console.log("Insufficient lines to hold the data: " + lines.length);
+        return null;
+    }
+
+    if (width > 255 || height > 255) {
+        console.log("Board too large to convert to MBF format");
+        return null;
+    }
+
+    const length = 4 + 2 * mines;
+
+    const mbf = new ArrayBuffer(length);
+    const mbfView = new Uint8Array(mbf);
+
+    mbfView[0] = width;
+    mbfView[1] = height;
+
+    mbfView[2] = Math.floor(mines / 256);
+    mbfView[3] = mines % 256;
+
+    let minesFound = 0;
+    let index = 4;
+
+    for (let y = 0; y < height; y++) {
+        const line = lines[y + 1];
+        console.log(line);
+        for (let x = 0; x < width; x++) {
+
+            const char = line.charAt(x);
+
+            if (char == "F" || char == "M" || char == "?") {
+                minesFound++;
+                if (index < length) {
+                    mbfView[index++] = x;
+                    mbfView[index++] = y;
+                }
+            }
+        }
+    }
+    if (minesFound != mines) {
+        console.log("Board has incorrect number of mines. board=" + mines + ", found=" + minesFound);
+        return null;
+    }
+
+    console.log(...mbfView);
+
+    return mbf;
+
+}
+
 async function newGameFromBlob(blob) {
+    const mbf = await blob.arrayBuffer();
+    await newGameFromMBF(mbf);
+    showMessage("Game " + board.width + "x" + board.height + "/" + board.num_bombs + " created from MBF file " + blob.name);
+}
 
-    const buffer = await blob.arrayBuffer();
+async function newGameFromMBF(mbf) {
 
-    const view = new Uint8Array(buffer);
+    const view = new Uint8Array(mbf);
 
     console.log(...view);
 
@@ -735,7 +883,7 @@ async function newGameFromBlob(blob) {
 
     canvasLocked = false;  // just in case it was still locked (after an error for example)
 
-    showMessage("Game "  + width + "x" + height + "/" + mines + " created from file");
+    //showMessage("Game "  + width + "x" + height + "/" + mines + " created from MBF file");
  
 }
 
@@ -745,11 +893,22 @@ async function newBoardFromFile(file) {
 
     fr.onloadend = async function (e) {
 
-        await newBoardFromString(e.target.result);
-
+        if (analysisMode) {
+            await newBoardFromString(e.target.result);
+            showMessage("Position loaded from file " + file.name);
+        } else {
+            const mbf = StringToMBF(e.target.result);
+            if (mbf == null) {
+                showMessage("File " + file.name + " doesn't contain data for a whole board");
+                return;
+            } else {
+                newGameFromMBF(mbf);
+                showMessage("Game " + board.width + "x" + board.height + "/" + board.num_bombs + " created from mine positions extracted from file " + file.name);
+            }
+        }
+ 
         lockMineCount.checked = true;
-
-        showMessage("Position loaded from file " + file.name);
+ 
         checkBoard();
 
     };
@@ -1579,10 +1738,10 @@ async function dropHandler(ev) {
                         break; // only process the first one
                     }
                 } else {
-                    if (analysisMode) {
+                    //if (analysisMode) {
                         newBoardFromFile(file);
                         break; // only process the first one
-                    }
+                    //}
                 }
   
             }

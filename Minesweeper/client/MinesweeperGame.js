@@ -501,6 +501,18 @@ function applyResults(board, revealedTiles) {
 
 }
 
+function getMbfData(id) {
+
+	const game = getGame(id);
+
+	if (game == null) {
+		console.log("Game Id " + id + " not found");
+		return null;
+	}
+
+	return game.getFormatMBF();
+
+}
 
 /**
  * This describes a game of minesweeper
@@ -1015,7 +1027,14 @@ class ServerGame {
 			window.URL.revokeObjectURL(this.url);
 		}
 
-		this.url = this.getFormatMBF();
+		const mbf = this.getFormatMBF();
+
+		const blob = new Blob([mbf], { type: 'application/octet-stream' })
+
+		this.url = URL.createObjectURL(blob);
+
+		console.log(this.url);
+
     }
 
 	getFormatMBF() {
@@ -1060,13 +1079,11 @@ class ServerGame {
 
 		console.log(...mbfView);
 
-		const blob = new Blob([mbf], { type: 'application/octet-stream' })
+		//const blob = new Blob([mbf], { type: 'application/octet-stream' })
+		//const url = URL.createObjectURL(blob);
+		//console.log(url);
 
-		const url = URL.createObjectURL(blob);
-
-		console.log(url);
-
-		return url;
+		return mbf;
 
 	}
 
