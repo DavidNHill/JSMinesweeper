@@ -81,6 +81,9 @@ const ngModal = document.getElementById("noGuessBuilder");
 const ngText = document.getElementById("ngText");
 
 let analysisMode = false;
+let replayMode = false;
+let replayData = null;
+let replayStep = 0;
 let previousBoardHash = 0;
 let justPressedAnalyse = false;
 let dragging = false;  //whether we are dragging the cursor
@@ -574,6 +577,30 @@ function renderHints(hints, otherActions) {
 }
 
 // render an array of tiles to the canvas
+function renderBorder(hints, flag) {
+
+    //console.log(hints.length + " hints to render");
+
+     for (let i = 0; i < hints.length; i++) {
+
+         const hint = hints[i];
+
+         ctxHints.globalAlpha = 0.7;
+         ctxHints.lineWidth = 6;
+
+         if (flag) {
+             ctxHints.strokeStyle = "red";
+         } else {
+             ctxHints.strokeStyle = "black";
+         }
+ 
+         ctxHints.strokeRect(hint.x * TILE_SIZE, hint.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+ 
+    }
+
+}
+
+// render an array of tiles to the canvas
 function renderTiles(tiles) {
 
     //console.log(tiles.length + " tiles to render");
@@ -988,7 +1015,43 @@ async function newBoardFromString(data) {
 
     updateMineCount(board.bombs_left);
 
+    replayMode = false;
+    replayData = null;
     canvasLocked = false;  // just in case it was still locked (after an error for example)
+
+}
+
+// load replay data into the system
+function loadReplayData(file) {
+
+    if (!analysisMode) {
+        showMessage("Switch to analysis mode before loading the replay");
+        return;
+    }
+
+    const fr = new FileReader();
+
+    fr.onloadend = async function (e) {
+
+        replayData = JSON.parse(e.target.result);
+        replayStep = 0;
+        replayMode = true;
+
+        showMessage("Replay for " + replayData.header.width + "x" + replayData.header.height + "/" + replayData.header.mines + " loaded from " + file.name);
+
+        const newBoard = new Board(1, replayData.header.width, replayData.header.height, replayData.header.mines, "", "safe");
+
+        // switch to the board
+        board = newBoard;
+
+        // this redraws the board
+        changeTileSize();
+
+        updateMineCount(board.bombs_left);
+
+    };
+
+    fr.readAsText(file);
 
 }
 
@@ -1029,6 +1092,9 @@ async function newGame(width, height, mines, seed) {
 
     let drawTile = HIDDEN;
     if (analysisMode) {
+        replayMode = false;
+        replayData = null;
+
         if (document.getElementById('buildZero').checked) {
             board = new Board(id, width, height, 0, seed, gameType);
             board.setAllZero();
@@ -1201,6 +1267,22 @@ function keyPressedEvent(e) {
             //console.log("Control-V pressed");
             navigator.clipboard.readText().then(
                 clipText => newBoardFromString(clipText));
+        } else if (e.key == 'ArrowRight') {
+             if (replayMode) {
+                if (e.shiftKey) {
+                    replayForward("S");
+                } else {
+                    replayForward("1");
+                }
+            }
+        } else if (e.key == 'ArrowLeft') {
+            if (replayMode) {
+                if (e.shiftKey) {
+                    replayBackward("S");
+                } else {
+                    replayBackward("1");
+                }
+            }
         }
     } else {
         if (e.key == ' ' && board.isGameover()) {
@@ -1232,6 +1314,304 @@ function keyPressedEvent(e) {
 
     // update the graphical board
     window.requestAnimationFrame(() => renderTiles([tile]));
+
+}
+
+async function replayForward(replayType) {
+
+    const size = replayData.replay.length;
+
+    if (replayStep == size) {
+        console.log("Replay can't advance beyond the end")
+        return;
+    }
+
+    while (replayStep != size) {
+
+        replayStep++;
+
+        if (replayType == "S") {
+            showMessage("Advancing to step " + replayStep + " of " + size);
+            await sleep(1);
+        }
+
+
+        // clear the hints overlay
+        window.requestAnimationFrame(() => renderHints([], []));
+
+        const step = replayData.replay[replayStep - 1];
+
+        const tiles = [];
+
+        if (step.type == 0 || step.type == 3) {
+            for (let i = 0; i < step.touchCells.length; i = i + 5) {
+
+                const x = step.touchCells[i];
+                const y = step.touchCells[i + 1];
+                const value = step.touchCells[i + 2];
+
+                const tile = board.getTileXY(x, y);
+
+                if (tile == null) {
+                    console.log("Unable to find tile (" + x + "," + y + ")");
+                    return;
+                } else {
+                    //console.log("Tile (" + tile.getX() + "," + tile.getY() + ") to value " + value);
+                }
+
+                if (value < 9) {    // reveal value on tile
+                    tile.setValue(value);
+                    tiles.push(tile);
+
+                } else if (value == 10) {  // add or remove flag
+
+                    tile.toggleFlag();
+                    if (tile.isFlagged()) {
+                        board.bombs_left--;
+                    } else {
+                        board.bombs_left++;
+                    }
+                    tiles.push(tile);
+
+                } else if (value == 11) {  // a tile which is a mine and is the cause of losing the game
+                    //board.setGameLost();
+                    tile.setBombExploded();
+                    tiles.push(tile);
+
+                } else if (value == 12) {  // a tile which is flagged but shouldn't be
+                    //tile.setBomb(false);
+                    //tiles.push(tile);
+
+                } else {
+                    console.log(tile.asText() + " Replay value '" + value + "' is not recognised");
+                }
+
+            }
+
+        } else if (step.type == 1) {
+            const x = step.x;
+            const y = step.y;
+
+            const tile = board.getTileXY(x, y);
+
+            if (tile == null) {
+                console.log("Unable to find tile (" + x + "," + y + ")");
+                return;
+            }
+
+            tile.toggleFlag();
+            if (tile.isFlagged()) {
+                board.bombs_left--;
+            } else {
+                board.bombs_left++;
+            }
+            tiles.push(tile);
+
+        }
+        // update the graphical board
+
+        window.requestAnimationFrame(() => renderTiles(tiles));
+        window.requestAnimationFrame(() => updateMineCount(board.bombs_left));
+
+        // run the solver
+        const options = {};
+
+        if (docPlayStyle.value == "flag") {
+            options.playStyle = PLAY_STYLE_FLAGS;
+        } else if (docPlayStyle.value == "noflag") {
+            options.playStyle = PLAY_STYLE_NOFLAGS;
+        } else if (docPlayStyle.value == "eff") {
+            options.playStyle = PLAY_STYLE_EFFICIENCY;
+        } else {
+            options.playStyle = PLAY_STYLE_NOFLAGS_EFFICIENCY;
+        }
+
+        options.fullProbability = true;
+        options.advancedGuessing = false;
+        options.verbose = false;
+
+        let hints;
+        let other;
+
+        board.resetForAnalysis();
+        board.findAutoMove();
+
+        const solve = await solver(board, options);  // look for solutions
+        hints = solve.actions;
+        other = solve.other;
+
+        window.requestAnimationFrame(() => renderHints(hints, other));
+
+        // determine the next tile to be clicked
+        if (replayStep != size) {
+            const nextStep = replayData.replay[replayStep];
+            showNextStep(nextStep);
+
+            const nextTile = board.getTileXY(nextStep.x, nextStep.y);
+            if (nextStep.type == 0 && nextTile.isCovered() && !nextTile.isFlagged() && nextTile.probability != 1) {
+                break;
+            }
+        }
+
+        if (replayType == "1") {
+            break;
+        }
+
+    }
+ 
+}
+
+async function replayBackward(replayType) {
+
+    const size = replayData.replay.length;
+
+    if (replayStep == 0) {
+        console.log("Replay can't move before the start")
+        return;
+    }
+
+    while (replayStep != 0) {
+
+        if (replayType == "S") {
+            showMessage("Backwards to step " + replayStep + " of " + size);
+            await sleep(1);
+        }
+
+        // clear the hints overlay
+        window.requestAnimationFrame(() => renderHints([], []));
+
+        const step = replayData.replay[replayStep - 1];
+
+        const tiles = [];
+
+        if (step.type == 0 || step.type == 3) {
+            for (let i = 0; i < step.touchCells.length; i = i + 5) {
+
+                const x = step.touchCells[i];
+                const y = step.touchCells[i + 1];
+                const value = step.touchCells[i + 2];
+
+                const tile = board.getTileXY(x, y);
+
+                if (tile == null) {
+                    console.log("Unable to find tile (" + x + "," + y + ")");
+                    return;
+                } else {
+                    //console.log("Tile (" + tile.getX() + "," + tile.getY() + ") to value " + value);
+                }
+
+                if (value < 9) {    // reveal value on tile
+                    tile.setCovered(true);
+                    tiles.push(tile);
+
+                } else if (value == 10) {  // add or remove flag
+
+                    tile.toggleFlag();
+                    if (tile.isFlagged()) {
+                        board.bombs_left--;
+                    } else {
+                        board.bombs_left++;
+                    }
+                    tiles.push(tile);
+
+                } else if (value == 11) {  // a tile which is a mine and is the cause of losing the game
+                    //board.setGameLost();
+                    //tile.setBombExploded();
+                    tile.setBomb(false);
+                    tile.exploded = false;
+                    tiles.push(tile);
+
+                } else if (value == 12) {  // a tile which is flagged but shouldn't be
+                    //tile.setBomb(false);
+                    //tiles.push(tile);
+
+                } else {
+                    console.log(tile.asText() + " Replay value '" + value + "' is not recognised");
+                }
+
+            }
+
+        } else if (step.type == 1) {
+            const x = step.x;
+            const y = step.y;
+
+            const tile = board.getTileXY(x, y);
+
+            if (tile == null) {
+                console.log("Unable to find tile (" + x + "," + y + ")");
+                return;
+            }
+
+            tile.toggleFlag();
+            if (tile.isFlagged()) {
+                board.bombs_left--;
+            } else {
+                board.bombs_left++;
+            }
+            tiles.push(tile);
+
+        }
+        // update the graphical board
+
+        window.requestAnimationFrame(() => renderTiles(tiles));
+        window.requestAnimationFrame(() => updateMineCount(board.bombs_left));
+
+        replayStep--;
+
+        // run the solver
+        const options = {};
+
+        if (docPlayStyle.value == "flag") {
+            options.playStyle = PLAY_STYLE_FLAGS;
+        } else if (docPlayStyle.value == "noflag") {
+            options.playStyle = PLAY_STYLE_NOFLAGS;
+        } else if (docPlayStyle.value == "eff") {
+            options.playStyle = PLAY_STYLE_EFFICIENCY;
+        } else {
+            options.playStyle = PLAY_STYLE_NOFLAGS_EFFICIENCY;
+        }
+
+        options.fullProbability = true;
+        options.advancedGuessing = false;
+        options.verbose = false;
+
+        let hints;
+        let other;
+
+        board.resetForAnalysis();
+        board.findAutoMove();
+
+        const solve = await solver(board, options);  // look for solutions
+        hints = solve.actions;
+        other = solve.other;
+
+        window.requestAnimationFrame(() => renderHints(hints, other));
+
+        // determine the next tile to be clicked
+        const nextStep = replayData.replay[replayStep];
+        showNextStep(nextStep);
+
+        const nextTile = board.getTileXY(nextStep.x, nextStep.y);
+        if (nextStep.type == 0 && nextTile.isCovered() && !nextTile.isFlagged() && nextTile.probability != 1 && replayStep != 1) {
+            break;
+        }
+
+        if (replayType == "1") {
+            break;
+        }
+
+    }
+
+}
+
+function showNextStep(step) {
+
+    const x = step.x;
+    const y = step.y;
+    const type = step.type;
+
+    const nextTile = board.getTileXY(x, y);
+    window.requestAnimationFrame(() => renderBorder([nextTile], (type == 1)));
 
 }
 
@@ -1288,6 +1668,13 @@ async function doAnalysis() {
         justPressedAnalyse = true;
 
         window.requestAnimationFrame(() => renderHints(hints, solve.other));
+
+        // show the next tile to be clicked if in replay mode
+        if (analysisMode && replayMode) {
+            const nextStep = replayData.replay[replayStep];
+            showNextStep(nextStep);
+        }
+ 
     } else {
         showMessage("The board is in an invalid state");
         window.requestAnimationFrame(() => renderHints([], []));
@@ -1301,7 +1688,7 @@ async function doAnalysis() {
 
 async function checkBoard() {
 
-    if (!analysisMode) {
+    if (!analysisMode || replayMode) {
         return;
     }
 
@@ -1737,11 +2124,12 @@ async function dropHandler(ev) {
                         newGameFromBlob(file);
                         break; // only process the first one
                     }
-                } else {
-                    //if (analysisMode) {
-                        newBoardFromFile(file);
-                        break; // only process the first one
-                    //}
+                } else if (file.name.endsWith(".msor")) {
+                    loadReplayData(file);
+                    break;
+                } else { 
+                    newBoardFromFile(file);
+                    break; // only process the first one
                 }
   
             }

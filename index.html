@@ -127,11 +127,16 @@
             </div>
             <span id="tooltip" class="tooltiptext" style="pointer-events: none;">Tooltip text</span>
             <!-- A hyperlink to download the board -->
-            <div>
+            <div style="position: relative; left: 0px; top: 0px; right: 0px;">
                 <a id="saveposition" style="float: left; width: 100px; margin-right: 30px;" onclick="savePosition(event)" download="" href="">Save position</a>
                 <!-- <a id="downloadmbf" style="float: left; width: 130px" onclick="downloadAsMBF(event)" download="" href="">Download as MBF</a>  -->
                 <a id="savembf" style="float: left; width: 100px; margin-right: 30px;" onclick="saveMBF(event)" download="" href="">Save as MBF</a>
             </div>
+            <!--
+            <div style="position: absolute; left: 10px; top: 30px; right: 0px;">
+                <input type="range" min="1" max="200" value="50" style="left: 0px; width: 400px; height: 25px; margin-right: 30px;">
+            </div>
+            -->
 
         </section>
     </div>

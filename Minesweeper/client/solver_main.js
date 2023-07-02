@@ -50,6 +50,11 @@ async function solver(board, options) {
         options.fullProbability = false;
     }
 
+    // this is used when using the solver to create a no-guessing board
+    if (options.noGuessingMode == null) {
+        options.noGuessingMode = false;
+    }
+
     // a bit of a bodge this variable is used as a global
     let fillerTiles = [];   // this is used by the no-guess board generator 
 
@@ -342,8 +347,8 @@ async function solver(board, options) {
         } 
 
 
-        // this is part of the no-guessing board creation logic - wip
-        if (pe.bestProbability < 1 && !options.advancedGuessing) {
+        // this is part of the no-guessing board creation logic
+        if (pe.bestProbability < 1 && options.noGuessingMode) {
             if (pe.bestOnEdgeProbability >= pe.offEdgeProbability) {
                 result.push(pe.getBestCandidates(1));  // get best options
             } else {
@@ -355,6 +360,13 @@ async function solver(board, options) {
             // find some witnesses which can be adjusted to remove the guessing
             findBalancingCorrections(pe);
 
+            return result;
+        }
+
+        // if we aren' allowing advanced guessing then stop here
+        if (!options.advancedGuessing) {
+            writeToConsole("Advanced guessing is turned off so exiting the solver after the probability engine");
+            showMessage("Press 'Analyse' for advanced guessing");
             return result;
         }
 
