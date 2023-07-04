@@ -224,16 +224,49 @@ class Board {
 		}
     }
 
-	resetForAnalysis() {
+	// optionally treat flags as mines (e.g. in analysis mode but not playing or replay)
+	// place mines when they are trivially found
+	// The idea is to get the board into a state as pobability engine friendly as possible
+	resetForAnalysis(flagIsMine) {
 
 		for (let i = 0; i < this.tiles.length; i++) {
 			const tile = this.tiles[i];
 			if (tile.isFlagged()) {
-				tile.foundBomb = true;
+				tile.foundBomb = flagIsMine;
 			} else {
 				tile.foundBomb = false;
             }
 		}
+
+		for (let i = 0; i < this.tiles.length; i++) {
+
+			const tile = this.getTile(i);
+
+			if (tile.isCovered()) {
+				continue;  // if the tile hasn't been revealed yet then nothing to consider
+			}
+
+			const adjTiles = this.getAdjacent(tile);
+
+			let flagCount = 0;
+			let coveredCount = 0;
+			for (let j = 0; j < adjTiles.length; j++) {
+				const adjTile = adjTiles[j];
+				if (adjTile.isCovered()) {
+					coveredCount++;
+				}
+			}
+
+			if (coveredCount > 0 && tile.getValue() == flagCount + coveredCount) { // can place all flags
+				for (let j = 0; j < adjTiles.length; j++) {
+					const adjTile = adjTiles[j];
+					if (adjTile.isCovered() ) { // if covered 
+						adjTile.setFoundBomb();   // Must be a bomb
+					}
+				}
+			}
+
+		}	
 
     }
 

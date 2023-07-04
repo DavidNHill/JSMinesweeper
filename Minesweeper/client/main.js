@@ -84,6 +84,8 @@ let analysisMode = false;
 let replayMode = false;
 let replayData = null;
 let replayStep = 0;
+let replayInterrupt = false;
+
 let previousBoardHash = 0;
 let justPressedAnalyse = false;
 let dragging = false;  //whether we are dragging the cursor
@@ -440,7 +442,6 @@ function switchToAnalysis(doAnalysis) {
 
         showDownloadLink(true, "")  // display the hyperlink
 
-        title.innerHTML = "Minesweeper analyser";  // change the title
         switchButton.innerHTML = "Switch to Player";
     } else {
         analysisBoard = board;
@@ -448,31 +449,46 @@ function switchToAnalysis(doAnalysis) {
 
         showDownloadLink(false, "")  // hide the hyperlink (we don't have the url until we play a move - this could be improved)
 
-        title.innerHTML = "Minesweeper player"; // change the title
         switchButton.innerHTML = "Switch to Analyser";
     }
 
+    analysisMode = doAnalysis;
+
+    setPageTitle();
+
     changeTileSize();
-
-    //resizeCanvas(board.width, board.height);
-
-    //browserResized();
 
     renderHints([]);  // clear down hints
 
-    //renderTiles(board.tiles); // draw the board
-
     updateMineCount(board.bombs_left);  // reset the mine count
 
-    analysisMode = doAnalysis;
+ 
+}
+
+function setPageTitle() {
+
+    if (analysisMode) {
+        if (replayMode) {
+            title.innerHTML = "Minesweeper replay";  // change the title
+        } else {
+            title.innerHTML = "Minesweeper analyser";  // change the title
+        }
+
+    } else {
+        title.innerHTML = "Minesweeper player"; // change the title
+    }
 }
 
 // render an array of tiles to the canvas
-function renderHints(hints, otherActions) {
+function renderHints(hints, otherActions, drawOverlay) {
+
+    if (drawOverlay == null) {
+        drawOverlay = (docOverlay.value != "none")
+    }
 
     //console.log(hints.length + " hints to render");
-
-    ctxHints.clearRect(0, 0, canvasHints.width, canvasHints.height);
+    //ctxHints.clearRect(0, 0, canvasHints.width, canvasHints.height);
+    ctxHints.reset();
 
     if (hints == null) {
         return;
@@ -511,7 +527,7 @@ function renderHints(hints, otherActions) {
     }
 
      // put percentage over the tile 
-    if (docOverlay.value != "none") {
+    if (drawOverlay) {
 
         if (TILE_SIZE == 12) {
             ctxHints.font = "7px serif";
@@ -902,6 +918,8 @@ async function newGameFromMBF(mbf) {
 
     board = new Board(id, width, height, mines, "", gameType);
 
+    setPageTitle();
+
     changeTileSize();
 
     showDownloadLink(false, ""); // remove the download link
@@ -1017,6 +1035,9 @@ async function newBoardFromString(data) {
 
     replayMode = false;
     replayData = null;
+
+    setPageTitle();
+
     canvasLocked = false;  // just in case it was still locked (after an error for example)
 
 }
@@ -1036,6 +1057,8 @@ function loadReplayData(file) {
         replayData = JSON.parse(e.target.result);
         replayStep = 0;
         replayMode = true;
+        replayData.breaks = Array(replayData.replay.length);
+        replayData.breaks.fill(false);
 
         showMessage("Replay for " + replayData.header.width + "x" + replayData.header.height + "/" + replayData.header.mines + " loaded from " + file.name);
 
@@ -1043,6 +1066,8 @@ function loadReplayData(file) {
 
         // switch to the board
         board = newBoard;
+
+        setPageTitle();
 
         // this redraws the board
         changeTileSize();
@@ -1109,6 +1134,8 @@ async function newGame(width, height, mines, seed) {
     changeTileSize();
 
     updateMineCount(board.num_bombs);
+
+    setPageTitle();
 
     canvasLocked = false;  // just in case it was still locked (after an error for example)
 
@@ -1283,6 +1310,10 @@ function keyPressedEvent(e) {
                     replayBackward("1");
                 }
             }
+        } else if (e.key == 'ArrowUp') {
+            if (replayMode) {
+                replayInterrupt = true;
+            }
         }
     } else {
         if (e.key == ' ' && board.isGameover()) {
@@ -1320,6 +1351,7 @@ function keyPressedEvent(e) {
 async function replayForward(replayType) {
 
     const size = replayData.replay.length;
+    replayInterrupt = false;
 
     if (replayStep == size) {
         console.log("Replay can't advance beyond the end")
@@ -1413,6 +1445,30 @@ async function replayForward(replayType) {
         window.requestAnimationFrame(() => renderTiles(tiles));
         window.requestAnimationFrame(() => updateMineCount(board.bombs_left));
 
+        /*
+        // determine if we already know that the next click is okay
+        if (replayStep != size) {
+            const nextStep = replayData.replay[replayStep];
+
+            const nextTile = board.getTileXY(nextStep.x, nextStep.y);
+
+            // continue if chording or clicking an uncovered tile or a flag then 
+            if (nextStep.type == 2 || nextStep.type == 3 || !nextTile.isCovered() || nextTile.isFlagged()) {
+                continue;
+            }
+
+            // continue if we know the tile is safe
+            if (nextStep.type == 0 && nextTile.probability == 1) {
+                continue;
+            }
+
+            // continue if placing a certain flag, or the tile is already exposed or the tile is already flagged
+            if (nextStep.type == 1 && nextTile.probability == 0 || !nextTile.isCovered() || nextTile.isFlagged() ) {
+                continue;
+            }
+        }
+        */
+
         // run the solver
         const options = {};
 
@@ -1433,27 +1489,47 @@ async function replayForward(replayType) {
         let hints;
         let other;
 
-        board.resetForAnalysis();
-        board.findAutoMove();
+        //board.resetForAnalysis(false);
+        //board.findAutoMove();
 
         const solve = await solver(board, options);  // look for solutions
         hints = solve.actions;
         other = solve.other;
 
-        window.requestAnimationFrame(() => renderHints(hints, other));
-
         // determine the next tile to be clicked
+        let doBreak = replayInterrupt;
+
         if (replayStep != size) {
             const nextStep = replayData.replay[replayStep];
-            showNextStep(nextStep);
 
             const nextTile = board.getTileXY(nextStep.x, nextStep.y);
+
+            // stop if making a guess
             if (nextStep.type == 0 && nextTile.isCovered() && !nextTile.isFlagged() && nextTile.probability != 1) {
-                break;
+                replayData.breaks[replayStep] = true;
+                doBreak = true;
+            }
+
+            // stop if placing an uncertain flag
+            if (nextStep.type == 1 && nextTile.isCovered() && !nextTile.isFlagged() && nextTile.probability != 0) {
+                replayData.breaks[replayStep] = true;
+                doBreak = true;
             }
         }
 
         if (replayType == "1") {
+            doBreak = true;
+        }
+
+        // only show the percentages if we are about to break
+        window.requestAnimationFrame(() => renderHints(hints, other, doBreak));
+
+        if (replayStep != size) {
+            const nextStep = replayData.replay[replayStep];
+            showNextStep(nextStep);
+        }
+
+        if (doBreak) {
             break;
         }
 
@@ -1464,6 +1540,7 @@ async function replayForward(replayType) {
 async function replayBackward(replayType) {
 
     const size = replayData.replay.length;
+    replayInterrupt = false;
 
     if (replayStep == 0) {
         console.log("Replay can't move before the start")
@@ -1558,47 +1635,56 @@ async function replayBackward(replayType) {
 
         replayStep--;
 
-        // run the solver
-        const options = {};
+        if (replayData.breaks[replayStep] || replayType == "1" || replayInterrupt) {
 
-        if (docPlayStyle.value == "flag") {
-            options.playStyle = PLAY_STYLE_FLAGS;
-        } else if (docPlayStyle.value == "noflag") {
-            options.playStyle = PLAY_STYLE_NOFLAGS;
-        } else if (docPlayStyle.value == "eff") {
-            options.playStyle = PLAY_STYLE_EFFICIENCY;
-        } else {
-            options.playStyle = PLAY_STYLE_NOFLAGS_EFFICIENCY;
+            // run the solver
+            const options = {};
+
+            if (docPlayStyle.value == "flag") {
+                options.playStyle = PLAY_STYLE_FLAGS;
+            } else if (docPlayStyle.value == "noflag") {
+                options.playStyle = PLAY_STYLE_NOFLAGS;
+            } else if (docPlayStyle.value == "eff") {
+                options.playStyle = PLAY_STYLE_EFFICIENCY;
+            } else {
+                options.playStyle = PLAY_STYLE_NOFLAGS_EFFICIENCY;
+            }
+
+            options.fullProbability = true;
+            options.advancedGuessing = false;
+            options.verbose = false;
+
+            let hints;
+            let other;
+
+            board.resetForAnalysis(false);
+            //board.findAutoMove();
+
+            const solve = await solver(board, options);  // look for solutions
+            hints = solve.actions;
+            other = solve.other;
+
+            window.requestAnimationFrame(() => renderHints(hints, other, true));
+
+            // determine the next tile to be clicked
+            const nextStep = replayData.replay[replayStep];
+            showNextStep(nextStep);
+
+            break;
         }
 
-        options.fullProbability = true;
-        options.advancedGuessing = false;
-        options.verbose = false;
-
-        let hints;
-        let other;
-
-        board.resetForAnalysis();
-        board.findAutoMove();
-
-        const solve = await solver(board, options);  // look for solutions
-        hints = solve.actions;
-        other = solve.other;
-
-        window.requestAnimationFrame(() => renderHints(hints, other));
-
-        // determine the next tile to be clicked
-        const nextStep = replayData.replay[replayStep];
-        showNextStep(nextStep);
-
+        /*
+        // stop if making a guess
         const nextTile = board.getTileXY(nextStep.x, nextStep.y);
-        if (nextStep.type == 0 && nextTile.isCovered() && !nextTile.isFlagged() && nextTile.probability != 1 && replayStep != 1) {
+        if (nextStep.type == 0 && nextTile.isCovered() && !nextTile.isFlagged() && nextTile.probability != 1) {
             break;
         }
 
-        if (replayType == "1") {
+        // stop if placing an uncertain flag
+        if (nextStep.type == 1 && nextTile.isCovered() && !nextTile.isFlagged() && nextTile.probability != 0) {
             break;
         }
+        */
 
     }
 
@@ -1635,8 +1721,9 @@ async function doAnalysis() {
 
     // this will set all the obvious mines which makes the solution counter a lot more efficient on very large boards
     if (analysisMode) {
-        board.resetForAnalysis();
-        board.findAutoMove();
+        board.resetForAnalysis(!replayMode);  // in replay mode don't treat flags as mines
+
+        //board.findAutoMove();   // - this is now done in "resetForAnalysis"
     }
  
     const solutionCounter = solver.countSolutions(board);
@@ -1693,7 +1780,7 @@ async function checkBoard() {
     }
 
     // this will set all the obvious mines which makes the solution counter a lot more efficient on very large boards
-    board.resetForAnalysis();
+    board.resetForAnalysis(true);
  
     const currentBoardHash = board.getHashValue();
 
@@ -1707,7 +1794,7 @@ async function checkBoard() {
 
     board.findAutoMove();
     const solutionCounter = await solver.countSolutions(board);
-    board.resetForAnalysis();
+    board.resetForAnalysis(true);
 
     if (solutionCounter.finalSolutionsCount != 0) {
         analysisButton.disabled = false;
@@ -1737,7 +1824,6 @@ function draw(x, y, tileType) {
     if (tileType == BOMB) {
         ctx.drawImage(images[0], x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);  // before we draw the bomb depress the square
     }
-
 
     ctx.drawImage(images[tileType], x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
 
@@ -1836,6 +1922,11 @@ function on_click(event) {
         console.log("The canvas is logically locked - this happens while the previous click is being processed");
         return;
     } 
+
+    if (analysisMode && replayMode) {
+        console.log("Input is locked when in Replay mode");
+        return;
+    }
 
     const row = Math.floor(event.offsetY / TILE_SIZE);
     const col = Math.floor(event.offsetX / TILE_SIZE);
@@ -2020,11 +2111,15 @@ function analysis_toggle_flag(tile) {
 
 function on_mouseWheel(event) {
 
+    // can't change tiles value when playing a game
     if (!analysisMode) {
         return;
     }
 
-    //board.resetForAnalysis();
+    // Can't change tiles value during replay mode
+    if (analysisMode && replayMode) {
+        return;
+    }
 
     //console.log("Mousewheel event at X=" + event.offsetX + ", Y=" + event.offsetY);
 
@@ -2062,7 +2157,13 @@ function on_mouseWheel(event) {
 
 function on_mouseWheel_minesLeft(event) {
 
+    // Can't change the number of mines left when playing a game
     if (!analysisMode) {
+        return;
+    }
+
+    // Can't change the number of mines left during replay mode
+    if (analysisMode && replayMode) {
         return;
     }
 
