@@ -204,6 +204,8 @@ async function solver(board, options) {
         if (minesLeft == 0) {
             for (let i = 0; i < allCoveredTiles.length; i++) {
                 const tile = allCoveredTiles[i];
+
+                tile.setProbability(1);
                 result.push(new Action(tile.getX(), tile.getY(), 1, ACTION_CLEAR))
             }
             showMessage("No mines left to find all remaining tiles are safe");
@@ -261,6 +263,31 @@ async function solver(board, options) {
             return result;
         }
 
+        // If we have a full analysis then set the probabilities on the tile tooltips
+        if (pe.fullAnalysis) {
+
+            // Set the probability for each tile on the edge 
+            for (let i = 0; i < pe.boxes.length; i++) {
+                for (let j = 0; j < pe.boxes[i].tiles.length; j++) {
+                    pe.boxes[i].tiles[j].setProbability(pe.boxProb[i]);
+                }
+            }
+
+            // set all off edge probabilities
+            for (let i = 0; i < board.tiles.length; i++) {
+
+                const tile = board.getTile(i);
+
+                if (tile.isSolverFoundBomb()) {
+                    if (!tile.isFlagged()) {
+                        tile.setProbability(0);
+                    }
+                } else if (tile.isCovered() && !tile.onEdge) {
+                    tile.setProbability(pe.offEdgeProbability);
+                }
+            }
+        }
+
         // if the tiles off the edge are definitely safe then clear them all
         let offEdgeAllSafe = false;
         if (pe.offEdgeProbability == 1) {
@@ -298,32 +325,6 @@ async function solver(board, options) {
                 }
             }
         }
-
-        // If we have a full analysis then set the probabilities on the tile tooltips
-        if (pe.fullAnalysis) {
-
-             // Set the probability for each tile on the edge 
-            for (let i = 0; i < pe.boxes.length; i++) {
-                for (let j = 0; j < pe.boxes[i].tiles.length; j++) {
-                    pe.boxes[i].tiles[j].setProbability(pe.boxProb[i]);
-                }
-            }
-
-            // set all off edge probabilities
-            for (let i = 0; i < board.tiles.length; i++) {
-
-                const tile = board.getTile(i);
-
-                if (tile.isSolverFoundBomb()) {
-                    if (!tile.isFlagged()) {
-                        tile.setProbability(0);
-                    }
-                } else if (tile.isCovered() && !tile.onEdge) {
-                    tile.setProbability(pe.offEdgeProbability);
-                }
-            }
-        }
-
 
         // have we found any local clears which we can use or everything off the edge is safe
         if (pe.localClears.length > 0 || pe.minesFound.length > 0 || offEdgeAllSafe) {

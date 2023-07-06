@@ -1376,6 +1376,7 @@ async function replayForward(replayType) {
         const tiles = [];
 
         if (step.type == 0 || step.type == 3) {
+            let gameBlasted = false;
             for (let i = 0; i < step.touchCells.length; i = i + 5) {
 
                 const x = step.touchCells[i];
@@ -1397,22 +1398,28 @@ async function replayForward(replayType) {
 
                 } else if (value == 10) {  // add or remove flag
 
-                    tile.toggleFlag();
-                    if (tile.isFlagged()) {
-                        board.bombs_left--;
+                    if (gameBlasted) {
+                        tile.setBomb(true);
                     } else {
-                        board.bombs_left++;
+                        tile.toggleFlag();
+                        if (tile.isFlagged()) {
+                            board.bombs_left--;
+                        } else {
+                            board.bombs_left++;
+                        }
                     }
+
                     tiles.push(tile);
 
                 } else if (value == 11) {  // a tile which is a mine and is the cause of losing the game
-                    //board.setGameLost();
+                    gameBlasted = true;
                     tile.setBombExploded();
                     tiles.push(tile);
 
                 } else if (value == 12) {  // a tile which is flagged but shouldn't be
-                    //tile.setBomb(false);
-                    //tiles.push(tile);
+                    board.bombs_left++;
+                    tile.setBomb(false);
+                    tiles.push(tile);
 
                 } else {
                     console.log(tile.asText() + " Replay value '" + value + "' is not recognised");
@@ -1562,6 +1569,8 @@ async function replayBackward(replayType) {
         const tiles = [];
 
         if (step.type == 0 || step.type == 3) {
+
+            let unGameBlasted = false;
             for (let i = 0; i < step.touchCells.length; i = i + 5) {
 
                 const x = step.touchCells[i];
@@ -1583,24 +1592,30 @@ async function replayBackward(replayType) {
 
                 } else if (value == 10) {  // add or remove flag
 
-                    tile.toggleFlag();
-                    if (tile.isFlagged()) {
-                        board.bombs_left--;
+                    if (unGameBlasted) {
+                        tile.setBomb(false);
+
                     } else {
-                        board.bombs_left++;
+                        tile.toggleFlag();
+                        if (tile.isFlagged()) {
+                            board.bombs_left--;
+                        } else {
+                            board.bombs_left++;
+                        }
                     }
+
                     tiles.push(tile);
 
                 } else if (value == 11) {  // a tile which is a mine and is the cause of losing the game
-                    //board.setGameLost();
-                    //tile.setBombExploded();
+                    unGameBlasted = true;   // Any flagging after this is actually showing a mine
                     tile.setBomb(false);
                     tile.exploded = false;
                     tiles.push(tile);
 
-                } else if (value == 12) {  // a tile which is flagged but shouldn't be
-                    //tile.setBomb(false);
-                    //tiles.push(tile);
+                } else if (value == 12) {  // a tile which is flagged but shouldn't be - occurs at the end of the replay
+                    board.bombs_left--;
+                    tile.setBomb(null);
+                    tiles.push(tile);
 
                 } else {
                     console.log(tile.asText() + " Replay value '" + value + "' is not recognised");
