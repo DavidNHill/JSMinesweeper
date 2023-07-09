@@ -1074,6 +1074,9 @@ function loadReplayData(file) {
 
         updateMineCount(board.bombs_left);
 
+        // enable the analysis button - it might have been previous in an invalid layout
+        analysisButton.disabled = false;
+
     };
 
     fr.readAsText(file);
@@ -1496,9 +1499,6 @@ async function replayForward(replayType) {
         let hints;
         let other;
 
-        //board.resetForAnalysis(false);
-        //board.findAutoMove();
-
         const solve = await solver(board, options);  // look for solutions
         hints = solve.actions;
         other = solve.other;
@@ -1672,9 +1672,8 @@ async function replayBackward(replayType) {
             let hints;
             let other;
 
-            board.resetForAnalysis(false);
-            //board.findAutoMove();
-
+            board.resetForAnalysis(false, true);
+ 
             const solve = await solver(board, options);  // look for solutions
             hints = solve.actions;
             other = solve.other;
@@ -1736,9 +1735,7 @@ async function doAnalysis() {
 
     // this will set all the obvious mines which makes the solution counter a lot more efficient on very large boards
     if (analysisMode) {
-        board.resetForAnalysis(!replayMode);  // in replay mode don't treat flags as mines
-
-        //board.findAutoMove();   // - this is now done in "resetForAnalysis"
+        board.resetForAnalysis(!replayMode, true);  // in replay mode don't treat flags as mines
     }
  
     const solutionCounter = solver.countSolutions(board);
@@ -1795,7 +1792,7 @@ async function checkBoard() {
     }
 
     // this will set all the obvious mines which makes the solution counter a lot more efficient on very large boards
-    board.resetForAnalysis(true);
+    //board.resetForAnalysis(true, true);
  
     const currentBoardHash = board.getHashValue();
 
@@ -1807,9 +1804,11 @@ async function checkBoard() {
 
     console.log("Checking board with hash " + currentBoardHash);
 
-    board.findAutoMove();
+    // this will set all the obvious mines which makes the solution counter a lot more efficient on very large boards
+    board.resetForAnalysis(true, true);
+
     const solutionCounter = await solver.countSolutions(board);
-    board.resetForAnalysis(true);
+    board.resetForAnalysis(true, false);
 
     if (solutionCounter.finalSolutionsCount != 0) {
         analysisButton.disabled = false;
@@ -2149,6 +2148,8 @@ function on_mouseWheel(event) {
 
     const flagCount = board.adjacentFoundMineCount(tile);
     const covered = board.adjacentCoveredCount(tile);
+
+    //console.log("flag=" + flagCount + ", Covered=" + covered);
 
     let newValue;
     if (tile.isCovered()) {
