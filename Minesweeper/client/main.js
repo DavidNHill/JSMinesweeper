@@ -85,6 +85,7 @@ let replayMode = false;
 let replayData = null;
 let replayStep = 0;
 let replayInterrupt = false;
+let replaying = false;
 
 let previousBoardHash = 0;
 let justPressedAnalyse = false;
@@ -1353,6 +1354,11 @@ function keyPressedEvent(e) {
 
 async function replayForward(replayType) {
 
+    if (replaying) {
+        console.log("Replay is already in progress")
+        return;
+    }
+
     const size = replayData.replay.length;
     replayInterrupt = false;
 
@@ -1360,6 +1366,8 @@ async function replayForward(replayType) {
         console.log("Replay can't advance beyond the end")
         return;
     }
+
+    replaying = true;
 
     while (replayStep != size) {
 
@@ -1378,6 +1386,7 @@ async function replayForward(replayType) {
 
         const tiles = [];
 
+        // type 0 = clear, type 3 = chord
         if (step.type == 0 || step.type == 3) {
             let gameBlasted = false;
             for (let i = 0; i < step.touchCells.length; i = i + 5) {
@@ -1390,7 +1399,7 @@ async function replayForward(replayType) {
 
                 if (tile == null) {
                     console.log("Unable to find tile (" + x + "," + y + ")");
-                    return;
+                    continue;
                 } else {
                     //console.log("Tile (" + tile.getX() + "," + tile.getY() + ") to value " + value);
                 }
@@ -1438,7 +1447,7 @@ async function replayForward(replayType) {
 
             if (tile == null) {
                 console.log("Unable to find tile (" + x + "," + y + ")");
-                return;
+                continue;
             }
 
             tile.toggleFlag();
@@ -1508,7 +1517,38 @@ async function replayForward(replayType) {
 
         if (replayStep != size) {
             const nextStep = replayData.replay[replayStep];
+            const nextTile = board.getTileXY(nextStep.x, nextStep.y);
 
+            // see if the left click is definitely safe
+            if (nextStep.type == 0 && nextTile.isCovered() && !nextTile.isFlagged() && nextTile.probability != 1) {
+                replayData.breaks[replayStep] = true;
+                doBreak = true;
+            }
+
+            // see if any of the click or chord affects a non-certain safe tile
+            if (nextStep.type == 3) {
+                for (let i = 0; i < nextStep.touchCells.length; i = i + 5) {
+
+                    const x = nextStep.touchCells[i];
+                    const y = nextStep.touchCells[i + 1];
+
+                    const chordTile = board.getTileXY(x, y);
+
+                    // only check the adjacent tiles, the others are the result of zeros being found
+                    if (!nextTile.isAdjacent(chordTile)) {
+                        continue;
+                    }
+
+                    if (chordTile.isCovered() && !chordTile.isFlagged() && chordTile.probability != 1) {
+                        replayData.breaks[replayStep] = true;
+                        doBreak = true;
+                        break;
+                    }
+                }
+            }
+ 
+
+            /*
             const nextTile = board.getTileXY(nextStep.x, nextStep.y);
 
             // stop if making a guess
@@ -1522,6 +1562,7 @@ async function replayForward(replayType) {
                 replayData.breaks[replayStep] = true;
                 doBreak = true;
             }
+            */
         }
 
         if (replayType == "1") {
@@ -1541,10 +1582,17 @@ async function replayForward(replayType) {
         }
 
     }
+
+    replaying = false;
  
 }
 
 async function replayBackward(replayType) {
+
+    if (replaying) {
+        console.log("Replay is already in progress")
+        return;
+    }
 
     const size = replayData.replay.length;
     replayInterrupt = false;
@@ -1553,6 +1601,8 @@ async function replayBackward(replayType) {
         console.log("Replay can't move before the start")
         return;
     }
+
+    replaying = true;
 
     while (replayStep != 0) {
 
@@ -1581,7 +1631,7 @@ async function replayBackward(replayType) {
 
                 if (tile == null) {
                     console.log("Unable to find tile (" + x + "," + y + ")");
-                    return;
+                    continue;
                 } else {
                     //console.log("Tile (" + tile.getX() + "," + tile.getY() + ") to value " + value);
                 }
@@ -1631,7 +1681,7 @@ async function replayBackward(replayType) {
 
             if (tile == null) {
                 console.log("Unable to find tile (" + x + "," + y + ")");
-                return;
+                continue;
             }
 
             tile.toggleFlag();
@@ -1701,6 +1751,8 @@ async function replayBackward(replayType) {
         */
 
     }
+
+    replaying = false;
 
 }
 
