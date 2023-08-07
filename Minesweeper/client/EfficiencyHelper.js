@@ -31,7 +31,29 @@ class EfficiencyHelper {
         let result = [];
         const chordLocations = [];
 
-        // 1. look for tiles which are satisfied by known mines and work out the net benefit of placing the mines and then chording
+        //
+        // identify all the tiles which are next to a known mine
+        //
+
+        // clear the adjacent mine indicator
+        for (let tile of this.board.tiles) {
+            tile.adjacentMine = false;
+        }
+
+        // set the adjacent mine indicator
+        for (let tile of this.board.tiles) {
+            if (tile.isSolverFoundBomb() || tile.probability == 0) {
+                for (let adjTile of this.board.getAdjacent(tile)) {
+                    if (!adjTile.isSolverFoundBomb() && adjTile.isCovered()) {
+                        adjTile.adjacentMine = true;
+                    }
+                }
+            }
+        }
+
+        //
+        // Look for tiles which are satisfied by known mines and work out the net benefit of placing the mines and then chording
+        //
         for (let tile of this.witnesses) {   // for each witness
 
             if (tile.getValue() == this.board.adjacentFoundMineCount(tile)) {
@@ -95,13 +117,14 @@ class EfficiencyHelper {
         }
 
 
-        // 2. look for safe tiles which could become efficient if they have a certain value 
+        // 2. look for safe tiles which could become efficient if they have a certain value
         //if (result.length == 0) {
 
             //if (this.actions.length < 2) {
             //    return this.actions;
             //}
 
+            let neutral3BV = [];
             let bestAction = null;
             let highest = BigInt(0);
 
@@ -121,29 +144,44 @@ class EfficiencyHelper {
                         firstClear = act;
                     }
 
+                    // check to see if the tile (trivially) can't be next to a zero. i.e. 3BV safe
+                    let valid = true;
+                    for (let adjTile of this.board.getAdjacent(act)) {
+                        if (adjTile.isCovered() && !adjTile.isSolverFoundBomb()) {
+                            valid = valid && adjTile.adjacentMine;
+                        }
+                    }
+
+                    if (valid) {
+                        console.log("Tile " + act.asText() + " is 3BV safe because it can't be next to a zero");
+                        neutral3BV.push(act);
+                    }
+
                     const tile = this.board.getTileXY(act.x, act.y);
 
                     // find the best chord adjacent to this clear if there is one
                     let adjChord = null;
+                    let adjChords = [];
                     for (let cl of chordLocations) {
                         if (cl.netBenefit == 0 && !EfficiencyHelper.ALLOW_ZERO_NET_GAIN_PRE_CHORD) {
                             continue;
                         }
 
                         if (cl.tile.isAdjacent(tile)) {
+                            adjChords.push(cl);
+
                             // first adjacent chord, or better adj chord or cheaper adj chord 
-                            if (adjChord == null || adjChord.netBenefit < cl.netBenefit || adjChord.netBenefit == cl.netBenefit && adjChord.cost > cl.cost || 
-                                adjChord.netBenefit == cl.netBenefit && adjChord.cost == cl.cost && adjChord.exposedTiles < cl.exposedTiles) {
-                                //adjBenefit = cl.netBenefit;
-                                adjChord = cl;
-                            }
+                            //if (adjChord == null || adjChord.netBenefit < cl.netBenefit || adjChord.netBenefit == cl.netBenefit && adjChord.cost > cl.cost || 
+                            //    adjChord.netBenefit == cl.netBenefit && adjChord.cost == cl.cost && adjChord.exposedTiles < cl.exposedTiles) {
+                            //    adjChord = cl;
+                            //}
                         }
                     }
-                    if (adjChord == null) {
-                        //console.log("(" + act.x + "," + act.y + ") has no adjacent chord with net benefit > 0");
-                    } else {
-                        console.log("(" + act.x + "," + act.y + ") has adjacent chord " + adjChord.tile.asText() + " with net benefit " + adjChord.netBenefit);
-                     }
+                    //if (adjChord == null) {
+                    //    //console.log("(" + act.x + "," + act.y + ") has no adjacent chord with net benefit > 0");
+                    //} else {
+                    //   console.log("(" + act.x + "," + act.y + ") has adjacent chord " + adjChord.tile.asText() + " with net benefit " + adjChord.netBenefit);
+                    //}
 
                     const adjMines = this.board.adjacentFoundMineCount(tile);
                     const adjFlags = this.board.adjacentFlagsPlaced(tile);
@@ -185,15 +223,27 @@ class EfficiencyHelper {
 
                         const clickChordNetBenefit = BigInt(reward) * counter.finalSolutionsCount; // expected benefit from clicking the tile then chording it
 
-                        let current;
+                        let current = clickChordNetBenefit;  // expected benefit == p*benefit
                         //if (adjMines == 0 && adjChord != null) {
                         //   console.log("Not considering Chord Chord combo because we'd be chording into a zero");
                         //    adjChord = null;
                         //}
 
+                        // consider each adjacent chord
+                        for (let cl of adjChords) {
+                            console.log("(" + act.x + "," + act.y + ") has adjacent chord " + cl.tile.asText() + " with net benefit " + cl.netBenefit);
+                            const tempCurrent = this.chordChordCombo(cl, tile, counter.finalSolutionsCount, currSolnCount.finalSolutionsCount);
+                            if (tempCurrent > current) {  // keep track of the best chord / chord combo
+                                current = tempCurrent;
+                                adjChord = cl;
+                            }
+                        }
+
+
+                        /*
                         // if it is a chord/chord combo
                         if (adjChord != null) {
-                            current = this.chordChordCombo(adjChord, tile, counter.finalSolutionsCount, currSolnCount.finalSolutionsCount);
+                           current = this.chordChordCombo(adjChord, tile, counter.finalSolutionsCount, currSolnCount.finalSolutionsCount);
                             if (current < clickChordNetBenefit) {  // if click chord is better then discard the adjacent chord
                                 current = clickChordNetBenefit;
                                 adjChord = null;
@@ -202,6 +252,7 @@ class EfficiencyHelper {
                         } else {  // or a clear/chord combo
                             current = clickChordNetBenefit;  // expected benefit == p*benefit
                         }
+                        */
 
                         if (current > highest) {
                             //console.log("best " + act.x + "," + act.y);
@@ -245,17 +296,12 @@ class EfficiencyHelper {
         if (result.length > 0) {
             return result;   // most efficient move
 
-        } else {  // see if there are any safe tiles which are 3bv neutral
-            //const neutral = this.processNF(true);
-            //if (neutral.length > 0) {
-            //    result.push(neutral[0]);
-            //    return result;
-            //}
-        }
+        } else if (neutral3BV.length > 0) {
+            return [neutral3BV[0]];  // 3BV neutral move
 
-
-        if (firstClear != null) {
+        } else  if (firstClear != null) {
             return [firstClear];  // first clear when no efficient move
+
         } else {
             return [];  // nothing when no clears available
         }

@@ -224,6 +224,30 @@ class Board {
 		}
     }
 
+	hasSafeTile() {
+		for (let i = 0; i < this.tiles.length; i++) {
+			const tile = this.tiles[i];
+			if (tile.getHasHint() && tile.probability == 1) {
+				return true;
+            }
+		}
+
+		return false;
+	}
+
+	getSafeTiles() {
+		const result = [];
+
+		for (let i = 0; i < this.tiles.length; i++) {
+			const tile = this.tiles[i];
+			if (tile.getHasHint() && tile.probability == 1) {
+				result.push(new Action(tile.getX(), tile.getY(), 1, ACTION_CLEAR));
+			}
+		}
+
+		return result;
+	}
+
 	// optionally treat flags as mines (e.g. in analysis mode but not playing or replay)
 	// place mines when they are trivially found
 	// The idea is to get the board into a state as pobability engine friendly as possible

@@ -16,6 +16,7 @@ const HIDDEN = 10;
 const FLAGGED = 11;
 const FLAGGED_WRONG = 12;
 const EXPLODED = 13;
+const SKULL = 14;
 
 const PLAY_CLIENT_SIDE = true;
 
@@ -64,6 +65,7 @@ const docPlayStyle = document.getElementById("playstyle");
 const docTileSize = document.getElementById("tilesize");
 const docFastPlay = document.getElementById("fastPlay");
 const docNgMode = document.getElementById("noGuessMode");
+const docHardcore = document.getElementById("hardcore");
 const docOverlay = document.getElementById("overlay");
 
 const downloadHyperlink = document.getElementById('downloadmbf');
@@ -2076,6 +2078,41 @@ function on_click(event) {
 
             if (!tile.isCovered()) {  // clicking on a revealed tile is considered chording
                 if (board.canChord(tile)) {
+
+                    // check that the tiles revealed by the chord are safe
+                    if (docHardcore.checked) {
+
+                        let uncertainChords = [];
+                        let lethalChord = false;
+                        for (let adjTile of board.getAdjacent(tile)) {
+                            if (adjTile.isCovered() && !adjTile.isFlagged() && adjTile.getHasHint()) {
+                                if (adjTile.probability == 0) {  // chording onto a certain mine
+                                    lethalChord = true;
+                                    break;
+                                } else if (adjTile.probability != 1) {  // guessing by chording, outcome uncertain
+                                    uncertainChords.push(adjTile);
+                                }
+                            }
+                        }
+
+                        // if it's a lethal chord then let the game end normally
+                        if (!lethalChord && uncertainChords.length > 0 && board.hasSafeTile()) {
+                            board.setGameLost();
+
+                            renderHints(board.getSafeTiles(), [], false);
+                            for (let uncertainTile of uncertainChords) {
+                                draw(uncertainTile.x, uncertainTile.y, SKULL);
+                            }
+                            
+                            showMessage("Hard Core: Game is lost because you guessed (by chording) when there were safe tiles!");
+                            console.log("Chord is not hardcore valid");
+
+                            return;
+                        }
+
+                    }
+
+
                     message = { "header": board.getMessageHeader(), "actions": [{ "index": board.xy_to_index(col, row), "action": 3 }] }; //chord
                 } else {
                     console.log("Tile is not able to be chorded - no action to take");
@@ -2083,6 +2120,20 @@ function on_click(event) {
                 }
 
             } else {
+
+                // if playing hardcore and we click a non-certain tile when there is a certain safe tile
+                // if the tile is a mine let it fail normally
+                if (docHardcore.checked && tile.getHasHint() && tile.probability != 1 && tile.probability != 0 && board.hasSafeTile()) {
+                    board.setGameLost();
+
+                    renderHints(board.getSafeTiles(), [], false);
+                    draw(tile.x, tile.y, SKULL);
+                    showMessage("Hard Core: Game is lost because you guessed when there were safe tiles!");
+                    console.log("Move is not hardcore valid");
+
+                    return;
+                }
+
                 message = { "header": board.getMessageHeader(), "actions": [{ "index": board.xy_to_index(col, row), "action": 1 }] }; // click
             }
 
@@ -2499,7 +2550,7 @@ async function sendActionsMessage(message) {
     }
 
     // do we want to show hints
-    if (showHintsCheckBox.checked || autoPlayCheckBox.checked || assistedPlayHints.length != 0 || docOverlay.value != "none") {
+    if (showHintsCheckBox.checked || autoPlayCheckBox.checked || assistedPlayHints.length != 0 || docOverlay.value != "none" || docHardcore.checked) {
 
         document.getElementById("canvas").style.cursor = "wait";
 
@@ -2514,7 +2565,7 @@ async function sendActionsMessage(message) {
             options.playStyle = PLAY_STYLE_NOFLAGS_EFFICIENCY;
         } 
 
-        if (docOverlay.value != "none") {
+        if (docOverlay.value != "none" || docHardcore.checked) {
             options.fullProbability = true;
         } else {
             options.fullProbability = false;
@@ -2697,6 +2748,7 @@ function load_images() {
     images.push(load_image("resources/images/flagged.png"));
     images.push(load_image("resources/images/flaggedWrong.png"));
     images.push(load_image("resources/images/exploded.png"));
+    images.push(load_image("resources/images/skull.png"));
 
     console.log(images.length + ' Images Loaded');
 
