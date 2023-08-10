@@ -642,6 +642,10 @@ function renderTiles(tiles) {
                 tileType = FLAGGED_WRONG;
             }
 
+        } else if (tile.isSkull()) {
+            //console.log("Render skull at " + tile.asText());
+            tileType = SKULL;
+
         } else if (tile.isCovered()) {
             tileType = HIDDEN;
 
@@ -1380,7 +1384,6 @@ async function replayForward(replayType) {
             await sleep(1);
         }
 
-
         // clear the hints overlay
         window.requestAnimationFrame(() => renderHints([], []));
 
@@ -1466,30 +1469,6 @@ async function replayForward(replayType) {
         window.requestAnimationFrame(() => renderTiles(tiles));
         window.requestAnimationFrame(() => updateMineCount(board.bombs_left));
 
-        /*
-        // determine if we already know that the next click is okay
-        if (replayStep != size) {
-            const nextStep = replayData.replay[replayStep];
-
-            const nextTile = board.getTileXY(nextStep.x, nextStep.y);
-
-            // continue if chording or clicking an uncovered tile or a flag then 
-            if (nextStep.type == 2 || nextStep.type == 3 || !nextTile.isCovered() || nextTile.isFlagged()) {
-                continue;
-            }
-
-            // continue if we know the tile is safe
-            if (nextStep.type == 0 && nextTile.probability == 1) {
-                continue;
-            }
-
-            // continue if placing a certain flag, or the tile is already exposed or the tile is already flagged
-            if (nextStep.type == 1 && nextTile.probability == 0 || !nextTile.isCovered() || nextTile.isFlagged() ) {
-                continue;
-            }
-        }
-        */
-
         // run the solver
         const options = {};
 
@@ -1549,22 +1528,6 @@ async function replayForward(replayType) {
                 }
             }
  
-
-            /*
-            const nextTile = board.getTileXY(nextStep.x, nextStep.y);
-
-            // stop if making a guess
-            if (nextStep.type == 0 && nextTile.isCovered() && !nextTile.isFlagged() && nextTile.probability != 1) {
-                replayData.breaks[replayStep] = true;
-                doBreak = true;
-            }
-
-            // stop if placing an uncertain flag
-            if (nextStep.type == 1 && nextTile.isCovered() && !nextTile.isFlagged() && nextTile.probability != 0) {
-                replayData.breaks[replayStep] = true;
-                doBreak = true;
-            }
-            */
         }
 
         if (replayType == "1") {
@@ -1583,6 +1546,20 @@ async function replayForward(replayType) {
             break;
         }
 
+    }
+
+    let totalTime = 0;
+    let clickTime = 0;
+
+    if (replayStep > 1) {
+        totalTime = replayData.replay[replayStep - 1].time;
+        const prevStep = replayData.replay[replayStep - 2];
+        clickTime = totalTime - prevStep.time;
+
+    }
+
+    if (replayStep != 0) {
+        prefixMessage("Total time: " + showDuration(totalTime) + ", Interval time: " + showDuration(clickTime));
     }
 
     replaying = false;
@@ -1739,19 +1716,22 @@ async function replayBackward(replayType) {
             break;
         }
 
-        /*
-        // stop if making a guess
-        const nextTile = board.getTileXY(nextStep.x, nextStep.y);
-        if (nextStep.type == 0 && nextTile.isCovered() && !nextTile.isFlagged() && nextTile.probability != 1) {
-            break;
-        }
+    }
 
-        // stop if placing an uncertain flag
-        if (nextStep.type == 1 && nextTile.isCovered() && !nextTile.isFlagged() && nextTile.probability != 0) {
-            break;
-        }
-        */
+    let totalTime = 0;
+    let clickTime = 0;
 
+    if (replayStep > 1) {
+        totalTime = replayData.replay[replayStep - 1].time;
+
+        const prevStep = replayData.replay[replayStep - 2];
+        clickTime = totalTime - prevStep.time;
+    }
+
+    if (replayStep != 0) {
+        prefixMessage("Total time: " + showDuration(totalTime) + ", Interval time: " + showDuration(clickTime));
+    } else {
+        showMessage("");
     }
 
     replaying = false;
@@ -1766,6 +1746,27 @@ function showNextStep(step) {
 
     const nextTile = board.getTileXY(x, y);
     window.requestAnimationFrame(() => renderBorder([nextTile], (type == 1)));
+
+}
+
+function showDuration(milliseconds) {
+
+    let work = milliseconds;
+    const mins = Math.floor(work / 60000);
+
+    work = work - mins * 60000;
+    const secs = work / 1000;
+
+    if (mins > 0) {
+        if (secs < 10) {
+            return mins + ":0" + secs.toFixed(3);
+        } else {
+            return mins + ":" + secs.toFixed(3);
+        }
+       
+    } else {
+        return secs.toFixed(3);
+    }
 
 }
 
@@ -1889,7 +1890,7 @@ function draw(x, y, tileType) {
 
     //console.log('Drawing image...');
 
-    if (tileType == BOMB) {
+    if (tileType == BOMB || tileType == SKULL) {
         ctx.drawImage(images[0], x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);  // before we draw the bomb depress the square
     }
 
@@ -2099,11 +2100,14 @@ function on_click(event) {
                         if (!lethalChord && uncertainChords.length > 0 && board.hasSafeTile()) {
                             board.setGameLost();
 
-                            renderHints(board.getSafeTiles(), [], false);
+                            //renderHints(board.getSafeTiles(), [], false);
                             for (let uncertainTile of uncertainChords) {
-                                draw(uncertainTile.x, uncertainTile.y, SKULL);
+                                uncertainTile.setSkull(true);
+                                //draw(uncertainTile.x, uncertainTile.y, SKULL);
                             }
-                            
+
+                            renderTiles(uncertainChords);
+
                             showMessage("Hard Core: Game is lost because you guessed (by chording) when there were safe tiles!");
                             console.log("Chord is not hardcore valid");
 
@@ -2126,8 +2130,11 @@ function on_click(event) {
                 if (docHardcore.checked && tile.getHasHint() && tile.probability != 1 && tile.probability != 0 && board.hasSafeTile()) {
                     board.setGameLost();
 
-                    renderHints(board.getSafeTiles(), [], false);
-                    draw(tile.x, tile.y, SKULL);
+                    //renderHints(board.getSafeTiles(), [], false);
+                    tile.setSkull(true);
+                    renderTiles([tile]);
+
+                    //draw(tile.x, tile.y, SKULL);
                     showMessage("Hard Core: Game is lost because you guessed when there were safe tiles!");
                     console.log("Move is not hardcore valid");
 
@@ -2756,5 +2763,9 @@ function load_images() {
 
 function showMessage(text) {
     messageLine.innerText = text;
-    messageLine.innerHTML = text;
+    //messageLine.innerHTML = text;
+}
+
+function prefixMessage(text) {
+    messageLine.innerText = text + " - " + messageLine.innerText;
 }

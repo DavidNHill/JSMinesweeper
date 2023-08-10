@@ -28,6 +28,8 @@ class Tile {
 		// is there an mine adjacent to this tile?  Set as part of the No flag efficiency logic
 		this.adjacentMine = false;
 
+		this.skull = false;  // used when hardcore rule triggers
+
 		Object.seal(this); // prevent new values being created
 	}
 
@@ -195,4 +197,12 @@ class Tile {
 	isBomb() {
 		return this.is_bomb;
 	}
+
+	setSkull(isSkull) {
+		this.skull = isSkull;
+	}
+
+	isSkull() {
+		return this.skull;
+    }
 }

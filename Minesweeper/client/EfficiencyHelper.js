@@ -5,6 +5,8 @@ class EfficiencyHelper {
     static ALLOW_ZERO_NET_GAIN_CHORD = true;
     static ALLOW_ZERO_NET_GAIN_PRE_CHORD = true;
 
+    static IGNORE_ZERO_THRESHOLD = 0.375;   // ignore a zero when the chance it happens is less than this
+
     constructor(board, witnesses, witnessed, actions, playStyle, pe) {
 
         this.board = board;
@@ -219,6 +221,9 @@ class EfficiencyHelper {
                             bestAction = act;
                             bestChord = null;
                             break;
+                        } else if (adjMines == 0 && prob < EfficiencyHelper.IGNORE_ZERO_THRESHOLD) {
+                            console.log("(" + act.x + "," + act.y + ") is a zero with low probability of " + prob + " and is being ignored");
+                            continue;
                         }
 
                         const clickChordNetBenefit = BigInt(reward) * counter.finalSolutionsCount; // expected benefit from clicking the tile then chording it
