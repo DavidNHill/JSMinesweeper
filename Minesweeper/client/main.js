@@ -2762,10 +2762,15 @@ function load_images() {
 }
 
 function showMessage(text) {
-    messageLine.innerText = text;
-    //messageLine.innerHTML = text;
+    //messageLine.innerText = text;
+    messageLine.innerHTML = text;
 }
 
 function prefixMessage(text) {
-    messageLine.innerText = text + " - " + messageLine.innerText;
+    if (messageLine.innerHTML != "") {
+        showMessage(text + " - " + messageLine.innerHTML);
+    } else {
+        showMessage(text);
+    }
+    
 }
