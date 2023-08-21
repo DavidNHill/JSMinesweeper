@@ -5,7 +5,7 @@
 class BruteForceGlobal {
 
     // constants used in this processing
-    static BRUTE_FORCE_ANALYSIS_MAX_NODES = 1000000;
+    static BRUTE_FORCE_ANALYSIS_MAX_NODES = 2500000;
     static PRUNE_BF_ANALYSIS = true;
     static BRUTE_FORCE_ANALYSIS_TREE_DEPTH = 4;
 

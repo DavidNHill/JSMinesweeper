@@ -1376,7 +1376,7 @@ class ProbabilityEngine {
                     this.emptyBoxes.push(this.boxes[i]);
 
                 } else {  // neither mine nor safe
-                    this.boxProb[i] = 1 - divideBigInt(tally[i], totalTally, 6);
+                    this.boxProb[i] = 1 - divideBigInt(tally[i], totalTally, 8);
                 }
 
                 this.boxes[i].mineTally = tally[i]; 
@@ -1419,7 +1419,7 @@ class ProbabilityEngine {
 
         // avoid divide by zero
         if (this.TilesOffEdge != 0 && totalTally != BigInt(0)) {
-            this.offEdgeProbability = 1 - divideBigInt(outsideTally, totalTally * BigInt(this.TilesOffEdge), 6);
+            this.offEdgeProbability = 1 - divideBigInt(outsideTally, totalTally * BigInt(this.TilesOffEdge), 8);
             this.offEdgeMineTally = outsideTally / BigInt(this.TilesOffEdge);
         } else {
             this.offEdgeProbability = 0;
