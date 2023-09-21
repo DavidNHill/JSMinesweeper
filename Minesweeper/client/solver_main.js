@@ -8,7 +8,7 @@ const OFFSETS_ALL = [[2, -2], [2, -1], [2, 0], [2, 1], [2, 2], [-2, -2], [-2, -1
 
 const PLAY_BFDA_THRESHOLD = 1000;       // number of solutions for the Brute force analysis to start
 const ANALYSIS_BFDA_THRESHOLD = 5000;
-const BRUTE_FORCE_CYCLES_THRESHOLD = 1000000;
+const BRUTE_FORCE_CYCLES_THRESHOLD = 5000000;
 const HARD_CUT_OFF = 0.90;        // cutoff for considering on edge possibilities below the best probability
 const OFF_EDGE_THRESHOLD = 0.95;  // when to include possibilities off the edge
 const PROGRESS_CONTRIBUTION = 0.2;  // how much progress counts towards the final score
