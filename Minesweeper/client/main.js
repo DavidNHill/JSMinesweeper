@@ -96,6 +96,8 @@ let dragTile;          // the last tile dragged over
 let hoverTile;         // tile the mouse last moved over
 let analysing = false;  // try and prevent the analyser running twice if pressed more than once
 
+let guessAnalysisPruning = true;
+
 let lastFileHandle = null;
 
 // things to do when exiting the page
@@ -142,6 +144,11 @@ async function startup() {
     }
 
     const start = urlParams.get('start');
+
+    if (urlParams.has("nopruning")) {
+        console.log("WARNING: The Analyse button has Pruning turned off - pruning remains for all other solver calls");
+        guessAnalysisPruning = false;
+    }
 
     docMinesLeft.width = DIGIT_WIDTH * DIGITS;
     docMinesLeft.height = DIGIT_HEIGHT;
@@ -1813,8 +1820,8 @@ async function doAnalysis() {
         } else {
             options.fullProbability = false;
         }
- 
-        //var hints = solver(board, options).actions;  // look for solutions
+
+        options.guessPruning = guessAnalysisPruning;
 
         const solve = await solver(board, options);  // look for solutions
         const hints = solve.actions;

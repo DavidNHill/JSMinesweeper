@@ -50,9 +50,19 @@ async function solver(board, options) {
         options.fullProbability = false;
     }
 
+    // this is used to stop the guess heuristic from pruning results
+    // has an impact on the processing speed
+    if (options.guessPruning == null) {
+        options.guessPruning = true;
+    }
+
     // this is used when using the solver to create a no-guessing board
     if (options.noGuessingMode == null) {
         options.noGuessingMode = false;
+    }
+
+    if (!options.guessPruning) {
+        console.log("WARNING: The Guessing processing has pruning turned off, this will impact performance");
     }
 
     // a bit of a bodge this variable is used as a global
@@ -1147,7 +1157,7 @@ async function solver(board, options) {
             const bonus = 1 + (progress + probThisTileLeft) * progressContribution;
             const weight = (secondarySafety + probThisTileLeft * fiftyFiftyInfluence) * bonus;
 
-            if (best != null && !best.dead && weight < best.weight) {
+            if (options.guessPruning && best != null && !best.dead && weight < best.weight) {
                 writeToConsole("Tile (" + action.x + "," + action.y + ") is being pruned,  50/50 influence = " + fiftyFiftyInfluence + ", max score possible is " + weight);
                 action.weight = weight;
                 action.pruned = true;
