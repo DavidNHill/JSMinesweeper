@@ -104,7 +104,7 @@
             <select id="overlay">
                 <option value="none">None</option>
                 <option value="safety">Safety %</option>
-                <option value="mine">Mine %</option>
+                <option value="mine" selected>Mine %</option>
             </select>
         </div>
 
@@ -113,6 +113,15 @@
         </div>
 
         <button type="button" style="margin-top: 1em;" id="AnalysisButton" onclick="doAnalysis()"><u>A</u>nalyse</button>
+
+        <div style="margin-top: 5px;">
+            <label>URL parm:</label>
+            <select id="analysisParm">
+                <option value="none" selected>None</option>
+                <option value="full">Full</option>
+                <option value="reduced">Reduced</option>
+            </select>
+        </div>
 
     </nav>
 
@@ -295,23 +304,22 @@
                 return;
             }
 
-            //if (document.getElementById("analysismode").checked) {
             if (!analysisMode) {
-                document.getElementById("play0").style.display = "none";
-                document.getElementById("play1").style.display = "none";
-                document.getElementById("analysis0").style.display = "block";
-                document.getElementById("analysis1").style.display = "block";
-                document.getElementById("repeatGame").style.display = "none";
-                document.getElementById("NewGame").innerHTML = "Reset board";
+                //document.getElementById("play0").style.display = "none";
+                //document.getElementById("play1").style.display = "none";
+                //document.getElementById("analysis0").style.display = "block";
+                //document.getElementById("analysis1").style.display = "block";
+                //document.getElementById("repeatGame").style.display = "none";
+                //document.getElementById("NewGame").innerHTML = "Reset board";
 
                 switchToAnalysis(true);
             } else {
-                document.getElementById("play0").style.display = "";
-                document.getElementById("play1").style.display = "";
-                document.getElementById("analysis0").style.display = "none";
-                document.getElementById("analysis1").style.display = "none";
-                document.getElementById("repeatGame").style.display = "";
-                document.getElementById("NewGame").innerHTML = "New game";
+                //document.getElementById("play0").style.display = "";
+                //document.getElementById("play1").style.display = "";
+                //document.getElementById("analysis0").style.display = "none";
+                //document.getElementById("analysis1").style.display = "none";
+                //document.getElementById("repeatGame").style.display = "";
+                //document.getElementById("NewGame").innerHTML = "New game";
 
                 switchToAnalysis(false);
             }

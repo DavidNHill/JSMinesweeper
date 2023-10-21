@@ -1170,6 +1170,8 @@ async function solver(board, options) {
 
             const work = runProbabilityEngine(board, null);
 
+            const clearCount = work.livingClearTile;
+
             if (work.finalSolutionsCount > 0) {  // if this is a valid board state
 
                 validValues++;
@@ -1185,16 +1187,16 @@ async function solver(board, options) {
                 const probThisTileValue = divideBigInt(work.finalSolutionsCount, pe.finalSolutionsCount, 6);
                 secondarySafety = secondarySafety + probThisTileValue * work.bestLivingProbability * fiftyFiftyInfluence;
 
-                writeToConsole("Tile " + tile.asText() + " with value " + value + " has probability " + probThisTileValue + ", next guess safety " + work.bestLivingProbability + ", clears " + work.clearCount);
+                writeToConsole("Tile " + tile.asText() + " with value " + value + " has probability " + probThisTileValue + ", next guess safety " + work.bestLivingProbability + ", clears " + clearCount);
 
                 probThisTileLeft = probThisTileLeft - probThisTileValue;
              }
 
             //totalSolutions = totalSolutions + work.finalSolutionsCount;
-            if (work.clearCount > 0) {
-                expectedClears = expectedClears + work.finalSolutionsCount * BigInt(work.clearCount);
+            if (clearCount > 0) {
+                expectedClears = expectedClears + work.finalSolutionsCount * BigInt(clearCount);
 
-                if (work.clearCount > linkedTilesCount) {  // this is intended to penalise tiles which are linked to other tiles. Otherwise 2 tiles give each other all progress.
+                if (clearCount > linkedTilesCount) {  // this is intended to penalise tiles which are linked to other tiles. Otherwise 2 tiles give each other all progress.
                     solutionsWithProgess = solutionsWithProgess + work.finalSolutionsCount;
                 }
             }

@@ -57,6 +57,7 @@ class ProbabilityEngine {
         this.independentIterations = BigInt(1);
         this.remainingSquares = 0;
 
+        this.livingClearTile = 0;
         this.clearCount = 0;
         this.localClears = [];
         this.fullAnalysis = false;  // unless we are playing efficiency mode we'll stop after we find some safe tiles
@@ -1433,9 +1434,30 @@ class ProbabilityEngine {
         this.localClears = [];
         if (totalTally > 0) {
             for (let i = 0; i < this.boxes.length; i++) {
+
+                let box = this.boxes[i];
+
                 if (tally[i] == 0) {
                     this.clearCount = this.clearCount + this.boxes[i].tiles.length;
-                    this.localClears.push(...this.boxes[i].tiles);
+                    this.localClears.push(...box.tiles);
+
+                    // count how many of the clear tiles are also living
+                    for (let j = 0; j < box.tiles.length; j++) {
+                        let tile = box.tiles[j];
+
+                        let tileLiving = true;
+                        for (let k = 0; k < this.deadTiles.length; k++) {
+                            if (this.deadTiles[k].isEqual(tile)) {
+                                tileLiving = false;
+                                break;
+                            }
+                        }
+                        if (tileLiving) {
+                            this.livingClearTile++;
+                        }
+                    }
+
+
                 }
             }
         }

@@ -20,9 +20,6 @@ const SKULL = 14;
 
 const PLAY_CLIENT_SIDE = true;
 
-const GAME_DESCRIPTION_KEY = "CURRENT_GAME_DESCRIPTION";
-const GAME_BOARD_STATE_KEY = "CURRENT_GAME_BOARD_STATE";
-
 let BINOMIAL;
 
 // holds the images
@@ -40,8 +37,6 @@ const ctxBombsLeft = docMinesLeft.getContext('2d');
 
 const canvasHints = document.getElementById('myHints');
 const ctxHints = canvasHints.getContext('2d');
-
-let currentGameDescription;
 
 let analysisBoard;
 let gameBoard;
@@ -67,6 +62,15 @@ const docFastPlay = document.getElementById("fastPlay");
 const docNgMode = document.getElementById("noGuessMode");
 const docHardcore = document.getElementById("hardcore");
 const docOverlay = document.getElementById("overlay");
+const docAnalysisParm = document.getElementById("analysisParm");
+
+const docBeginner = document.getElementById("beginner");
+const docIntermediate = document.getElementById("intermediate");
+const docExpert = document.getElementById("expert");
+const docCustom = document.getElementById("custom");
+const docWidth = document.getElementById("width");
+const docHeight = document.getElementById("height");
+const docMines = document.getElementById("mines");
 
 const downloadHyperlink = document.getElementById('downloadmbf');
 
@@ -100,14 +104,12 @@ let guessAnalysisPruning = true;
 
 let lastFileHandle = null;
 
+const urlParams = new URLSearchParams(window.location.search);
+
 // things to do when exiting the page
 function exiting() {
 
     console.log("exiting...");
-
-    if (currentGameDescription != null) {
-        //localStorage.setItem(GAME_DESCRIPTION_KEY, JSON.stringify(currentGameDescription));
-    }
 
     if (board != null) {
         killGame(board.getID());
@@ -122,7 +124,7 @@ async function startup() {
 
     console.log("At start up...");
 
-    const urlParams = new URLSearchParams(window.location.search);
+    //const urlParams = new URLSearchParams(window.location.search);
     const testParm = urlParams.get('test');
     if (testParm == "y") {
         localStorageButton.style.display = "block";
@@ -150,6 +152,35 @@ async function startup() {
         guessAnalysisPruning = false;
     }
 
+    const boardSize = urlParams.get('board');
+
+    let width = 30;
+    let height = 16;
+    let mines = 99;
+    if (boardSize != null) {
+        const size = boardSize.split("x");
+
+        if (size.length != 3) {
+            console.log("board parameter is invalid: " + boardSize);
+        } else {
+            width = parseInt(size[0]);
+            height = parseInt(size[1]);
+            mines = parseInt(size[2]);
+
+            if (isNaN(width) || isNaN(height) || isNaN(mines)) {
+                console.log("board parameter is invalid: " + boardSize);
+                width = 30;
+                height = 16;
+                mines = 99;
+            }
+            width = Math.min(width, 200);
+            height = Math.min(height, 200);
+            mines = Math.min(mines, width * height - 1);
+
+        }
+
+    }
+
     docMinesLeft.width = DIGIT_WIDTH * DIGITS;
     docMinesLeft.height = DIGIT_HEIGHT;
 
@@ -172,26 +203,62 @@ async function startup() {
     // add some hot key 
     document.addEventListener('keyup', event => { keyPressedEvent(event) });
 
-    currentGameDescription = localStorage.getItem(GAME_DESCRIPTION_KEY);
-
     // make the properties div draggable
     dragElement(propertiesPanel);
     propertiesClose();
 
+    // set the board details
+    setBoardSizeOnGUI(width, height, mines);
+
+    // create the playable game;
+    await newGame(width, height, mines, seed);
+    gameBoard = board;
+
+    const analysis = urlParams.get('analysis');
+    if (analysis != null) {
+        const compressor = new Compressor();
+
+        width = compressor.decompressNumber(analysis.substr(0, 2));
+        height = compressor.decompressNumber(analysis.substr(2, 2));
+        mines = compressor.decompressNumber(analysis.substr(4, 4));
+
+        let boardData = compressor.decompress(analysis.substr(8));
+        if (boardData.length != width * height) {
+            console.log("Analysis data doesn't fit the board - ignoring it");
+        } else {
+            const newLine = "\n";
+
+            let boardString = width + "x" + height + "x" + mines + newLine;
+            for (let i = 0; i < boardData.length; i = i + width) {
+                boardString = boardString + boardData.substr(i, width) + newLine;
+            }
+
+            console.log(boardString);
+
+            newBoardFromString(boardString, true);
+
+            // make the analysis board this board
+            analysisBoard = board;
+
+            // and switch the display board back to the game board
+            board = gameBoard;
+
+         }
+
+    }
+
     // initialise the solver
     await solver();
 
-    // create an initial analysis board
-    analysisBoard = new Board(1, 30, 16, 0, seed, "");
-    analysisBoard.setAllZero();
+    //await newGame(width, height, mines, seed); // default to a new expert game
 
-    if (currentGameDescription != null) {
-        const gameDescription = JSON.parse(currentGameDescription);
-        console.log(gameDescription);
-        await newGame(gameDescription.width, gameDescription.height, gameDescription.mines, gameDescription.seed);
+    // create an initial analysis board if we haven't already done so
+    if (analysisBoard == null) {
+        analysisBoard = new Board(1, 30, 16, 0, seed, "");
+        analysisBoard.setAllZero();
 
     } else {
-        await newGame(30, 16, 99, seed); // default to a new expert game
+        switchToAnalysis(true);
     }
 
     setInterval(checkBoard, 1000);
@@ -205,9 +272,27 @@ async function startup() {
     }
 
     //bulkRun(21, 12500);  // seed '21' Played 12500 won 5195
-    //bulkRun(321, 10000);  // seed 321 played 10000 won 4119
+    //bulkRun(321, 10000);  // seed 321 played 10000 won 4123
 
     showMessage("Welcome to minesweeper solver dedicated to Annie");
+}
+
+function setBoardSizeOnGUI(width, height, mines) {
+
+    // set the board details
+    if (width == 30 && height == 16 && mines == 99) {
+        docExpert.checked = true;
+    } else if (width == 16 && height == 16 && mines == 40) {
+        docIntermediate.checked = true;
+    } else if (width == 9 && height == 9 && mines == 10) {
+        docBeginner.checked = true;
+    } else {
+        docCustom.checked = true;
+        docWidth.value = width;
+        docHeight.value = height;
+        docMines.value = mines;
+    }
+
 }
 
 // launch a floating window to store/retrieve from local storage
@@ -446,6 +531,31 @@ async function savePosition(e) {
 
 function switchToAnalysis(doAnalysis) {
 
+    // can't switch modes while the solver is working
+    if (canvasLocked) {
+        return;
+    }
+
+     if (doAnalysis) {
+        document.getElementById("play0").style.display = "none";
+        document.getElementById("play1").style.display = "none";
+        document.getElementById("analysis0").style.display = "block";
+        document.getElementById("analysis1").style.display = "block";
+        document.getElementById("repeatGame").style.display = "none";
+        document.getElementById("NewGame").innerHTML = "Reset board";
+
+        //switchToAnalysis(true);
+    } else {
+        document.getElementById("play0").style.display = "";
+        document.getElementById("play1").style.display = "";
+        document.getElementById("analysis0").style.display = "none";
+        document.getElementById("analysis1").style.display = "none";
+        document.getElementById("repeatGame").style.display = "";
+        document.getElementById("NewGame").innerHTML = "New game";
+
+        //switchToAnalysis(false);
+    }
+
     if (doAnalysis) {
         gameBoard = board;
         board = analysisBoard;
@@ -463,6 +573,8 @@ function switchToAnalysis(doAnalysis) {
     }
 
     analysisMode = doAnalysis;
+
+    //setBoardSizeOnGUI(board.width, board.height, board.num_bombs);
 
     setPageTitle();
 
@@ -976,7 +1088,11 @@ async function newBoardFromFile(file) {
 
 }
 
-async function newBoardFromString(data) {
+async function newBoardFromString(data, inflate) {
+
+    if (inflate == null) {
+        inflate = false;
+    }
 
     const lines = data.split("\n");
     const size = lines[0].split("x");
@@ -992,7 +1108,7 @@ async function newBoardFromString(data) {
 
     console.log("width " + width + " height " + height + " mines " + mines);
 
-    if (width < 1 || height < 1 || mines < 1) {
+    if (width < 1 || height < 1 || mines < 0) {
         console.log("Invalid dimensions for game");
         return;
     }
@@ -1033,11 +1149,34 @@ async function newBoardFromString(data) {
                 tile.setValue(7);
             } else if (char == "8") {
                 tile.setValue(8);
+            } else if (char == "I") {  // hidden but needs inflating, part of the compression of NF games
+                tile.setCovered(true);
+                tile.setFoundBomb();
             } else {
                 tile.setCovered(true);
             }
         }
     }
+
+    // if the data needs inflating then for each flag increase the adjacent tiles value by 1
+    if (inflate) {
+        for (let tile of newBoard.tiles) {
+            if (tile.isFlagged() || tile.isSolverFoundBomb()) {
+
+                const adjTiles = newBoard.getAdjacent(tile);
+                for (let i = 0; i < adjTiles.length; i++) {
+                    const adjTile = adjTiles[i];
+                    let value = adjTile.getValue() + 1;
+                    adjTile.setValueOnly(value);
+                }
+
+            }
+        }
+    }
+
+
+ 
+
 
     // switch to the board
     board = newBoard;
@@ -1155,6 +1294,10 @@ async function newGame(width, height, mines, seed) {
     setPageTitle();
 
     canvasLocked = false;  // just in case it was still locked (after an error for example)
+
+    // store the board size in the url
+    const boardSize = width + "x" + height + "x" + mines;
+    setURLParms("board", boardSize);
 
     showMessage("New game requested with width " + width + ", height " + height + " and " + mines + " mines.");
 
@@ -1791,6 +1934,19 @@ async function doAnalysis() {
         canvasLocked = true;
     }
 
+    console.log(docAnalysisParm.value);
+    let compressed = "";
+    if (docAnalysisParm.value == "full") {
+        compressed = board.getCompressedData(false);
+    } else if (docAnalysisParm.value == "reduced") {
+        compressed = board.getCompressedData(true);
+    }
+    //new Compressor().decompress(compressed.substr(8));
+ 
+    if (compressed.length < 2000) {
+        setURLParms("analysis", compressed);
+    }
+
     // put out a message and wait long enough for the ui to update
     showMessage("Analysing...");
     await sleep(1);
@@ -2180,6 +2336,9 @@ function on_click(event) {
             canvasLocked = true;
         }
 
+        // remove the analysis parm when playing a game
+        setURLParms("analysis", null);
+
         justPressedAnalyse = false;
 
         sendActionsMessage(message);
@@ -2542,10 +2701,6 @@ async function sendActionsMessage(message) {
             efficiency = (100 * solved3BV / actionsMade).toFixed(2) + "%";
         }
 
-        // if the current game is no longer in play then no need to remember the games details
-        currentGameDescription = null;
-        localStorage.removeItem(GAME_DESCRIPTION_KEY);
-
         showMessage("The game has been " + reply.header.status + ". 3BV: " + solved3BV + "/" + value3BV + ",  Actions: " + actionsMade + ",  Efficiency: " + efficiency);
         return;
     }
@@ -2637,20 +2792,17 @@ async function sendActionsMessage(message) {
             } else {
                 document.getElementById("canvas").style.cursor = "default";
                 canvasLocked = false;
-                currentGameDescription = reply.header;
             }
         } else {
             document.getElementById("canvas").style.cursor = "default";
             canvasLocked = false;
-            currentGameDescription = reply.header;
-        }
+         }
 
     } else {
         canvasLocked = false;
         window.requestAnimationFrame(() => renderHints([], []));  // clear the hints overlay
         document.getElementById("canvas").style.cursor = "default";
         showMessage("The solver is not running. Press the 'Analyse' button to see the solver's suggested move.");
-        currentGameDescription = reply.header;
     }
  
     return reply;
@@ -2766,6 +2918,17 @@ function load_images() {
 
     console.log(images.length + ' Images Loaded');
 
+}
+
+function setURLParms(parm, value) {
+
+    if (value == null || value == "") {
+        urlParams.delete(parm);
+    } else {
+        urlParams.set(parm, value);
+    }
+   
+    window.history.replaceState(null, null, "index.html?" + urlParams.toString());
 }
 
 function showMessage(text) {
