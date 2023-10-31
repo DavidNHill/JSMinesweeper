@@ -36,12 +36,14 @@ class SolutionCounter {
         this.localClears = [];
 
         this.validWeb = true;
+        this.invalidReasons = [];
 
         this.recursions = 0;
 
         // can't have less than zero mines
         if (minesLeft < 0) {
             this.validWeb = false;
+            this.invalidReasons.push("Not enough mines left to complete the board.");
             return;
         }
 
@@ -53,7 +55,13 @@ class SolutionCounter {
             var boxWit = new BoxWitness(this.board, wit);
 
             // can't have too many or too few mines 
-            if (boxWit.minesToFind < 0 || boxWit.minesToFind > boxWit.tiles.length) {
+            if (boxWit.minesToFind < 0) {
+                this.invalidReasons.push("Tile " + wit.asText() + " value '" + wit.getValue() + "' is too small? Or a neighbour too large?");
+                this.validWeb = false;
+            }
+
+            if (boxWit.minesToFind > boxWit.tiles.length) {
+                this.invalidReasons.push("Tile " + wit.asText() + " value '" + wit.getValue() + "' is too large? Or a neighbour too small?");
                 this.validWeb = false;
             }
 
@@ -64,6 +72,12 @@ class SolutionCounter {
                 var w = this.boxWitnesses[j];
 
                 if (w.equivalent(boxWit)) {
+
+                    if (w.tile.getValue() - board.adjacentFoundMineCount(w.tile) != boxWit.tile.getValue() - board.adjacentFoundMineCount(boxWit.tile)) {
+                        this.invalidReasons.push("Tiles " + w.tile.asText() + " and " + boxWit.tile.asText() + " are contradictory.");
+                        this.validWeb = false;
+                    }
+
                     duplicate = true;
                     break;
                 }
@@ -125,6 +139,11 @@ class SolutionCounter {
             //console.log("Witness " + boxWit.tile.asText() + " is adjacent to " + boxWit.boxes.length + " boxes and has " + boxWit.minesToFind + " mines to find");
         }
 
+        // show all the reasons the web is invalid
+        //for (let msg of this.invalidReasons) {
+        //    console.log(msg);
+        //}
+
         Object.seal(this) // prevent new properties being created
  	}
 
@@ -134,7 +153,7 @@ class SolutionCounter {
 
         // if the board isn't valid then solution count is zero
         if (!this.validWeb) {
-            console.log("Web is invalid");
+            //console.log("Web is invalid");
             this.finalSolutionsCount = BigInt(0);
             this.clearCount = 0;
             return;
@@ -161,6 +180,14 @@ class SolutionCounter {
             }
 
             this.workingProbs = this.mergeProbabilities(nextWitness);
+
+            // if we have no solutions then report where it happened
+            if (this.workingProbs.length == 0) {
+                //console.log("Board invalid near " + nextWitness.boxWitness.tile.asText());
+                this.invalidReasons.push("Problem near " + nextWitness.boxWitness.tile.asText() + "?");
+                this.heldProbs = [];
+                break;
+            }
 
             nextWitness = this.findNextWitness(nextWitness);
 
@@ -273,6 +300,7 @@ class SolutionCounter {
         if (nw.newBoxes.length - index == 1) {
             // if there are too many for this box then the probability can't be valid
             if (nw.newBoxes[index].maxMines < missingMines) {
+                this.invalidReasons.push("Not enough mines left to complete the board.");
                 //console.log("Abandon (1)");
                 return result;
             }
@@ -405,6 +433,7 @@ class SolutionCounter {
 
         // if result is empty this is an impossible position
         if (result.length == 0) {
+            this.invalidReasons.push(this.minesLeft + " mines left is not enough to complete the board?");
             return;
         }
 
@@ -601,6 +630,10 @@ class SolutionCounter {
                 }
             }
 
+        }
+
+        if (totalTally == 0) {
+            this.invalidReasons.push(this.minesLeft + " mines left is too many to place on the board?");
         }
 
         // count how many clears we have

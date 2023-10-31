@@ -271,7 +271,7 @@ async function startup() {
         board.setStarted();
     }
 
-    //bulkRun(21, 12500);  // seed '21' Played 12500 won 5195
+    //bulkRun(21, 12500);  // seed '21' Played 12500 won 5192
     //bulkRun(321, 10000);  // seed 321 played 10000 won 4123
 
     showMessage("Welcome to minesweeper solver dedicated to Annie");
@@ -1934,7 +1934,7 @@ async function doAnalysis() {
         canvasLocked = true;
     }
 
-    console.log(docAnalysisParm.value);
+    //console.log(docAnalysisParm.value);
     let compressed = "";
     if (docAnalysisParm.value == "full") {
         compressed = board.getCompressedData(false);
@@ -1978,6 +1978,7 @@ async function doAnalysis() {
         }
 
         options.guessPruning = guessAnalysisPruning;
+        options.fullBFDA = true;
 
         const solve = await solver(board, options);  // look for solutions
         const hints = solve.actions;
@@ -2023,7 +2024,12 @@ async function checkBoard() {
     console.log("Checking board with hash " + currentBoardHash);
 
     // this will set all the obvious mines which makes the solution counter a lot more efficient on very large boards
-    board.resetForAnalysis(true, true);
+    const badTile = board.resetForAnalysis(true, true);
+    if (badTile != null) {
+        analysisButton.disabled = true;
+        showMessage("The board is in an invalid state. Tile " + badTile.asText() + " is invalid.");
+        return;
+    }
 
     const solutionCounter = await solver.countSolutions(board);
     board.resetForAnalysis(true, false);
@@ -2041,8 +2047,13 @@ async function checkBoard() {
         showMessage("The board is valid. " + board.getFlagsPlaced() + " Mines placed. " + logicText + formatSolutions(solutionCounter.finalSolutionsCount));
         
     } else {
+        let msg = "";
+        if (solutionCounter.invalidReasons.length > 0) {
+            msg = solutionCounter.invalidReasons[0];
+        }
         analysisButton.disabled = true;
-        showMessage("The board is in an invalid state. " + board.getFlagsPlaced() + " Mines placed. ");
+        //showMessage("The board is in an invalid state. " + msg + " " + board.getFlagsPlaced() + " Mines placed. ");
+        showMessage("The board is in an invalid state. " + msg);
     }
 
 }

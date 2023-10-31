@@ -142,7 +142,7 @@ class WitnessWebIterator {
     // if rotation is not - 1 then this locks the first 'cog' in that position and iterates the remaining cogs.  This allows parallel processing based on the position of the first 'cog'
     constructor(pe, allCoveredTiles, rotation) {
 
-        console.log("Creating Iterator");
+        //console.log("Creating Iterator");
 
         this.sample = [];  // int array
 
@@ -228,10 +228,10 @@ class WitnessWebIterator {
 
         this.tiles = loc;
 
-        console.log("Mines left " + this.probabilityEngine.minesLeft);
-        console.log("Independent Mines " + indMines);
-        console.log("Tiles left " + this.probabilityEngine.tilesLeft);
-        console.log("Independent tiles " + indSquares);
+        //console.log("Mines left " + this.probabilityEngine.minesLeft);
+        //console.log("Independent Mines " + indMines);
+        //console.log("Tiles left " + this.probabilityEngine.tilesLeft);
+        //console.log("Independent tiles " + indSquares);
 
 
         // if there are more mines left then squares then no solution is possible
@@ -240,7 +240,7 @@ class WitnessWebIterator {
             || indMines > this.probabilityEngine.minesLeft) {
             this.done = true;
             this.top = 0;
-            console.log("Nothing to do in this iterator");
+            //console.log("Nothing to do in this iterator");
             return;
         }
 
@@ -272,7 +272,7 @@ class WitnessWebIterator {
             }
         }
 
-        console.log("Iterations needed " + this.cycles);
+        //console.log("Iterations needed " + this.cycles);
  
     }
 

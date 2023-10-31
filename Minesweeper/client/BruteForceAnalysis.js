@@ -109,8 +109,11 @@ class BruteForceAnalysis {
         this.currentNode = top;
 
         // this is the best tile to guess (or the best we've calculated if incomplete).  "Tile" class.
-        if (top.bestLiving != null) {
+        if (top.bestLiving != null) {  //  processing possible
             this.bestTile = BruteForceGlobal.allTiles[top.bestLiving.index];
+
+        } else {  // all dead  - so just pick the first
+            this.bestTile = BruteForceGlobal.allTiles[0];
         }
  
 

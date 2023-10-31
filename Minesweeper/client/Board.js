@@ -253,6 +253,7 @@ class Board {
 	// optionally treat flags as mines (e.g. in analysis mode but not playing or replay)
 	// place mines when they are trivially found
 	// The idea is to get the board into a state as pobability engine friendly as possible
+	// If an invalid tile is found returns it to be reported
 	resetForAnalysis(flagIsMine, findObviousMines) {
 
 		for (let i = 0; i < this.tiles.length; i++) {
@@ -265,7 +266,7 @@ class Board {
 		}
 
 		if (!findObviousMines) {
-			return;
+			return null;
         }
 
 		for (let i = 0; i < this.tiles.length; i++) {
@@ -285,19 +286,28 @@ class Board {
 				if (adjTile.isCovered()) {
 					coveredCount++;
 				}
+				if (adjTile.isFlagged()) {
+					flagCount++;
+                }
 			}
 
-			if (coveredCount > 0 && tile.getValue() == flagCount + coveredCount) { // can place all flags
+			if (coveredCount > 0 && tile.getValue() == coveredCount) { // can place all flags
 				for (let j = 0; j < adjTiles.length; j++) {
 					const adjTile = adjTiles[j];
-					if (adjTile.isCovered() ) { // if covered 
+					if (adjTile.isCovered()) { // if covered 
 						adjTile.setFoundBomb();   // Must be a bomb
 					}
 				}
-			}
+			} else if (tile.getValue() < flagCount) {
+				console.log(tile.asText() + " is over flagged");
+			} else if (tile.getValue() > coveredCount) {
+				console.log(tile.asText() + " has an invalid value");
+				return tile;
+            }
 
 		}	
 
+		return null;
     }
 
 	getHashValue() {

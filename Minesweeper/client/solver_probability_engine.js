@@ -425,6 +425,7 @@ class ProbabilityEngine {
         if (!this.validWeb) {
             this.finalSolutionsCount = BigInt(0);
             this.clearCount = 0;
+            //console.log("Invalid web");
             return;
         }
 

@@ -61,6 +61,11 @@ async function solver(board, options) {
         options.noGuessingMode = false;
     }
 
+    // if the option isn't set then default to false
+    if (options.fullBFDA == null) {
+        options.fullBFDA = false;
+    }
+
     if (!options.guessPruning) {
         console.log("WARNING: The Guessing processing has pruning turned off, this will impact performance");
     }
@@ -427,10 +432,10 @@ async function solver(board, options) {
 
                     deadTiles = bfda.deadTiles;
                     var winChanceText = (bfda.winChance * 100).toFixed(2);
-                    showMessage("The solver has calculated the best move has a " + winChanceText + "% chance to solve the isolated edge." + formatSolutions(pe.finalSolutionsCount));
+                    showMessage("The solver has calculated tile " + nextmove.asText()  + " has a " + winChanceText + "% chance to solve the isolated edge." + formatSolutions(pe.finalSolutionsCount));
 
-                } else {
-                    showMessage("The solver has calculated that all the tiles on the isolated edge are dead." + formatSolutions(pe.finalSolutionsCount));
+                } else {  // seed 6674107430895333
+                    showMessage("The solver has calculated that all the tiles on an isolated edge are dead, try tile " + bfda.bestTile.asText() + "?" + formatSolutions(pe.finalSolutionsCount));
                     deadTiles = bfda.deadTiles;   // all the tiles are dead
                 }
 
@@ -441,7 +446,7 @@ async function solver(board, options) {
 
         // if we are having to guess and there are less then BFDA_THRESHOLD solutions use the brute force deep analysis...
         let bfdaThreshold;
-        if (analysisMode) {
+        if (options.fullBFDA) {
             bfdaThreshold = ANALYSIS_BFDA_THRESHOLD;
         } else {
             bfdaThreshold = PLAY_BFDA_THRESHOLD;
@@ -485,10 +490,10 @@ async function solver(board, options) {
 
                     deadTiles = bfda.deadTiles;
                     const winChanceText = (bfda.winChance * 100).toFixed(2);
-                    showMessage("The solver has calculated the best move has a " + winChanceText + "% chance to win the game." + formatSolutions(pe.finalSolutionsCount));
+                    showMessage("The solver has calculated tile " + nextmove.asText() + " has a " + winChanceText + "% chance to win the game." + formatSolutions(pe.finalSolutionsCount));
 
                 } else {
-                    showMessage("The solver has calculated that all the remaining tiles are dead." + formatSolutions(pe.finalSolutionsCount));
+                    showMessage("The solver has calculated that all the remaining tiles are dead, try tile " + bfda.bestTile.asText() + "?" + formatSolutions(pe.finalSolutionsCount));
                     deadTiles = allCoveredTiles;   // all the tiles are dead
                 }
 
@@ -580,9 +585,15 @@ async function solver(board, options) {
  
                 result = new EfficiencyHelper(board, witnesses, witnessed, result, options.playStyle, pe).process();
             } else {
-                showMessage("The solver has found the best guess on the edge using the probability engine." + formatSolutions(pe.finalSolutionsCount));
+ 
                 if (pe.duration < 50) {  // if the probability engine didn't take long then use some tie-break logic
                     result = tieBreak(pe, result, partialBFDA, ltr);
+                    if (result.length != 0) {
+                        const recommended = result[0];
+                        showMessage("The solver recommends clearing tile " + recommended.asText() + "." + formatSolutions(pe.finalSolutionsCount));
+                    }
+                } else {
+                    showMessage("The solver has found the safest guess using the probability engine." + formatSolutions(pe.finalSolutionsCount));
                 }
             }
 
@@ -620,7 +631,10 @@ async function solver(board, options) {
 
         const start = Date.now();
 
-        writeToConsole("Long term risks ==>");
+        writeToConsole("");
+        writeToConsole("-------- Starting Best Guess Analysis --------");
+
+        writeToConsole("---- Tiles with long term risk ----");
 
         const alreadyIncluded = new Set();
         for (let action of actions) {
@@ -634,10 +648,14 @@ async function solver(board, options) {
             } else {
                 alreadyIncluded.add(tile);
                 actions.push(new Action(tile.getX(), tile.getY(), pe.getProbability(tile), ACTION_CLEAR));
-                writeToConsole(tile.asText() + " added to the list of candidates to be analysed");
+                writeToConsole("Tile " + tile.asText() + " added to the list of candidates to be analysed");
             }
         }
-        writeToConsole("<==");
+        if (extraTiles.length == 0) {
+            writeToConsole("- None found");
+        }
+
+        writeToConsole("");
 
         let best;
         for (let action of actions) {
@@ -651,10 +669,10 @@ async function solver(board, options) {
             secondarySafetyAnalysis(pe, board, action, best, ltr) // updates variables in the Action class
 
             if (best == null || compare(best, action) > 0) {
-                writeToConsole(action.asText() + " is now the best with score " + action.weight);
+                writeToConsole("Tile " + action.asText() + " is now the best with score " + action.weight);
                 best = action;
             }
-
+            writeToConsole("");
         }
 
         if (USE_HIGH_DENSITY_STRATEGY && board.isHighDensity() ) {
@@ -681,14 +699,14 @@ async function solver(board, options) {
             const better = bfda.checkForBetterMove(actions[0]);
             if (better != null) {
                 const betterAction = new Action(better.x, better.y, better.probability, ACTION_CLEAR);
-                writeToConsole("Replacing " + actions[0].asText() + " with " + betterAction.asText() + " because it is better from partial BFDA");
+                writeToConsole("Replacing Tile " + actions[0].asText() + " with Tile " + betterAction.asText() + " because it is better from partial BFDA");
                 actions = [betterAction];
             }
         }
 
         findAlternativeMove(actions);
 
-        writeToConsole("Solver recommends (" + actions[0].x + "," + actions[0].y + ")");
+        writeToConsole("Solver recommends tile " + actions[0].asText());
 
         writeToConsole("Best Guess analysis took " + (Date.now() - start) + " milliseconds to complete");
 
@@ -1109,6 +1127,7 @@ async function solver(board, options) {
             }
         }
 
+        writeToConsole("-------- Tile " + tile.asText() + " --------");
         writeToConsole("Tile " + tile.asText() + " has " + linkedTilesCount + " linked tiles and dominated=" + dominated);
 
         // a dominated tile doesn't need any further resolution
