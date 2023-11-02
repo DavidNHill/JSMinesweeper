@@ -48,7 +48,8 @@ class ProbabilityEngine {
         this.bestOnEdgeProbability = BigInt(0);
         this.finalSolutionsCount = BigInt(0);
 
-        this.bestLivingProbability = 0;
+        this.bestLivingSafety = 0;
+        this.blendedSafety = 0;
 
         // details about independent witnesses
         this.independentWitnesses = [];
@@ -1458,7 +1459,6 @@ class ProbabilityEngine {
                         }
                     }
 
-
                 }
             }
         }
@@ -1466,55 +1466,63 @@ class ProbabilityEngine {
         // see if we can find a guess which is better than outside the boxes
         let hwm = 0;
 
-        this.bestLivingProbability = this.offEdgeProbability;  // seee if we can do better than the off edge probability
+        let bestSafety1 = this.offEdgeProbability;    // safest tile
+        let bestSafety2 = this.offEdgeProbability;    // next safest tile
 
         for (let i = 0; i < this.boxes.length; i++) {
 
             const b = this.boxes[i];
+            var prob = this.boxProb[b.uid];
+
             let boxLiving = false;
 
             // a box is dead if all its tiles are dead
-            if (this.deadTiles.length > 0) {
-                for (let j = 0; j < this.boxes[i].tiles.length; j++) {
-                    const tile = this.boxes[i].tiles[j];
+            for (let j = 0; j < this.boxes[i].tiles.length; j++) {
+                const tile = this.boxes[i].tiles[j];
 
-                    let tileLiving = true;
-                    for (let k = 0; k < this.deadTiles.length; k++) {
-                        if (this.deadTiles[k].isEqual(tile)) {
-                            tileLiving = false;
-                            break;
-                        }
-                    }
-                    if (tileLiving) {
-                        boxLiving = true;
+                let tileLiving = true;
+                for (let k = 0; k < this.deadTiles.length; k++) {
+                    if (this.deadTiles[k].isEqual(tile)) {
+                        tileLiving = false;
                         break;
                     }
                 }
-            } else {  // if there are no dead tiles then there is nothing to check
-                boxLiving = true;
+                if (tileLiving) {
+                    boxLiving = true;
+
+                    if (prob > bestSafety2) {
+                        if (prob > bestSafety1) {
+                            bestSafety2 = bestSafety1;
+                            bestSafety1 = prob;
+                        } else {
+                            bestSafety2 = prob;
+                        }
+                    }
+                }
             }
-
-
-            var prob = this.boxProb[b.uid];
+ 
             if (boxLiving || prob == 1) {   // if living or 100% safe then consider this probability
                 if (hwm < prob) {
                      hwm = prob;
                 }
-                if (boxLiving && prob > this.bestLivingProbability) {
-                    this.bestLivingProbability = prob;
-                }
-
             }
         }
+
+        this.bestLivingSafety = bestSafety1;
+
+        // belended safety is a weighted average of the best and second best living safe tiles
+        this.blendedSafety = (bestSafety1 * 3 + bestSafety2) / 4;
 
         this.bestOnEdgeProbability = hwm;
 
         this.bestProbability = Math.max(this.bestOnEdgeProbability, this.offEdgeProbability);            ;
 
         this.writeToConsole("Safe tiles " + this.localClears.length + ", Mines found " + this.minesFound.length);
-        this.writeToConsole("Off edge probability is " + this.offEdgeProbability);
-        this.writeToConsole("Best on edge probability is " + this.bestOnEdgeProbability);
-        this.writeToConsole("Best probability is " + this.bestProbability);
+        this.writeToConsole("Off edge Safety is " + this.offEdgeProbability);
+        this.writeToConsole("Best on edge safety is " + this.bestOnEdgeProbability);
+        this.writeToConsole("Best safety is " + this.bestProbability);
+        this.writeToConsole("Best living safety is " + this.bestLivingSafety);
+        this.writeToConsole("Blended safety is " + this.blendedSafety);
         this.writeToConsole("Game has  " + this.finalSolutionsCount + " candidate solutions" );
 
         this.fullAnalysis = true;

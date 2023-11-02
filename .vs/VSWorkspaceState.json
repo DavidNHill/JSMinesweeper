@@ -5,6 +5,6 @@
     "\\Minesweeper\\client",
     "\\Minesweeper\\Utility"
   ],
-  "SelectedNode": "\\Minesweeper\\client\\main.js",
+  "SelectedNode": "\\Minesweeper\\client\\solver_probability_engine.js",
   "PreviewInSolutionExplorer": false
 }

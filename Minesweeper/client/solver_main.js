@@ -271,7 +271,7 @@ async function solver(board, options) {
 
         pe.process();
 
-        writeToConsole("probability Engine took " + pe.duration + " milliseconds to complete");
+        writeToConsole("Probability Engine took " + pe.duration + " milliseconds to complete");
 
         if (pe.finalSolutionCount == 0) {
             showMessage("The board is in an illegal state");
@@ -379,7 +379,7 @@ async function solver(board, options) {
             return result;
         }
 
-        // if we aren' allowing advanced guessing then stop here
+        // if we aren't allowing advanced guessing then stop here
         if (!options.advancedGuessing) {
             writeToConsole("Advanced guessing is turned off so exiting the solver after the probability engine");
             showMessage("Press 'Analyse' for advanced guessing");
@@ -430,15 +430,28 @@ async function solver(board, options) {
                     const nextmove = bfda.getNextMove();
                     result.push(nextmove);
 
-                    deadTiles = bfda.deadTiles;
                     var winChanceText = (bfda.winChance * 100).toFixed(2);
                     showMessage("The solver has calculated tile " + nextmove.asText()  + " has a " + winChanceText + "% chance to solve the isolated edge." + formatSolutions(pe.finalSolutionsCount));
 
                 } else {  // seed 6674107430895333
                     showMessage("The solver has calculated that all the tiles on an isolated edge are dead, try tile " + bfda.bestTile.asText() + "?" + formatSolutions(pe.finalSolutionsCount));
-                    deadTiles = bfda.deadTiles;   // all the tiles are dead
                 }
 
+                deadTiles = bfda.deadTiles;
+
+                // combine the dead tiles from the probability engine and the isolated edge
+                for (let deadTile of pe.deadTiles) {
+                    let found = false;
+                    for (let bfdaDead of deadTiles) {
+                        if (deadTile.isEqual(bfdaDead)) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        deadTiles.push(deadTile);
+                    }
+                }
                 return addDeadTiles(result, deadTiles);
             }
 
@@ -1113,6 +1126,7 @@ async function solver(board, options) {
 
         const safePe = runProbabilityEngine(board, [tile]);
         let linkedTilesCount = 0;
+
         let dominated = false;  // if tile 'a' being safe ==> tile 'b' & 'c' are safe and 'b' and 'c' are in the same box ==> 'b' is safer then 'a' 
 
         for (let box of safePe.emptyBoxes) {
@@ -1122,13 +1136,23 @@ async function solver(board, options) {
                 if (box.tiles.length > 1) {
                     dominated = true;
                 } else {
-                    linkedTilesCount++;
+                    const targetTile = box.tiles[0];
+                    let isDeadTile = false;
+                    for (let deadTile of pe.deadTiles) {
+                        if (targetTile.isEqual(deadTile)) {
+                            isDeadTile = true;
+                            break;
+                        }
+                    }
+                    if (!isDeadTile) {
+                        linkedTilesCount++;
+                    }
                 }
             }
         }
 
         writeToConsole("-------- Tile " + tile.asText() + " --------");
-        writeToConsole("Tile " + tile.asText() + " has " + linkedTilesCount + " linked tiles and dominated=" + dominated);
+        writeToConsole("Tile " + tile.asText() + " has " + linkedTilesCount + " linked living tiles and dominated=" + dominated);
 
         // a dominated tile doesn't need any further resolution
         if (dominated) {
@@ -1203,12 +1227,12 @@ async function solver(board, options) {
 
                 //const longTermSafety = ltr.getLongTermSafety(tile, work);
 
-                const probThisTileValue = divideBigInt(work.finalSolutionsCount, pe.finalSolutionsCount, 6);
-                secondarySafety = secondarySafety + probThisTileValue * work.bestLivingProbability * fiftyFiftyInfluence;
+                const safetyThisTileValue = divideBigInt(work.finalSolutionsCount, pe.finalSolutionsCount, 6);
+                secondarySafety = secondarySafety + safetyThisTileValue * work.blendedSafety * fiftyFiftyInfluence;
 
-                writeToConsole("Tile " + tile.asText() + " with value " + value + " has probability " + probThisTileValue + ", next guess safety " + work.bestLivingProbability + ", clears " + clearCount);
+                writeToConsole("Tile " + tile.asText() + " with value " + value + " has safety " + safetyThisTileValue + ", blended safety " + work.blendedSafety + ", living clears " + clearCount);
 
-                probThisTileLeft = probThisTileLeft - probThisTileValue;
+                probThisTileLeft = probThisTileLeft - safetyThisTileValue;
              }
 
             //totalSolutions = totalSolutions + work.finalSolutionsCount;
