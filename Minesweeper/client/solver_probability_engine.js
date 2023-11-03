@@ -1904,6 +1904,10 @@ class Box {
             if (this.boxWitnesses[i].minesToFind < this.maxMines) {  // can't have more mines than the lowest constraint
                 this.maxMines = this.boxWitnesses[i].minesToFind;
             }
+            // if the box witness has this as its only box then all the mines must be here
+            if (this.boxWitnesses[i].boxes.length == 1) {
+                this.minMines = this.boxWitnesses[i].minesToFind;
+            }
         }		
 
     }

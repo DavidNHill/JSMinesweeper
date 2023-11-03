@@ -272,7 +272,7 @@ async function startup() {
     }
 
     //bulkRun(21, 12500);  // seed '21' Played 12500 won 5192
-    //bulkRun(321, 10000);  // seed 321 played 10000 won 4123
+    //bulkRun(321, 10000);  // seed 321 played 10000 won 4133
 
     showMessage("Welcome to minesweeper solver dedicated to Annie");
 }
@@ -2008,6 +2008,10 @@ async function checkBoard() {
 
     if (!analysisMode || replayMode) {
         return;
+    }
+
+    if (canvasLocked) {
+        console.log("Not checking the board because analysis is being done");
     }
 
     // this will set all the obvious mines which makes the solution counter a lot more efficient on very large boards

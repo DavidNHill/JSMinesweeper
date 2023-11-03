@@ -40,6 +40,9 @@ class SolutionCounter {
 
         this.recursions = 0;
 
+        Object.seal(this) // prevent new properties being created
+
+
         // can't have less than zero mines
         if (minesLeft < 0) {
             this.validWeb = false;
@@ -127,10 +130,17 @@ class SolutionCounter {
         }
 
         // calculate the min and max mines for each box 
+        let leastMinesNeeded = 0;
         for (var i = 0; i < this.boxes.length; i++) {
             var box = this.boxes[i];
             box.calculate(this.minesLeft);
+            leastMinesNeeded = leastMinesNeeded + box.minMines;
             //console.log("Box " + box.tiles[0].asText() + " has min mines = " + box.minMines + " and max mines = " + box.maxMines);
+        }
+
+        if (leastMinesNeeded > minesLeft) {
+            this.validWeb = false;
+            this.invalidReasons.push(minesLeft + " mines left is not enough mines left to complete the board.");
         }
 
         // Report how many boxes each witness is adjacent to 
@@ -144,7 +154,6 @@ class SolutionCounter {
         //    console.log(msg);
         //}
 
-        Object.seal(this) // prevent new properties being created
  	}
 
 
@@ -300,7 +309,7 @@ class SolutionCounter {
         if (nw.newBoxes.length - index == 1) {
             // if there are too many for this box then the probability can't be valid
             if (nw.newBoxes[index].maxMines < missingMines) {
-                this.invalidReasons.push("Not enough mines left to complete the board.");
+                //this.invalidReasons.push("Not enough mines left to complete the board.");
                 //console.log("Abandon (1)");
                 return result;
             }

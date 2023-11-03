@@ -1107,7 +1107,7 @@ async function solver(board, options) {
         if (notMines != null) {
             for (let tile of notMines) {
                 if (!solutionCounter.setMustBeEmpty(tile)) {
-                    writeToConsole("Tile " + tile.asText() + " failed to set must be empty");
+                    writeToConsole("Tile " + tile.asText() + " failed to set must be empty", true);
                 }
             }
         }
@@ -1507,7 +1507,7 @@ async function solver(board, options) {
             always = false;
         }
 
-        if (options.verbose || always) {
+        if (options != null && options.verbose || always) {
             console.log(text);
         }
 
