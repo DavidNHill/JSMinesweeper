@@ -272,7 +272,7 @@ async function startup() {
     }
 
     //bulkRun(21, 12500);  // seed '21' Played 12500 won 5192
-    //bulkRun(321, 10000);  // seed 321 played 10000 won 4133
+    //bulkRun(321, 10000);  // seed 321 played 10000 won 4146
 
     showMessage("Welcome to minesweeper solver dedicated to Annie");
 }

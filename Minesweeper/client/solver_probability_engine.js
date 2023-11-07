@@ -1511,7 +1511,9 @@ class ProbabilityEngine {
         this.bestLivingSafety = bestSafety1;
 
         // belended safety is a weighted average of the best and second best living safe tiles
-        this.blendedSafety = (bestSafety1 * 3 + bestSafety2) / 4;
+        this.blendedSafety = (bestSafety1 * 4 + bestSafety2) / 5;
+        //this.blendedSafety = bestSafety1;
+
 
         this.bestOnEdgeProbability = hwm;
 

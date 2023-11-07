@@ -1120,7 +1120,8 @@ async function solver(board, options) {
 
     function secondarySafetyAnalysis(pe, board, action, best, ltr) {
 
-        const progressContribution = 0.052;
+        //const progressContribution = 0.052;
+        const progressContribution = 0.001;   // tiny amount to favour progress if everything else is the same
 
         const tile = board.getTileXY(action.x, action.y);
 
@@ -1184,6 +1185,7 @@ async function solver(board, options) {
         let expectedClears = BigInt(0);
         let maxSolutions = BigInt(0);
 
+        let blendedSafety = 0;
         let secondarySafety = 0;
         let probThisTileLeft = action.prob;  // this is used to calculate when we can prune this action
 
@@ -1198,7 +1200,7 @@ async function solver(board, options) {
 
             const progress = divideBigInt(solutionsWithProgess, pe.finalSolutionsCount, 6);
             const bonus = 1 + (progress + probThisTileLeft) * progressContribution;
-            const weight = (secondarySafety + probThisTileLeft * fiftyFiftyInfluence) * bonus;
+            const weight = (blendedSafety + probThisTileLeft * fiftyFiftyInfluence) * bonus;
 
             if (options.guessPruning && best != null && !best.dead && weight < best.weight) {
                 writeToConsole("Tile (" + action.x + "," + action.y + ") is being pruned,  50/50 influence = " + fiftyFiftyInfluence + ", max score possible is " + weight);
@@ -1228,7 +1230,12 @@ async function solver(board, options) {
                 //const longTermSafety = ltr.getLongTermSafety(tile, work);
 
                 const safetyThisTileValue = divideBigInt(work.finalSolutionsCount, pe.finalSolutionsCount, 6);
-                secondarySafety = secondarySafety + safetyThisTileValue * work.blendedSafety * fiftyFiftyInfluence;
+
+                // blended safety we use to pick the best tile
+                blendedSafety = blendedSafety + safetyThisTileValue * work.blendedSafety * fiftyFiftyInfluence;
+
+                // we show the secondary safety on the tooltip
+                secondarySafety = secondarySafety + safetyThisTileValue * work.bestLivingSafety;
 
                 writeToConsole("Tile " + tile.asText() + " with value " + value + " has safety " + safetyThisTileValue + ", blended safety " + work.blendedSafety + ", living clears " + clearCount);
 
@@ -1263,16 +1270,16 @@ async function solver(board, options) {
             writeToConsole("Tile " + tile.asText() + " has only only one possible value and is being marked as dead");
         }
 
-        action.weight = secondarySafety * (1 + progress * progressContribution);
+        action.weight = blendedSafety * (1 + progress * progressContribution);
         action.maxSolutions = maxSolutions;
         action.commonClears = commonClears;
 
-        const realSecondarySafety = (secondarySafety / fiftyFiftyInfluence).toFixed(6);  // remove the 50/50 influence to get back to the real secondary safety
+        //const realSecondarySafety = (blendedSafety / fiftyFiftyInfluence).toFixed(6);  // remove the 50/50 influence to get back to the real secondary safety
 
-        tile.setProbability(action.prob, action.progress, realSecondarySafety);
+        tile.setProbability(action.prob, action.progress, secondarySafety);
 
-        writeToConsole("Tile " + tile.asText() + ", secondary safety = " + realSecondarySafety + ",  progress = " + action.progress + ", 50/50 influence = " + fiftyFiftyInfluence
-            + ", expected clears = " + action.expectedClears + ", always clear = " + commonClears.length + ", final score = " + action.weight);
+        writeToConsole("Tile " + tile.asText() + ", secondary safety = " + secondarySafety + ", 50/50 influence = " + fiftyFiftyInfluence
+            + ", blended safety = " + blendedSafety + ", progress = " + action.progress+ ", expected clears = " + action.expectedClears + ", always clear = " + commonClears.length + ", final score = " + action.weight);
 
     }
 
