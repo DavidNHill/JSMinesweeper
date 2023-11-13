@@ -15,6 +15,8 @@ class LongTermRiskHelper {
 		this.influence5050s = new Array(this.board.width * this.board.height);
 		this.influenceEnablers = new Array(this.board.width * this.board.height);
 
+		this.totalSolutions = pe.finalSolutionsCount;
+
 		Object.seal(this) // prevent new properties being created
 
 	}
@@ -66,7 +68,8 @@ class LongTermRiskHelper {
 		influence4 = this.maxNotNull(influence4, this.getBoxInfluence(tile3, 5));
 
 		if (influence4 > 0) {
-			this.writeToConsole("Tile " + tile.asText() + " best 4-tile 50/50 has tally " + influence4);
+			const percentage = divideBigInt(influence4, this.totalSolutions, 5) * 100;
+			this.writeToConsole("Tile " + tile.asText() + " best 4-tile 50/50 has percentage " + percentage.toFixed(3) + "%");
         }
 
 		influence = influence + influence4;
@@ -201,8 +204,13 @@ class LongTermRiskHelper {
 			tile.unsetFoundBomb();
 		}
 
-		this.writeToConsole("Candidate 50/50 - " + tile1.asText() + " " + tile2.asText() + " has tally " + counter.finalSolutionsCount);
-		
+		if (counter.finalSolutionsCount == 0) {
+			return null;
+		}
+
+		const percentage = divideBigInt(counter.finalSolutionsCount, this.totalSolutions, 5) * 100;
+
+		this.writeToConsole("Possible 50/50 - " + tile1.asText() + " " + tile2.asText() + " probability " + percentage.toFixed(3) + "%");
 
 		return new LTResult(counter.finalSolutionsCount, missingMines);
 
@@ -258,7 +266,13 @@ class LongTermRiskHelper {
 			tile.unsetFoundBomb();
 		}
 
-		this.writeToConsole("Candidate 50/50 - " + tile1.asText() + " " + tile2.asText() + " has tally " + counter.finalSolutionsCount);
+		if (counter.finalSolutionsCount == 0) {
+			return null;
+		}
+
+		const percentage = divideBigInt(counter.finalSolutionsCount, this.totalSolutions, 5) * 100;
+
+		this.writeToConsole("Possible 50/50 - " + tile1.asText() + " " + tile2.asText() + " Probability " + percentage.toFixed(3) + "%");
 
 		return new LTResult(counter.finalSolutionsCount, missingMines);
 
@@ -285,7 +299,7 @@ class LongTermRiskHelper {
 					
 					const influenceTally = this.addNotNull(BigInt(0), result);
 					
-					const influence = divideBigInt(influenceTally, this.currentPe.finalSolutionsCount, 4); 
+					//const influence = divideBigInt(influenceTally, this.currentPe.finalSolutionsCount, 4); 
 					//this.writeToConsole("Tile " + tile1.asText() + " " + tile2.asText() + " " + tile3.asText() + " " + tile4.asText() + " have box 4-tile 50/50 influence " + influence);
 
 					this.addInfluence(influenceTally, result.enablers, [tile1, tile2, tile3, tile4]);
@@ -346,12 +360,18 @@ class LongTermRiskHelper {
 		// see if the position is valid
 		const counter = solver.countSolutions(this.board, notMines);
 
-		this.writeToConsole("Candidate 50/50 - " + tile1.asText() + " " + tile2.asText() + " " + tile3.asText() + " " + tile4.asText() + " tally " + counter.finalSolutionsCount);
-		
 		// remove the mines
 		for (let tile of mines) {
 			tile.unsetFoundBomb();
 		}
+
+		if (counter.finalSolutionsCount == 0) {
+			return null;
+		}
+
+		const percentage = divideBigInt(counter.finalSolutionsCount, this.totalSolutions, 5) * 100;
+
+		this.writeToConsole("Possible 50/50 - " + tile1.asText() + " " + tile2.asText() + " " + tile3.asText() + " " + tile4.asText() + " probability " + percentage.toFixed(3) + "%");
 
 		return new LTResult(counter.finalSolutionsCount, missingMines);
 

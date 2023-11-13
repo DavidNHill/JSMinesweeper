@@ -2103,7 +2103,8 @@ function followCursor(e) {
 
             dragTile = tile;  // remember the latest tile
 
-            if (tile.isCovered()) {
+            // not covered or flagged
+            if (tile.isCovered() && !tile.isFlagged()) {
                 const flagCount = board.adjacentFoundMineCount(tile);
                 tile.setValue(flagCount);
             } else {

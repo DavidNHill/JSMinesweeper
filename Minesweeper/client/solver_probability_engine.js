@@ -50,6 +50,7 @@ class ProbabilityEngine {
 
         this.bestLivingSafety = 0;
         this.blendedSafety = 0;
+        this.singleSafestTile = null;   // the uniquely safest living tile on the board 
 
         // details about independent witnesses
         this.independentWitnesses = [];
@@ -71,6 +72,9 @@ class ProbabilityEngine {
 
         this.validWeb = true;
         this.recursions = 0;
+
+        Object.seal(this); // prevent new values being created
+
 
         // can't have less than zero mines
         if (minesLeft < 0) {
@@ -162,7 +166,7 @@ class ProbabilityEngine {
         //      console.log("Witness " + boxWit.tile.asText() + " is adjacent to " + boxWit.boxes.length + " boxes and has " + boxWit.minesToFind + " mines to find");
         //}
 
-        Object.seal(this); // prevent new values being created
+ 
 
  	}
 
@@ -1468,6 +1472,7 @@ class ProbabilityEngine {
 
         let bestSafety1 = this.offEdgeProbability;    // safest tile
         let bestSafety2 = this.offEdgeProbability;    // next safest tile
+        let bestTile = null;
 
         for (let i = 0; i < this.boxes.length; i++) {
 
@@ -1494,6 +1499,7 @@ class ProbabilityEngine {
                         if (prob > bestSafety1) {
                             bestSafety2 = bestSafety1;
                             bestSafety1 = prob;
+                            bestTile = tile;
                         } else {
                             bestSafety2 = prob;
                         }
@@ -1509,6 +1515,11 @@ class ProbabilityEngine {
         }
 
         this.bestLivingSafety = bestSafety1;
+
+        if (bestSafety1 > bestSafety2) {
+            this.singleSafestTile = bestTile;
+            //console.log("Safest next living tile is " + bestTile.asText());
+        }
 
         // belended safety is a weighted average of the best and second best living safe tiles
         this.blendedSafety = (bestSafety1 * 4 + bestSafety2) / 5;

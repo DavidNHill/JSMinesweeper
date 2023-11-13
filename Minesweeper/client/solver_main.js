@@ -386,6 +386,17 @@ async function solver(board, options) {
             return result;
         }
 
+
+        // See if there are any unavoidable 2 tile 50/50 guesses 
+        if (pe.bestOnEdgeProbability != 1 && minesLeft > 1) {
+            const unavoidable5050a = pe.checkForUnavoidable5050();
+            if (unavoidable5050a != null) {
+                result.push(new Action(unavoidable5050a.getX(), unavoidable5050a.getY(), unavoidable5050a.probability, ACTION_CLEAR));
+                showMessage(unavoidable5050a.asText() + " is an unavoidable 50/50 guess." + formatSolutions(pe.finalSolutionsCount));
+                return addDeadTiles(result, pe.getDeadTiles());
+            }
+        }
+
         /*
         // if we don't have a certain guess then look for ...
         //let ltr;
@@ -520,10 +531,11 @@ async function solver(board, options) {
             deadTiles = pe.getDeadTiles();  // use the dead tiles from the probability engine
         }
 
-        // if we don't have a certain guess and we have too many solutions for brute force then look for ...
+        // if we don't have a safe move and we have too many solutions for brute force then look for ...
         let ltr;
         if (pe.bestOnEdgeProbability != 1 && minesLeft > 1) {
 
+            /*
             // See if there are any unavoidable 2 tile 50/50 guesses 
             const unavoidable5050a = pe.checkForUnavoidable5050();
             if (unavoidable5050a != null) {
@@ -531,6 +543,7 @@ async function solver(board, options) {
                 showMessage(unavoidable5050a.asText() + " is an unavoidable 50/50 guess." + formatSolutions(pe.finalSolutionsCount));
                 return addDeadTiles(result, pe.getDeadTiles());
             }
+            */
 
             // look for any 50/50 or safe guesses - old method
             //const unavoidable5050b = new FiftyFiftyHelper(board, pe.minesFound, options, pe.getDeadTiles(), witnessed, minesLeft).process();
@@ -539,7 +552,7 @@ async function solver(board, options) {
             const unavoidable5050b = ltr.findInfluence();
             if (unavoidable5050b != null) {
                 result.push(new Action(unavoidable5050b.getX(), unavoidable5050b.getY(), unavoidable5050b.probability, ACTION_CLEAR));
-               showMessage(unavoidable5050b.asText() + " is an unavoidable 50/50 guess, or safe." + formatSolutions(pe.finalSolutionsCount));
+                showMessage(unavoidable5050b.asText() + " is an unavoidable 50/50 guess, or safe." + formatSolutions(pe.finalSolutionsCount));
                 return addDeadTiles(result, pe.getDeadTiles());
             }
         }
@@ -718,6 +731,19 @@ async function solver(board, options) {
         }
 
         findAlternativeMove(actions);
+
+        if (actions.length > 0) {
+            const better = actions[0].dominatingTile;
+            if (better != null) {
+                for (let action of actions) {
+                    if (action.x == better.x && action.y == better.y) {
+                        writeToConsole("Replacing Tile " + actions[0].asText() + " with Tile " + action.asText() + " because it is likely to be dominating");
+                        actions = [action];
+                        break;
+                    }
+                }
+            }
+        }
 
         writeToConsole("Solver recommends tile " + actions[0].asText());
 
@@ -1196,6 +1222,9 @@ async function solver(board, options) {
         const adjFlags = board.adjacentFoundMineCount(tile);
         const adjCovered = board.adjacentCoveredCount(tile);
 
+        let singleSafestTile = null;
+        let sameSingleSafestTile = true;
+
         for (let value = adjFlags; value <= adjCovered + adjFlags; value++) {
 
             const progress = divideBigInt(solutionsWithProgess, pe.finalSolutionsCount, 6);
@@ -1237,7 +1266,23 @@ async function solver(board, options) {
                 // we show the secondary safety on the tooltip
                 secondarySafety = secondarySafety + safetyThisTileValue * work.bestLivingSafety;
 
-                writeToConsole("Tile " + tile.asText() + " with value " + value + " has safety " + safetyThisTileValue + ", blended safety " + work.blendedSafety + ", living clears " + clearCount);
+ 
+                let safestTileText = "none";
+                if (work.singleSafestTile == null) {  // no single safest tile, so they can't always be the same
+                    sameSingleSafestTile = false;
+
+                } else if (singleSafestTile == null) {  // the first single safest tile found
+                    singleSafestTile = work.singleSafestTile;
+                    safestTileText = work.singleSafestTile.asText();
+
+                } else if (!singleSafestTile.isEqual(work.singleSafestTile)) {  // another single safest tile found, but it is different
+                    sameSingleSafestTile = false;
+                } else {
+                    safestTileText = work.singleSafestTile.asText();
+                }
+
+                writeToConsole("Tile " + tile.asText() + " with value " + value + " Probability " + safetyThisTileValue + " ==> Safest " + work.bestLivingSafety
+                    + ", Blended safety " + work.blendedSafety + ", Single safest tile: " + safestTileText + ", living clears " + clearCount);
 
                 probThisTileLeft = probThisTileLeft - safetyThisTileValue;
              }
@@ -1268,6 +1313,14 @@ async function solver(board, options) {
         if (validValues == 1) {
             action.dead = true;
             writeToConsole("Tile " + tile.asText() + " has only only one possible value and is being marked as dead");
+        }
+
+        if (sameSingleSafestTile) {
+            writeToConsole("Tile " + singleSafestTile.asText() + " is always the safest living tile after this guess");
+            if (singleSafestTile.probability > tile.probability) {
+                writeToConsole("Tile " + singleSafestTile.asText() + " is also safer, so dominates " + tile.asText());
+                action.dominatingTile = singleSafestTile;
+            }
         }
 
         action.weight = blendedSafety * (1 + progress * progressContribution);
@@ -1577,10 +1630,13 @@ class Action {
 
         // part of full analysis output, until then assume worst case 
         this.progress = 0;
-        this.expectedClears;
+        this.expectedClears = 0;
         this.weight = prob;
-        this.maxSolutions;
-        this.commonClears;
+        this.maxSolutions = 0;
+        this.commonClears = null;
+        this.dominatingTile = null;
+
+        Object.seal(this); // prevent new values being created
     }
 
     asText() {
