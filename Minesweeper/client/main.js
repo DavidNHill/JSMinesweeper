@@ -56,6 +56,7 @@ const analysisButton = document.getElementById("AnalysisButton");
 const messageLine = document.getElementById("messageLine");
 const title = document.getElementById("title");
 const lockMineCount = document.getElementById("lockMineCount");
+const buildMode = document.getElementById("buildMode");
 const docPlayStyle = document.getElementById("playstyle");
 const docTileSize = document.getElementById("tilesize");
 const docFastPlay = document.getElementById("fastPlay");
@@ -544,8 +545,7 @@ function switchToAnalysis(doAnalysis) {
         document.getElementById("repeatGame").style.display = "none";
         document.getElementById("NewGame").innerHTML = "Reset board";
 
-        //switchToAnalysis(true);
-    } else {
+     } else {
         document.getElementById("play0").style.display = "";
         document.getElementById("play1").style.display = "";
         document.getElementById("analysis0").style.display = "none";
@@ -553,7 +553,6 @@ function switchToAnalysis(doAnalysis) {
         document.getElementById("repeatGame").style.display = "";
         document.getElementById("NewGame").innerHTML = "New game";
 
-        //switchToAnalysis(false);
     }
 
     if (doAnalysis) {
@@ -573,8 +572,6 @@ function switchToAnalysis(doAnalysis) {
     }
 
     analysisMode = doAnalysis;
-
-    //setBoardSizeOnGUI(board.width, board.height, board.num_bombs);
 
     setPageTitle();
 
@@ -599,6 +596,8 @@ function setPageTitle() {
     } else {
         title.innerHTML = "Minesweeper player"; // change the title
     }
+
+    document.title = title.innerHTML;
 }
 
 // render an array of tiles to the canvas
@@ -1078,7 +1077,8 @@ async function newBoardFromFile(file) {
             }
         }
  
-        lockMineCount.checked = true;
+        //lockMineCount.checked = true;
+        //buildMode.checked = false;
  
         checkBoard();
 
@@ -1174,10 +1174,6 @@ async function newBoardFromString(data, inflate) {
         }
     }
 
-
- 
-
-
     // switch to the board
     board = newBoard;
 
@@ -1190,6 +1186,9 @@ async function newBoardFromString(data, inflate) {
     replayData = null;
 
     setPageTitle();
+
+    lockMineCount.checked = true;
+    buildMode.checked = false;
 
     canvasLocked = false;  // just in case it was still locked (after an error for example)
 
@@ -1266,6 +1265,7 @@ async function newGame(width, height, mines, seed) {
 
     if (analysisMode) {
         lockMineCount.checked = !document.getElementById('buildZero').checked;  // lock the mine count or not
+        buildMode.checked = !lockMineCount.checked;
         showDownloadLink(true, "");
     } else {
         showDownloadLink(false, "");
@@ -1698,18 +1698,18 @@ async function replayForward(replayType) {
 
     }
 
-    let totalTime = 0;
+    const totalTime = replayData.replay[replayStep - 1].time;
     let clickTime = 0;
 
-    if (replayStep > 1) {
-        totalTime = replayData.replay[replayStep - 1].time;
-        const prevStep = replayData.replay[replayStep - 2];
-        clickTime = totalTime - prevStep.time;
+    if (replayStep != size) {
+        //totalTime = replayData.replay[replayStep - 1].time;
+        const prevStep = replayData.replay[replayStep];
+        clickTime = prevStep.time - totalTime;
 
     }
 
     if (replayStep != 0) {
-        prefixMessage("Total time: " + showDuration(totalTime) + ", Interval time: " + showDuration(clickTime));
+        prefixMessage("Total time: " + showDuration(totalTime) + ", Next move thinking time: " + showDuration(clickTime));
     }
 
     replaying = false;
@@ -1871,15 +1871,15 @@ async function replayBackward(replayType) {
     let totalTime = 0;
     let clickTime = 0;
 
-    if (replayStep > 1) {
+    if (replayStep != 0) {
         totalTime = replayData.replay[replayStep - 1].time;
 
-        const prevStep = replayData.replay[replayStep - 2];
-        clickTime = totalTime - prevStep.time;
+        const prevStep = replayData.replay[replayStep];
+        clickTime = prevStep.time - totalTime;
     }
 
     if (replayStep != 0) {
-        prefixMessage("Total time: " + showDuration(totalTime) + ", Interval time: " + showDuration(clickTime));
+        prefixMessage("Total time: " + showDuration(totalTime) + ", Next move thinking time: " + showDuration(clickTime));
     } else {
         showMessage("");
     }
@@ -2022,6 +2022,8 @@ async function checkBoard() {
     if (currentBoardHash == previousBoardHash) {
         return;
     } 
+
+    window.requestAnimationFrame(() => renderHints([], []));
 
     previousBoardHash = currentBoardHash;
 
@@ -2377,7 +2379,7 @@ function analysis_toggle_flag(tile) {
     let delta;
     if (tile.isFlagged()) {
         delta = -1;
-        tile.foundBomb = false;  // in analysis mode we believe the flags are mines
+        tile.foundBomb = false;
     } else {
         delta = 1;
         tile.foundBomb = true;  // in analysis mode we believe the flags are mines
@@ -2398,15 +2400,18 @@ function analysis_toggle_flag(tile) {
     }
 
     // if the adjacent tiles values are in step then keep them in step
-    const adjTiles = board.getAdjacent(tile);
-    for (let i = 0; i < adjTiles.length; i++) {
-        const adjTile = adjTiles[i];
-        const adjFlagCount = board.adjacentFlagsPlaced(adjTile);
-        if (adjTile.getValue() == adjFlagCount) {
-            adjTile.setValueOnly(adjFlagCount + delta);
-            tiles.push(adjTile);
+    if (buildMode.checked) {
+        const adjTiles = board.getAdjacent(tile);
+        for (let i = 0; i < adjTiles.length; i++) {
+            const adjTile = adjTiles[i];
+            const adjFlagCount = board.adjacentFlagsPlaced(adjTile);
+            if (adjTile.getValue() == adjFlagCount) {
+                adjTile.setValueOnly(adjFlagCount + delta);
+                tiles.push(adjTile);
+            }
         }
     }
+
 
     tile.toggleFlag();
     tiles.push(tile);

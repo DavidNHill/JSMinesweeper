@@ -256,6 +256,8 @@ class Board {
 	// If an invalid tile is found returns it to be reported
 	resetForAnalysis(flagIsMine, findObviousMines) {
 
+		//const start = Date.now();
+
 		for (let i = 0; i < this.tiles.length; i++) {
 			const tile = this.tiles[i];
 			if (tile.isFlagged()) {
@@ -274,6 +276,9 @@ class Board {
 			const tile = this.getTile(i);
 
 			if (tile.isCovered()) {
+				if (this.isTileAMine(tile)) {  // a tile is an obvious mine if every adjacent witness agrees it is
+					tile.setFoundBomb();  
+                }
 				continue;  // if the tile hasn't been revealed yet then nothing to consider
 			}
 
@@ -292,12 +297,12 @@ class Board {
 			}
 
 			if (coveredCount > 0 && tile.getValue() == coveredCount) { // can place all flags
-				for (let j = 0; j < adjTiles.length; j++) {
-					const adjTile = adjTiles[j];
-					if (adjTile.isCovered()) { // if covered 
-						adjTile.setFoundBomb();   // Must be a bomb
-					}
-				}
+				//for (let j = 0; j < adjTiles.length; j++) {
+				//	const adjTile = adjTiles[j];
+				//	if (adjTile.isCovered()) { // if covered 
+				//		adjTile.setFoundBomb();   // Must be a bomb
+				//	}
+				//}
 			} else if (tile.getValue() < flagCount) {
 				console.log(tile.asText() + " is over flagged");
 			} else if (tile.getValue() > coveredCount) {
@@ -307,7 +312,62 @@ class Board {
 
 		}	
 
+		//console.log("Reset for Analysis took " + (Date.now() - start) + " milliseconds");
+
 		return null;
+    }
+
+	// if every witness around this tile agrees it is a mine, then set it as a mine
+	isTileAMine(tile) {
+
+		const adjTiles = this.getAdjacent(tile);
+
+		let witnessCount = 0;
+		for (let j = 0; j < adjTiles.length; j++) {
+			const adjTile = adjTiles[j];
+
+			if (adjTile.isCovered()) {
+				continue;
+			}
+
+			witnessCount++;
+
+			// if this witness denies all the remaining hidden tiles are mines then don't continue
+			if (!this.checkWitness(adjTile)) {
+				return false;
+            }
+
+		}
+
+		if (witnessCount == 0) {
+			return false;
+
+		} else {  // all the adjacent witnesses agree that this tile is a mine
+			return true;
+        }
+
+		
+
+
+    }
+
+	// see if this witness thinks all adjacent hidden ties are mines
+	checkWitness(tile) {
+
+		const adjTiles = this.getAdjacent(tile);
+
+		let coveredCount = 0;
+		for (let j = 0; j < adjTiles.length; j++) {
+			const adjTile = adjTiles[j];
+			if (adjTile.isCovered()) {
+				coveredCount++;
+			}
+		}
+
+		if (coveredCount > 0 && tile.getValue() == coveredCount) { // only room left for mines
+			return true;
+		}
+
     }
 
 	getHashValue() {
