@@ -1,5 +1,6 @@
 
 "use strict";
+/*tslint:disabled*/
 
 console.log('At start of main.js');
 
@@ -44,6 +45,12 @@ let board;
 
 let oldrng = false;
 
+// define the whole board and set the event handlers for the file drag and drop
+const wholeBoard = document.getElementById('wholeboard');
+wholeBoard.ondrop = dropHandler;
+wholeBoard.ondragover = dragOverHandler;
+
+// define the other html elements we need
 const tooltip = document.getElementById('tooltip');
 const autoPlayCheckBox = document.getElementById("autoplay");
 const showHintsCheckBox = document.getElementById("showhints");
@@ -73,7 +80,12 @@ const docWidth = document.getElementById("width");
 const docHeight = document.getElementById("height");
 const docMines = document.getElementById("mines");
 
-const downloadHyperlink = document.getElementById('downloadmbf');
+// define the save buttons and assign their event functions
+const downloadMBF = document.getElementById('savembf');
+const downloadPosition = document.getElementById('saveposition');
+
+downloadMBF.onclick = saveMBF;
+downloadPosition.onclick = savePosition;
 
 // elements used in the local storage modal - wip
 const localStorageButton = document.getElementById("localStorageButton");
@@ -107,6 +119,8 @@ let lastFileHandle = null;
 
 const urlParams = new URLSearchParams(window.location.search);
 
+const filePickerAvailable = ('showSaveFilePicker' in window);
+
 // things to do when exiting the page
 function exiting() {
 
@@ -124,6 +138,14 @@ function exiting() {
 async function startup() {
 
     console.log("At start up...");
+
+    if (filePickerAvailable) {
+        console.log("Browser supports Save File Picker dialogue");
+    } else {
+        console.log("Browser does not support Save File Picker dialogue - files will be downloaded instead");
+        downloadMBF.innerText = "Download MBF";
+        downloadPosition.innerText = "Download position";
+    }
 
     //const urlParams = new URLSearchParams(window.location.search);
     const testParm = urlParams.get('test');
@@ -219,11 +241,11 @@ async function startup() {
     if (analysis != null) {
         const compressor = new Compressor();
 
-        width = compressor.decompressNumber(analysis.substr(0, 2));
-        height = compressor.decompressNumber(analysis.substr(2, 2));
-        mines = compressor.decompressNumber(analysis.substr(4, 4));
+        width = compressor.decompressNumber(analysis.substring(0, 2));
+        height = compressor.decompressNumber(analysis.substring(2, 4));
+        mines = compressor.decompressNumber(analysis.substring(4, 8));
 
-        let boardData = compressor.decompress(analysis.substr(8));
+        let boardData = compressor.decompress(analysis.substring(8));
         if (boardData.length != width * height) {
             console.log("Analysis data doesn't fit the board - ignoring it");
         } else {
@@ -231,7 +253,7 @@ async function startup() {
 
             let boardString = width + "x" + height + "x" + mines + newLine;
             for (let i = 0; i < boardData.length; i = i + width) {
-                boardString = boardString + boardData.substr(i, width) + newLine;
+                boardString = boardString + boardData.substring(i, i + width) + newLine;
             }
 
             console.log(boardString);
@@ -359,84 +381,43 @@ function propertiesOpen() {
     propertiesPanel.style.display = "block";
 }
 
-// download as MBF  - this has been replaced with a save file dialogue
-// create a BLOB of the data, insert a URL to it into the download link
-async function downloadAsMBF(e) {
-
-    // if we are in analysis mode then create the url, otherwise the url was created when the game was generated
-    if (analysisMode) {
-        if (board == null) {
-            e.preventDefault();
-            console.log("No Board defined, unable to generate MBF");
-            return false;
-        }
-
-        if (board.bombs_left != 0) {
-            showMessage("Mines left must be zero in order to download the board from Analysis mode.");
-            e.preventDefault();
-            return false;
-        }
-
-        const mbf = board.getFormatMBF();
-
-        if (mbf == null) {
-            console.log("Null data returned from getFormatMBF()");
-            e.preventDefault();
-            return false;
-        }
-
-        const blob = new Blob([mbf], { type: 'application/octet-stream' })
-
-        const url = URL.createObjectURL(blob);
-
-        console.log(url);
-
-        downloadHyperlink.href = url;  // Set the url ready to be downloaded
-
-        // give it 10 seconds then revoke the url
-        setTimeout(function () { console.log("Revoked " + url); URL.revokeObjectURL(url) }, 10000, url);
-    }
-
-    // create a download name based on the date/time
-    const now = new Date();
-
-    const filename = "Download" + now.toISOString() + ".mbf";
-
-    downloadHyperlink.download = filename;
-
-}
-
 // pop up a file save dialogue to store the layout as MBF format
 async function saveMBF(e) {
 
-    e.preventDefault();
-
     // if we are in analysis mode then create the url, otherwise the url was created when the game was generated
     let mbf;
+    let okay = true;
+
     if (analysisMode) {
         if (board == null) {
             console.log("No Board defined, unable to generate MBF");
-            return false;
+            okay = false;
         }
 
         if (board.bombs_left != 0) {
             showMessage("Mines left must be zero in order to download the board from Analysis mode.");
-            return false;
+            okay = false;
         }
 
         mbf = board.getFormatMBF();
 
         if (mbf == null) {
             console.log("Null data returned from getFormatMBF()");
-            return false;
+            okay = false;
         }
 
     } else {
         mbf = getMbfData(board.id);   // this function is in MinesweeperGame.js
         if (mbf == null) {
             showMessage("No game data available to convert to an MBF file");
-            return false;
+            okay = false;
         }
+    }
+
+    // if an error was found, prevent the download and exit
+    if (!okay) {
+        e.preventDefault();
+        return false;
     }
 
     let filename;
@@ -447,6 +428,31 @@ async function saveMBF(e) {
     }
 
     const data = mbf;
+
+    // if the file picker isn't available then do a download
+    if (!filePickerAvailable) {
+ 
+        console.log("Doing a file download...");
+
+        // file picker failed try as a download
+        const blob = new Blob([data], { type: 'application/octet-stream' })
+
+        const url = URL.createObjectURL(blob);
+
+        console.log(url);
+
+        downloadMBF.href = url;  // Set the url ready to be downloaded
+
+        // give it 10 seconds then revoke the url
+        setTimeout(function () { console.log("Revoked " + url); URL.revokeObjectURL(url) }, 10000, url);
+
+        downloadMBF.download = filename;
+
+        return true;
+    }
+
+    // if we're using the file picker then prevent the download
+    e.preventDefault();
 
     const options = {
         excludeAcceptAllOption: true,
@@ -467,6 +473,7 @@ async function saveMBF(e) {
     }
 
     try {
+
         const fileHandle = await window.showSaveFilePicker(options);
 
         const writable = await fileHandle.createWritable();
@@ -477,6 +484,7 @@ async function saveMBF(e) {
 
     } catch (err) {
         console.log("Save file picker exception: " + err.message);
+
     }
 
 }
@@ -484,8 +492,6 @@ async function saveMBF(e) {
 
 // pop up a file save dialogue to store the board details
 async function savePosition(e) {
-
-    e.preventDefault();
 
     let filename;
     if (analysisMode) {
@@ -495,6 +501,31 @@ async function savePosition(e) {
     }
  
     const data = board.getPositionData()
+
+    // if the file picker isn't available then do a download
+    if (!filePickerAvailable) {
+
+        console.log("Doing a file download...");
+
+        // file picker failed try as a download
+        const blob = new Blob([data], { type: 'text/html' })
+
+        const url = URL.createObjectURL(blob);
+
+        console.log(url);
+
+        downloadPosition.href = url;  // Set the url ready to be downloaded
+
+        // give it 10 seconds then revoke the url
+        setTimeout(function () { console.log("Revoked " + url); URL.revokeObjectURL(url) }, 10000, url);
+
+        downloadPosition.download = filename;
+
+        return true;
+    }
+
+    // if we're using the file picker then prevent the download
+    e.preventDefault();
 
     const options = {
         excludeAcceptAllOption: true,
@@ -559,14 +590,14 @@ function switchToAnalysis(doAnalysis) {
         gameBoard = board;
         board = analysisBoard;
 
-        showDownloadLink(true, "")  // display the hyperlink
+        //showDownloadLink(true, "")  // display the hyperlink
 
         switchButton.innerHTML = "Switch to Player";
     } else {
         analysisBoard = board;
         board = gameBoard;
 
-        showDownloadLink(false, "")  // hide the hyperlink (we don't have the url until we play a move - this could be improved)
+        //showDownloadLink(false, "")  // hide the hyperlink (we don't have the url until we play a move - this could be improved)
 
         switchButton.innerHTML = "Switch to Analyser";
     }
@@ -813,15 +844,7 @@ function getDigitCount(mines) {
 
 // display or hide the download link 
 function showDownloadLink(show, url) {
-
-    //if (show) {
-    //    downloadHyperlink.style.display = "block";
-    //    if (url != null) {
-    //        downloadHyperlink.href = url;
-    //    }
-    //} else {
-    //   downloadHyperlink.style.display = "none";
-    //}
+    console.log("Obsolete method 'showDownloadLink' called");
 
 }
 
@@ -1047,7 +1070,7 @@ async function newGameFromMBF(mbf) {
 
     changeTileSize();
 
-    showDownloadLink(false, ""); // remove the download link
+    //showDownloadLink(false, ""); // remove the download link
 
     updateMineCount(board.num_bombs);
 
@@ -1266,9 +1289,9 @@ async function newGame(width, height, mines, seed) {
     if (analysisMode) {
         lockMineCount.checked = !document.getElementById('buildZero').checked;  // lock the mine count or not
         buildMode.checked = !lockMineCount.checked;
-        showDownloadLink(true, "");
+        //showDownloadLink(true, "");
     } else {
-        showDownloadLink(false, "");
+        //showDownloadLink(false, "");
     }
 
     let drawTile = HIDDEN;
@@ -2082,8 +2105,8 @@ function draw(x, y, tileType) {
 function followCursor(e) {
 
     // get the tile we're over
-    const row = Math.floor(event.offsetY / TILE_SIZE);
-    const col = Math.floor(event.offsetX / TILE_SIZE);
+    const row = Math.floor(e.offsetY / TILE_SIZE);
+    const col = Math.floor(e.offsetX / TILE_SIZE);
     hoverTile = board.getTileXY(col, row);
 
     // if not showing hints don't show tooltip
@@ -2646,7 +2669,7 @@ async function sendActionsMessage(message) {
 
     // add the hyperlink the hyperlink
     if (reply.header.url != null) {
-        showDownloadLink(true, reply.header.url);
+        //showDownloadLink(true, reply.header.url);
     }
  
     // translate the message and redraw the board
@@ -2869,7 +2892,7 @@ function dragElement(elmnt) {
     }
 
     function dragMouseDown(e) {
-        e = e || window.event;
+        //e = e || window.event;
         e.preventDefault();
         // get the mouse cursor position at startup:
         pos3 = e.clientX;
@@ -2881,7 +2904,7 @@ function dragElement(elmnt) {
     }
 
     function elementDrag(e) {
-        e = e || window.event;
+        //e = e || window.event;
         e.preventDefault();
         // calculate the new cursor position:
         pos1 = pos3 - e.clientX;
