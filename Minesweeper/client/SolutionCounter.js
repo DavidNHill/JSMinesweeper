@@ -679,9 +679,9 @@ class SolutionCounter {
 
             //this.validWeb = false;
             //return false;
-        } else if (box.minMines != 0) {
-            this.validWeb = false;
-            return false;
+        //} else if (box.minMines != 0) {
+        //    this.validWeb = false;
+        //    return false;
 
         } else {
             box.incrementEmptyTiles();

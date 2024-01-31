@@ -295,7 +295,7 @@ async function startup() {
     }
 
     //bulkRun(21, 12500);  // seed '21' Played 12500 won 5192
-    //bulkRun(321, 10000);  // seed 321 played 10000 won 4146
+    //bulkRun(321, 10000);  // seed 321 played 10000 won 4141
 
     showMessage("Welcome to minesweeper solver dedicated to Annie");
 }
@@ -2650,6 +2650,11 @@ async function sendActionsMessage(message) {
         board.seed = reply.header.seed;
         console.log("Setting game seed to " + reply.header.seed);
         seedText.value = board.seed;
+        if (board.num_bombs != reply.header.mines) {
+            console.log("Number of mines changed from  " + board.num_bombs + " to " + reply.header.mines);
+            board.num_bombs = reply.header.mines;
+            board.bombs_left = board.num_bombs;
+        }
     }
 
     if (reply.header.status == "lost") { 

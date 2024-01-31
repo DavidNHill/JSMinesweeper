@@ -543,8 +543,6 @@ class ServerGame {
 		this.tiles = [];
 		this.started = false;
 
-		this.tilesLeft = this.width * this.height - this.num_bombs;
-		
 		// create adjacent offsets
 		this.adj_offset = [];
 		this.adj_offset[0] =  - width - 1;
@@ -572,6 +570,8 @@ class ServerGame {
 			this.num_bombs = this.width * this.height - excludeCount;
 			console.log("WARN: Too many mines to be placed! Reducing mine count to " + this.num_bombs);
         }
+
+		this.tilesLeft = this.width * this.height - this.num_bombs;
 
 		this.init_tiles(exclude);
 
