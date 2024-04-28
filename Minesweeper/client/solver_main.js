@@ -224,7 +224,7 @@ async function solver(board, options) {
                 result.push(new Action(tile.getX(), tile.getY(), 1, ACTION_CLEAR))
             }
             showMessage("No mines left to find all remaining tiles are safe");
-            return new EfficiencyHelper(board, witnesses, witnessed, result, options.playStyle, null).process();
+            return new EfficiencyHelper(board, witnesses, witnessed, result, options.playStyle, null, allCoveredTiles).process();
         }
 
         const oldMineCount = result.length;
@@ -359,7 +359,7 @@ async function solver(board, options) {
             }
 
             showMessage("The probability engine has found " + pe.localClears.length + " safe clears and " + pe.minesFound.length + " mines");
-            return new EfficiencyHelper(board, witnesses, witnessed, result, options.playStyle, pe).process();
+            return new EfficiencyHelper(board, witnesses, witnessed, result, options.playStyle, pe, allCoveredTiles).process();
         } 
 
 
@@ -609,7 +609,7 @@ async function solver(board, options) {
                     }
                 }
  
-                result = new EfficiencyHelper(board, witnesses, witnessed, result, options.playStyle, pe).process();
+                result = new EfficiencyHelper(board, witnesses, witnessed, result, options.playStyle, pe, allCoveredTiles).process();
             } else {
  
                 if (pe.duration < 50) {  // if the probability engine didn't take long then use some tie-break logic

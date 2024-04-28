@@ -6,8 +6,8 @@ class EfficiencyHelper {
     static ALLOW_ZERO_NET_GAIN_PRE_CHORD = true;
 
     static IGNORE_ZERO_THRESHOLD = 0.375;   // ignore a zero when the chance it happens is less than this
-
-    constructor(board, witnesses, witnessed, actions, playStyle, pe) {
+ 
+    constructor(board, witnesses, witnessed, actions, playStyle, pe, coveredTiles) {
 
         this.board = board;
         this.actions = actions;
@@ -15,6 +15,7 @@ class EfficiencyHelper {
         this.witnessed = witnessed;
         this.playStyle = playStyle;
         this.pe = pe;
+        this.coveredTiles = coveredTiles;
 
     }
 
@@ -92,8 +93,7 @@ class EfficiencyHelper {
 
         // sort the chord locations so the best one is at the top
         chordLocations.sort(function (a, b) {
-            if (a.netBenefit == b.netBenefit) {  // if the benefits are the same return the one with the lowest cost (this means place less flags)
-                //return a.cost - b.cost;
+            if (a.netBenefit == b.netBenefit) {  // if the benefits are the same return the one which exposes most tiles to flags
                 return b.exposedTiles - a.exposedTiles;
             } else {
                 return b.netBenefit - a.netBenefit;
@@ -101,12 +101,12 @@ class EfficiencyHelper {
         });
 
         let bestChord = null;
-        let witnessReward = 0;
+        let bestChordReward = 0;
         for (let cl of chordLocations) {
 
             if (cl.netBenefit > 0 || EfficiencyHelper.ALLOW_ZERO_NET_GAIN_CHORD && cl.netBenefit == 0 && cl.cost > 0) {
                 bestChord = cl;
-                witnessReward = cl.netBenefit;
+                bestChordReward = cl.netBenefit;
             }
 
             break;
@@ -130,16 +130,21 @@ class EfficiencyHelper {
             let bestAction = null;
             let highest = BigInt(0);
 
+            let bestLowZero = null;
+            let bestLowZeroProb = 0; 
+
             const currSolnCount = solver.countSolutions(this.board);
-            if (witnessReward != 0) {
-                highest = currSolnCount.finalSolutionsCount * BigInt(witnessReward);
+            if (bestChordReward != 0) {
+                highest = currSolnCount.finalSolutionsCount * BigInt(bestChordReward);
             } else {
                 highest = BigInt(0);
             }
 
             for (let act of this.actions) {
-
+            //for (let act of this.coveredTiles) {  // swap this for risky efficiency
+            
                 if (act.action == ACTION_CLEAR) {
+                //if (!act.isSolverFoundBomb()) {   // swap this for risky efficiency
 
                     // this is the default move;
                     if (firstClear == null) {
@@ -171,19 +176,8 @@ class EfficiencyHelper {
 
                         if (cl.tile.isAdjacent(tile)) {
                             adjChords.push(cl);
-
-                            // first adjacent chord, or better adj chord or cheaper adj chord 
-                            //if (adjChord == null || adjChord.netBenefit < cl.netBenefit || adjChord.netBenefit == cl.netBenefit && adjChord.cost > cl.cost || 
-                            //    adjChord.netBenefit == cl.netBenefit && adjChord.cost == cl.cost && adjChord.exposedTiles < cl.exposedTiles) {
-                            //    adjChord = cl;
-                            //}
                         }
                     }
-                    //if (adjChord == null) {
-                    //    //console.log("(" + act.x + "," + act.y + ") has no adjacent chord with net benefit > 0");
-                    //} else {
-                    //   console.log("(" + act.x + "," + act.y + ") has adjacent chord " + adjChord.tile.asText() + " with net benefit " + adjChord.netBenefit);
-                    //}
 
                     const adjMines = this.board.adjacentFoundMineCount(tile);
                     const adjFlags = this.board.adjacentFlagsPlaced(tile);
@@ -200,7 +194,8 @@ class EfficiencyHelper {
 
                     //console.log("considering " + act.x + "," + act.y + " with value " + adjMines + " and reward " + reward + " ( H=" + hidden + " M=" + adjMines + " F=" + adjFlags + " Chord=" + chord + ")");
 
-                    if (reward > witnessReward) {
+                    // if the reward could be better than the best chord or the click is a possible zero then consider it
+                    if (reward > bestChordReward || adjMines == 0) {
 
                         tile.setValue(adjMines);
                         const counter = solver.countSolutions(this.board);
@@ -223,6 +218,11 @@ class EfficiencyHelper {
                             break;
                         } else if (adjMines == 0 && prob < EfficiencyHelper.IGNORE_ZERO_THRESHOLD) {
                             console.log("(" + act.x + "," + act.y + ") is a zero with low probability of " + prob + " and is being ignored");
+                            if (prob > 0 && (bestLowZero == null || bestLowZeroProb < prob)) {
+                                bestLowZero = act;
+                                bestLowZeroProb = prob;
+                                console.log("(" + bestLowZero.x + "," + bestLowZero.y + ") is a zero with low probability of " + bestLowZeroProb + " is the best low probability so far");
+                            }
                             continue;
                         }
 
@@ -238,26 +238,25 @@ class EfficiencyHelper {
                         for (let cl of adjChords) {
                             console.log("(" + act.x + "," + act.y + ") has adjacent chord " + cl.tile.asText() + " with net benefit " + cl.netBenefit);
                             const tempCurrent = this.chordChordCombo(cl, tile, counter.finalSolutionsCount, currSolnCount.finalSolutionsCount);
-                            if (tempCurrent > current) {  // keep track of the best chord / chord combo
+
+                            // if the chord/chord is better, or the chord/chord is the same as a click/chord (prioritise the chord/chord)
+                            if (tempCurrent > current || tempCurrent == current && adjChord == null) {  // keep track of the best chord / chord combo
                                 current = tempCurrent;
                                 adjChord = cl;
                             }
                         }
 
-
-                        /*
-                        // if it is a chord/chord combo
-                        if (adjChord != null) {
-                           current = this.chordChordCombo(adjChord, tile, counter.finalSolutionsCount, currSolnCount.finalSolutionsCount);
-                            if (current < clickChordNetBenefit) {  // if click chord is better then discard the adjacent chord
-                                current = clickChordNetBenefit;
-                                adjChord = null;
-                            }
-
-                        } else {  // or a clear/chord combo
-                            current = clickChordNetBenefit;  // expected benefit == p*benefit
+                        // calculate the safety tally for this click
+                        const tileBox = this.pe.getBox(tile);
+                        let safetyTally;
+                        if (tileBox == null) {
+                            safetyTally = this.pe.finalSolutionsCount - this.pe.offEdgeMineTally;
+                        } else {
+                            safetyTally = this.pe.finalSolutionsCount - tileBox.mineTally;
                         }
-                        */
+
+                        // scale the best reward to the safety of the click - this might be a bit simplistic!
+                        current = current * safetyTally / this.pe.finalSolutionsCount;
 
                         if (current > highest) {
                             //console.log("best " + act.x + "," + act.y);
@@ -300,6 +299,9 @@ class EfficiencyHelper {
 
         if (result.length > 0) {
             return result;   // most efficient move
+
+        } else if (bestLowZero != null) {
+            return [bestLowZero];  // a zero, but low chance
 
         } else if (neutral3BV.length > 0) {
             return [neutral3BV[0]];  // 3BV neutral move

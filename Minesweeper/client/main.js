@@ -121,14 +121,14 @@ const urlParams = new URLSearchParams(window.location.search);
 
 const filePickerAvailable = ('showSaveFilePicker' in window);
 
-// things to do when exiting the page
-function exiting() {
+// things to do when the page visibility changes
+function visibilityChange() {
 
-    console.log("exiting...");
+    console.log("visibility changed to " + document.visibilityState);
 
-    if (board != null) {
-        killGame(board.getID());
-    }
+    //if (board != null) {
+    //    killGame(board.getID());
+    //}
 
     return "";
 }
@@ -211,7 +211,7 @@ async function startup() {
 
     console.log("Binomials calculated");
 
-    window.addEventListener("beforeunload", (event) => exiting(event));
+    //window.addEventListener("beforeunload", (event) => exiting(event));
 
     // add a listener for mouse clicks on the canvas
     canvas.addEventListener("mousedown", (event) => on_click(event));
@@ -220,6 +220,8 @@ async function startup() {
     canvas.addEventListener('wheel', (event) => on_mouseWheel(event));
     canvas.addEventListener('mouseenter', (event) => on_mouseEnter(event));
     canvas.addEventListener('mouseleave', (event) => on_mouseLeave(event));
+
+    document.addEventListener("visibilitychange", visibilityChange);
 
     docMinesLeft.addEventListener('wheel', (event) => on_mouseWheel_minesLeft(event));
 
