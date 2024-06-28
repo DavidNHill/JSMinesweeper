@@ -1,10 +1,17 @@
 @charset "ISO-8859-1";
 
+html {
+    height: fit-content;
+    width: fit-content;
+}
+
 body {
 	background: #ccc;
-  	padding: 10px;
-  	border-style: inset;
   	border-width: 5px;
+    display: flex;
+    flex-direction: column;
+    min-width: 100vw;
+    min-height: 100vh;
 }
 
 h1 {
@@ -20,12 +27,7 @@ h1 {
 }
 
 nav {
-    position: absolute;
-    margin-right: 20px;
-    left: 10px;
     width: 160px;
-    top: 75px;
-    bottom: 50px;
     background: #ccc;
     padding: 10px;
     border-style: outset;
@@ -36,7 +38,6 @@ nav {
 nav ul {
   list-style-type: none;
   padding: 0;
-  
 }
 
 /* divisions which appear to be raised */
@@ -48,6 +49,7 @@ div.raised {
     padding: 0px;
     border-style: outset;
     border-width: 5px;
+    margin-top: auto;
 }
 
 /* the section holding the board and display canvas */
@@ -58,6 +60,8 @@ section {
 
 /* the section holding the canvas */
 div#board {
+    display: flex;
+    flex-wrap: wrap;
     padding: 0px;
     background-color: #ccc;
     border-color: #eee;
@@ -186,8 +190,8 @@ button:hover {
 
 /* Tooltip container */
 .tooltip {
-    position: absolute;
     display: inline-block;
+    position: relative;
 }
 
 /* Tooltip text */
@@ -237,6 +241,11 @@ button:hover {
     border-style: ridge;
     border-width: 5px;
     box-shadow: rgba(0, 0, 0, 0.6) 10px 10px 6px;
+}
+
+.content-container {
+    display: flex;
+    flex-direction: row;
 }
 
 #properties {
