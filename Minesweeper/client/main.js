@@ -1336,8 +1336,6 @@ function changeTileSize() {
 
     resizeCanvas(board.width, board.height);  // resize the canvas
 
-    browserResized();  // do we need scroll bars?
-
     renderTiles(board.tiles); // draw the board
 
 }
@@ -1353,87 +1351,6 @@ function resizeCanvas(width, height) {
 
     canvasHints.width = boardWidth;
     canvasHints.height = boardHeight;
-
-}
-
-function browserResized() {
-
-    const boardElement = document.getElementById('board');
-
-    const boardWidth = board.width * TILE_SIZE;
-    const boardHeight = board.height * TILE_SIZE;
-
-    const screenWidth = document.getElementById('canvas').offsetWidth - 10;
-    const screenHeight = document.getElementById('canvas').offsetHeight - 60 - 20;   // subtract some space to allow for the mine count panel and the hyperlink
-
-    //console.log("Available size is " + screenWidth + " x " + screenHeight);
-
-    // things to determine
-    let useWidth;
-    let useHeight;
-    let scrollbarYWidth;
-    let scrollbarXHeight;
-
-    // decide screen size and set scroll bars
-    if (boardWidth > screenWidth && boardHeight > screenHeight) {  // both need scroll bars
-        useWidth = screenWidth;
-        useHeight = screenHeight;
-        boardElement.style.overflowX = "scroll";
-        boardElement.style.overflowY = "scroll";
-
-        scrollbarYWidth = 0;    
-        scrollbarXHeight = 0;
-
-    } else if (boardWidth > screenWidth) {  // need a scroll bar on the bottom
-        useWidth = screenWidth;
-        boardElement.style.overflowX = "scroll";
-
-        scrollbarXHeight = boardElement.offsetHeight - boardElement.clientHeight - 10;
-        scrollbarYWidth = 0;
-
-        if (boardHeight + scrollbarXHeight > screenHeight) {  // the scroll bar has made the height to large now !
-            useHeight = screenHeight;
-            boardElement.style.overflowY = "scroll";
-            scrollbarXHeight = 0;
-        } else {
-            useHeight = boardHeight;
-            boardElement.style.overflowY = "hidden";
-        }
-
-    } else if (boardHeight > screenHeight) {  // need a scroll bar on the right
-        useHeight = screenHeight;
-        boardElement.style.overflowY = "scroll";
-
-        scrollbarYWidth = boardElement.offsetWidth - boardElement.clientWidth - 10;
-        scrollbarXHeight = 0;
-
-        if (boardWidth + scrollbarYWidth > screenWidth) {  // the scroll bar has made the width to large now !
-            useWidth = screenWidth;
-            scrollbarYWidth = 0;
-            boardElement.style.overflowX = "scroll";
-        } else {
-            useWidth = boardWidth;
-            boardElement.style.overflowX = "hidden";
-        }
-
-    } else {
-         useWidth = boardWidth;
-        boardElement.style.overflowX = "hidden";
-        useHeight = boardHeight;
-        boardElement.style.overflowY = "hidden";
-        scrollbarYWidth = 0;
-        scrollbarXHeight = 0;
-    }
-
-    //console.log("Usable size is " + useWidth + " x " + useHeight);
-    //console.log("Scroll bar Y width  " + scrollbarYWidth);
-    //console.log("Scroll bar X Height  " + scrollbarXHeight);
-
-    // change the size of the viewable frame
-    boardElement.style.width = (useWidth + scrollbarYWidth) + "px";
-    boardElement.style.height = (useHeight + scrollbarXHeight) + "px";
-
-    document.getElementById("display").style.width = (useWidth + scrollbarYWidth) + "px";
 
 }
 
