@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html style="width: 100%; height: 100%">
+<html>
 <head>
     <meta charset="ISO-8859-1">
     <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, shrink-to-fit=no">
@@ -10,8 +10,8 @@
 <body style="position: absolute; left:0px; right:0px; top:0px; bottom:0px; zoom: 1.0;" onresize="browserResized()" onload="load_images()">
 
     <!-- Title at the top -->
-    <h1>
-        <button type="button" style="zoom: 0.9; vertical-align: middle;" id="switchButton" onclick="setAnalysis()">Switch to Analyser</button>
+    <h1 id="headerPanel" style="position: relative; left: 0px; top: 0px; height: 50px; right: 0px; overflow-y: auto;">
+        <button type="button" style="zoom: 0.9;" id="switchButton" onclick="setAnalysis()">Switch to Analyser</button>
         <label id="title" style="font-size: 36px; vertical-align: middle;">Minesweeper player</label>
         <label style="float: right; padding-right: 10px;">
             <a href="https://github.com/DavidNHill/JSMinesweeper#readme" target="_blank"><i>help</i></a>
@@ -19,7 +19,7 @@
     </h1>
 
     <!-- control panel on the left -->
-    <nav id="controls" style="zoom: 0.9; position:relative; left:0px; top:0px">
+    <nav id="controls" style="zoom: 0.9; position: absolute; left: 0px; top: 65px; bottom: 0px; width: 175px; overflow-y: auto">
 
         <div id="play0" style="margin-top: 0px;">
             <div class="checkboxes">
@@ -66,9 +66,9 @@
             <button style="margin-top: 1em;" id="localStorageButton" onclick="openLocalStorage()">Local Storage</button>
         </div>
 
-        <button type="button" style="margin-top: 1em;" id="NewGame" onclick="apply()">New game</button>
+        <button type="button" style="margin-top: 5px;" id="NewGame" onclick="apply()">New game</button>
 
-        <button type="button" style="margin-top: 0em;" id="repeatGame" onclick="playAgain()">Play again</button>
+        <button type="button" style="margin-top: 5px;" id="repeatGame" onclick="playAgain()">Play again</button>
 
         <div style="margin-top: 10px;">
             <label>Style:</label>
@@ -109,7 +109,7 @@
         </div>
 
         <div style="margin-top: 1em; display: none;" class="checkboxes" id="analysis1">
-            <label><input type="checkbox" class="checkbox" id="buildMode" checked/> <span>Build mode</span></label>
+            <label><input type="checkbox" class="checkbox" id="buildMode" checked /> <span>Build mode</span></label>
             <label><input type="checkbox" class="checkbox" id="lockMineCount" /> <span><u>L</u>ock mine count</span></label>
         </div>
 
@@ -127,16 +127,33 @@
     </nav>
 
     <!-- where the board goes -->
-    <div id="wholeboard" style="position: absolute; left: 180px; right: 10px; top: 75px; bottom: 60px;">
-        <section class="tooltip" id="canvas" style="position: absolute; left: 10px; top: 0px; bottom: 0px; right: 0px;">
-            <div id="display">
-                <canvas class="led" id="myMinesLeft" width="96" height="40" oncontextmenu="return false"></canvas>
+    <!--
+    <div id="wholeboard" style="position: absolute; left: 180px; right: 10px; top: 65px; bottom: 60px;">
+    -->
+    <div id="wholeboard" style="display: block; position: absolute; left: 185px; right: 0px; top: 60px; bottom: 60px;">
+        <section class="tooltip" id="canvas" style="position: absolute; left: 0px; top: 0px; bottom: 0px; right: 0px;">
+            
+            <!-- the board header with mine count and some buttons -->
+            <div id="display" style="display: inline-flex; height: 50px;">
+                <div>
+                    <canvas class="led" id="myMinesLeft" style="position: relative; left: 0px; top:0px; width: 60px; height: 32px" oncontextmenu="return false"></canvas>
+                </div>
+                <div style="width: 100px">
+                    <input type="image" src='resources/images/flaggedWrong_thin.png' id="leftClickFlag" onclick="doToggleFlag()" style="position: relative; left: 20px; top:8px; width:36px; height: 36px" />
+                </div>
+                 <div style="flex-grow: 1;">
+                    <button class="small" type="button" style="position: relative; float: inline-end; font-size: 22px;" id="toggleScreen" onclick="doToggleScreen()">+</button>
+                </div>
             </div>
+
+            <!-- the canvas with the mines on it and one with the the hints -->
             <div id="board" style="overflow: auto; position: relative; top:0px; left:0px;">
                 <canvas id="myCanvas" width="500" height="500" oncontextmenu="return false" style="position: absolute; top: 0px; left: 0px;"></canvas>
                 <canvas id="myHints" width="500" height="500" oncontextmenu="return false" style="position: absolute; top: 0px; left: 0px; pointer-events: none;"></canvas>
             </div>
+
             <span id="tooltip" class="tooltiptext" style="pointer-events: none;"></span>
+            
             <!-- A hyperlink to download the board -->
             <div style="position: relative; left: 0px; top: 0px; right: 0px;">
                 <a id="saveposition" style="float: left; width: 140px; margin-right: 30px;" download="" href="">Save position</a>
@@ -155,8 +172,8 @@
 
 
     <!-- message line at the bottom -->
-    <div class="raised" style="position: absolute; bottom: 0px; left: 0px; right: 0px; margin: 10px;">
-        <label id="messageLine" style="font-size:20px; padding:5px;">A message line</label>
+    <div id="messageBar" class="raised" style="display:inline-flex; flex-direction: column; justify-content: flex-end; position: absolute; bottom: 0px; left: 185px; right: 0px; height: 28px;">
+        <label id="messageLine" style="font-size: 18px; overflow-y: auto; padding-left: 5px"></label>
     </div>
 
     <!-- Local storage popup -->
@@ -230,8 +247,8 @@
                 return;
             }
 
-            const MAX_WIDTH = 250;
-            const MAX_HEIGHT = 250;
+            //const MAX_WIDTH = 250;
+            //const MAX_HEIGHT = 250;
 
             var widthX = document.getElementById("width").value;
             var heightX = document.getElementById("height").value;

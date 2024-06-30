@@ -1,18 +1,34 @@
 @charset "ISO-8859-1";
 
-body {
-	background: #ccc;
-  	padding: 10px;
-  	border-style: inset;
-  	border-width: 5px;
+
+html {
+    height: fit-content;
+    width: fit-content;
 }
+
+/*
+body {
+    background: #ccc;
+    border-width: 5px;
+    display: flex;
+    flex-direction: column;
+}
+*/
+
+body {
+    background: #ccc;
+    padding: 0px;
+    border-style: inset;
+    border-width: 5px;
+}
+
 
 h1 {
     position: sticky;
     top: 0px;
     z-index: 1; /* Sit on top */
     margin-top: 0px;
-    margin-bottom: 10px;
+    margin-bottom: 0px;
     background: #ccc;
     padding: 0px;
     border-style: outset;
@@ -21,13 +37,13 @@ h1 {
 
 nav {
     position: absolute;
-    margin-right: 20px;
+    margin-right: 0px;
     left: 10px;
     width: 160px;
     top: 75px;
     bottom: 50px;
     background: #ccc;
-    padding: 10px;
+    padding: 5px;
     border-style: outset;
     border-width: 5px;
 }
@@ -58,7 +74,6 @@ section {
 
 /* the section holding the canvas */
 div#board {
-    padding: 0px;
     background-color: #ccc;
     border-color: #eee;
     border-style: ridge;
@@ -72,7 +87,6 @@ div#board {
 
 /* the section holding the number of mines */
 div#display {
-    padding: 0px;
     background-color: #ccc;
     border-color: #eee;
     border-style: ridge;
@@ -86,30 +100,28 @@ div#display {
 
 /* canvases which hold LED digits */
 canvas.led {
-    padding: 0px;
     background-color: black;
     border-style: inset;
-    border-top-width: 4px;
-    border-left-width: 4px;
-    border-bottom-width: 4px;
-    border-right-width: 4px;
-    margin: 5px;
-    margin-bottom: 2px;
+    border-width: 4px;
 }
 
 button {
-    margin: 5px;
+    margin: 0px;
     width: 150px;
     height: 40px;
-    padding: 5px;
     border-style: outset;
     border-color: #aaa;
     border-width: 6px;
 }
 
+button.small {
+    width: 36px;
+    height: 36px;
+}
+
 button:hover {
     background-color: powderblue;
-    cursor: grab;
+    cursor: pointer;
 }
 
 .radioButtons {
@@ -208,10 +220,14 @@ button:hover {
     z-index: 1;
 }
 
-/* Show the tooltip text when you mouse over the tooltip container */
-.tooltip:hover .tooltiptext {
-    visibility: visible;
+@media (hover: hover) and (pointer: fine) {
+    /* Show the tooltip text when you mouse over the tooltip container */
+    .tooltip:hover .tooltiptext {
+        visibility: visible;
+    }
 }
+
+
 
 /* Used by the local storage window */
 /* The Modal (background) */

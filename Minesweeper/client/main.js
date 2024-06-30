@@ -5,9 +5,12 @@
 console.log('At start of main.js');
 
 let TILE_SIZE = 24;
-const DIGIT_HEIGHT = 38;
-const DIGIT_WIDTH = 22;
+const DIGIT_HEIGHT = 32;
+const DIGIT_WIDTH = 20;
 const DIGITS = 5;
+
+const MAX_WIDTH = 250;
+const MAX_HEIGHT = 250;
 
 const CYCLE_DELAY = 100;  // minimum delay in milliseconds between processing cycles
 
@@ -87,6 +90,17 @@ const downloadPosition = document.getElementById('saveposition');
 downloadMBF.onclick = saveMBF;
 downloadPosition.onclick = savePosition;
 
+// variables for display expand or shrink
+let isExpanded = false;
+let originalLeftBoard = 185;
+let originalTopHeight = 60
+let originalLeftMessage = 185;
+
+let hasTouchScreen = false;
+
+//variables for left-click flag
+let leftClickFlag = false;
+
 // elements used in the local storage modal - wip
 const localStorageButton = document.getElementById("localStorageButton");
 const localStorageModal = document.getElementById("localStorage");
@@ -147,6 +161,18 @@ async function startup() {
         downloadPosition.innerText = "Download position";
     }
 
+    // do we have a touch screen?
+    hasTouchScreen = false;
+    if ("maxTouchPoints" in navigator) {
+        hasTouchScreen = navigator.maxTouchPoints > 0;
+    }
+    if (hasTouchScreen) {
+        console.log("Device supports touch screen");
+    } else {
+        console.log("Device does not supports touch screen");
+        document.getElementById("leftClickFlag").style.display = "none"; 
+    }
+
     //const urlParams = new URLSearchParams(window.location.search);
     const testParm = urlParams.get('test');
     if (testParm == "y") {
@@ -196,8 +222,8 @@ async function startup() {
                 height = 16;
                 mines = 99;
             }
-            width = Math.min(width, 200);
-            height = Math.min(height, 200);
+            width = Math.min(width, MAX_WIDTH);
+            height = Math.min(height, MAX_HEIGHT);
             mines = Math.min(mines, width * height - 1);
 
         }
@@ -1328,6 +1354,19 @@ async function newGame(width, height, mines, seed) {
 
 }
 
+function doToggleFlag() {
+    //console.log("DoToggleFlag");
+
+    if (leftClickFlag) {
+        document.getElementById("leftClickFlag").src = 'resources/images/flaggedWrong_thin.png';
+        leftClickFlag = false;
+    } else {
+        document.getElementById("leftClickFlag").src = 'resources/images/flagged.png';
+        leftClickFlag = true;
+    }
+
+}
+
 function changeTileSize() {
 
     TILE_SIZE = parseInt(docTileSize.value);
@@ -1342,7 +1381,43 @@ function changeTileSize() {
 
 }
 
-    // make the canvases large enough to fit the game
+// expand or shrink the game display
+function doToggleScreen() {
+
+    //console.log("DoToggleScreen");
+
+    if (isExpanded) {
+        document.getElementById("controls").style.display = "block";
+        document.getElementById("headerPanel").style.display = "block";
+        document.getElementById("wholeboard").style.left = originalLeftBoard;
+        document.getElementById("wholeboard").style.top = originalTopHeight;
+
+        document.getElementById("messageBar").style.left = originalLeftMessage;
+        isExpanded = false;
+ 
+        document.getElementById("toggleScreen").innerHTML = "+";
+
+        isExpanded = false;
+    } else {
+        originalLeftBoard = document.getElementById("wholeboard").style.left;
+        originalLeftMessage = document.getElementById("messageBar").style.left;
+        originalTopHeight = document.getElementById("wholeboard").style.top;
+        document.getElementById("wholeboard").style.left = "0px";
+        document.getElementById("wholeboard").style.top = "0px";
+        document.getElementById("messageBar").style.left = "0px";
+
+        document.getElementById("controls").style.display = "none";
+        document.getElementById("headerPanel").style.display = "none";
+
+        document.getElementById("toggleScreen").innerHTML = "-";
+        isExpanded = true;
+    }
+
+    browserResized();
+
+}
+
+// make the canvases large enough to fit the game
 function resizeCanvas(width, height) {
 
     const boardWidth = width * TILE_SIZE;
@@ -1364,8 +1439,14 @@ function browserResized() {
     const boardHeight = board.height * TILE_SIZE;
 
     const screenWidth = document.getElementById('canvas').offsetWidth - 10;
-    const screenHeight = document.getElementById('canvas').offsetHeight - 60 - 20;   // subtract some space to allow for the mine count panel and the hyperlink
 
+    let screenHeight;
+    if (isExpanded) {
+        screenHeight = document.getElementById('canvas').offsetHeight - 40;   // subtract some space to allow for the mine count panel and the hyperlink
+    } else {
+        screenHeight = document.getElementById('canvas').offsetHeight - 60;   // subtract some space to allow for the mine count panel and the hyperlink
+    }
+ 
     //console.log("Available size is " + screenWidth + " x " + screenHeight);
 
     // things to determine
@@ -1417,7 +1498,7 @@ function browserResized() {
         }
 
     } else {
-         useWidth = boardWidth;
+        useWidth = boardWidth;
         boardElement.style.overflowX = "hidden";
         useHeight = boardHeight;
         boardElement.style.overflowY = "hidden";
@@ -2106,6 +2187,13 @@ function draw(x, y, tileType) {
 // have the tooltip follow the mouse
 function followCursor(e) {
 
+    //console.log("Follow cursor, touch event? " + e.sourceCapabilities.firesTouchEvents);
+
+    // if we got here from a touch event then don't do tool tip
+    if (e.sourceCapabilities.firesTouchEvents) {
+        return;
+    }
+
     // get the tile we're over
     const row = Math.floor(e.offsetY / TILE_SIZE);
     const col = Math.floor(e.offsetX / TILE_SIZE);
@@ -2119,8 +2207,13 @@ function followCursor(e) {
 
     //console.log("Following cursor at X=" + e.offsetX + ", Y=" + e.offsetY);
 
-    tooltip.style.left = (TILE_SIZE + e.clientX - 220) + 'px';
-    tooltip.style.top = (e.clientY - TILE_SIZE * 1.5 - 70) + 'px';
+    if (isExpanded) {
+        tooltip.style.left = (TILE_SIZE + e.clientX - 35) + 'px';
+        tooltip.style.top = (e.clientY - TILE_SIZE * 1.5 - 5) + 'px';
+    } else {
+        tooltip.style.left = (TILE_SIZE + e.clientX - 220) + 'px';
+        tooltip.style.top = (e.clientY - TILE_SIZE * 1.5 - 70) + 'px';
+    }
 
     if (dragging && analysisMode) {
 
@@ -2144,7 +2237,8 @@ function followCursor(e) {
 
     }
 
-    if (row >= board.height || row < 0 || col >= board.width || col < 0) {
+    // || hasTouchScreen)
+    if (row >= board.height || row < 0 || col >= board.width || col < 0 ) {
         //console.log("outside of game boundaries!!");
         tooltip.innerText = "";
         tooltip.style.display = "none";
@@ -2266,7 +2360,7 @@ function on_click(event) {
 
         const tile = board.getTileXY(col, row);
 
-        if (button == 1) {   // left mouse button
+        if (button == 1 && !leftClickFlag) {   // left mouse button and not left click flag
 
             if (tile.isFlagged()) {  // no point clicking on an tile with a flag on it
                 console.log("Tile has a flag on it - no action to take");
@@ -2350,7 +2444,7 @@ function on_click(event) {
                 message = { "header": board.getMessageHeader(), "actions": [{ "index": board.xy_to_index(col, row), "action": 1 }] }; // click
             }
 
-        } else if (button == 3) {  // right mouse button
+        } else if (button == 3 || leftClickFlag) {  // right mouse button or left click flag
 
             if (!tile.isCovered()) {  // no point flagging an already uncovered tile
                 return;
