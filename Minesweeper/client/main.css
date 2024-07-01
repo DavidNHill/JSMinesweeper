@@ -43,7 +43,8 @@ nav {
     top: 75px;
     bottom: 50px;
     background: #ccc;
-    padding: 5px;
+    padding-left: 5px;
+    padding-top: 5px;
     border-style: outset;
     border-width: 5px;
 }
@@ -64,6 +65,10 @@ div.raised {
     padding: 0px;
     border-style: outset;
     border-width: 5px;
+}
+
+div.hidden {
+    display: none;
 }
 
 /* the section holding the board and display canvas */
@@ -115,8 +120,8 @@ button {
 }
 
 button.small {
-    width: 36px;
-    height: 36px;
+    width: 40px;
+    height: 40px;
 }
 
 button:hover {

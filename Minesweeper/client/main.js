@@ -63,7 +63,11 @@ const gameTypeSafe = document.getElementById("gameTypeSafe");
 const gameTypeZero = document.getElementById("gameTypeZero");
 const switchButton = document.getElementById("switchButton");
 const analysisButton = document.getElementById("AnalysisButton");
+const messageBar = document.getElementById("messageBar");
 const messageLine = document.getElementById("messageLine");
+const messageBarBottom = document.getElementById("messageBarBottom");
+const messageLineBottom = document.getElementById("messageLineBottom");
+const downloadBar = document.getElementById("downloadBar");
 const title = document.getElementById("title");
 const lockMineCount = document.getElementById("lockMineCount");
 const buildMode = document.getElementById("buildMode");
@@ -1396,6 +1400,9 @@ function doToggleScreen() {
         isExpanded = false;
  
         document.getElementById("toggleScreen").innerHTML = "+";
+        messageBarBottom.className = "";
+        messageBar.className = "hidden";
+        downloadBar.className = "";
 
         isExpanded = false;
     } else {
@@ -1410,6 +1417,10 @@ function doToggleScreen() {
         document.getElementById("headerPanel").style.display = "none";
 
         document.getElementById("toggleScreen").innerHTML = "-";
+
+        messageBarBottom.className = "hidden";
+        downloadBar.className = "hidden";
+        messageBar.className = "";
         isExpanded = true;
     }
 
@@ -3077,8 +3088,8 @@ function setURLParms(parm, value) {
 }
 
 function showMessage(text) {
-    //messageLine.innerText = text;
     messageLine.innerHTML = text;
+    messageLineBottom.innerHTML = text;
 }
 
 function prefixMessage(text) {
