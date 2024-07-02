@@ -247,16 +247,19 @@ class EfficiencyHelper {
                         }
 
                         // calculate the safety tally for this click
-                        const tileBox = this.pe.getBox(tile);
-                        let safetyTally;
-                        if (tileBox == null) {
-                            safetyTally = this.pe.finalSolutionsCount - this.pe.offEdgeMineTally;
-                        } else {
-                            safetyTally = this.pe.finalSolutionsCount - tileBox.mineTally;
-                        }
+                        // probability engine can be null if all the remaining tiles are safe
+                        if (this.pe != null) {
+                            const tileBox = this.pe.getBox(tile);
+                            let safetyTally;
+                            if (tileBox == null) {
+                                safetyTally = this.pe.finalSolutionsCount - this.pe.offEdgeMineTally;
+                            } else {
+                                safetyTally = this.pe.finalSolutionsCount - tileBox.mineTally;
+                            }
 
-                        // scale the best reward to the safety of the click - this might be a bit simplistic!
-                        current = current * safetyTally / this.pe.finalSolutionsCount;
+                            // scale the best reward to the safety of the click - this might be a bit simplistic!
+                            current = current * safetyTally / this.pe.finalSolutionsCount;
+                        }
 
                         if (current > highest) {
                             //console.log("best " + act.x + "," + act.y);
