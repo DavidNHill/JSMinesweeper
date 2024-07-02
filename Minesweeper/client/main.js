@@ -101,6 +101,7 @@ let originalTopHeight = 60
 let originalLeftMessage = 185;
 
 let hasTouchScreen = false;
+let supportsInputDeviceCapabilities = false;
 
 //variables for left-click flag
 let leftClickFlag = false;
@@ -176,6 +177,14 @@ async function startup() {
         console.log("Device does not supports touch screen");
         document.getElementById("leftClickFlag").style.display = "none"; 
     }
+
+    try {
+        let idc = new InputDeviceCapabilities();
+        supportsInputDeviceCapabilities = true;
+    } catch {
+        supportsInputDeviceCapabilities = false;
+    }
+    console.log("Browser supports Input Device Capabilities: " + supportsInputDeviceCapabilities);
 
     //const urlParams = new URLSearchParams(window.location.search);
     const testParm = urlParams.get('test');
@@ -2201,7 +2210,8 @@ function followCursor(e) {
     //console.log("Follow cursor, touch event? " + e.sourceCapabilities.firesTouchEvents);
 
     // if we got here from a touch event then don't do tool tip
-    if (e.sourceCapabilities.firesTouchEvents) {
+    if (supportsInputDeviceCapabilities && e.sourceCapabilities.firesTouchEvents) {
+        tooltip.innerText = "";
         return;
     }
 
