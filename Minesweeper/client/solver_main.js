@@ -6,9 +6,9 @@
 const OFFSETS = [[2, 0], [-2, 0], [0, 2], [0, -2]];
 const OFFSETS_ALL = [[2, -2], [2, -1], [2, 0], [2, 1], [2, 2], [-2, -2], [-2, -1], [-2, 0], [-2, 1], [-2, 2], [-1, 2], [0, 2], [1, 2], [-1, -2], [0, -2], [1, -2]];
 
-const PLAY_BFDA_THRESHOLD = 1000;       // number of solutions for the Brute force analysis to start
-const ANALYSIS_BFDA_THRESHOLD = 5000;
-const BRUTE_FORCE_CYCLES_THRESHOLD = 5000000;
+//const PLAY_BFDA_THRESHOLD = 1000;       // number of solutions for the Brute force analysis to start
+//const ANALYSIS_BFDA_THRESHOLD = 5000;
+//const BRUTE_FORCE_CYCLES_THRESHOLD = 5000000;
 const HARD_CUT_OFF = 0.90;        // cutoff for considering on edge possibilities below the best probability
 const OFF_EDGE_THRESHOLD = 0.95;  // when to include possibilities off the edge
 const PROGRESS_CONTRIBUTION = 0.2;  // how much progress counts towards the final score
@@ -471,9 +471,9 @@ async function solver(board, options) {
         // if we are having to guess and there are less then BFDA_THRESHOLD solutions use the brute force deep analysis...
         let bfdaThreshold;
         if (options.fullBFDA) {
-            bfdaThreshold = ANALYSIS_BFDA_THRESHOLD;
+            bfdaThreshold = BruteForceGlobal.ANALYSIS_BFDA_THRESHOLD;
         } else {
-            bfdaThreshold = PLAY_BFDA_THRESHOLD;
+            bfdaThreshold = BruteForceGlobal.PLAY_BFDA_THRESHOLD;
         }
 
         let partialBFDA = null;
@@ -488,7 +488,7 @@ async function solver(board, options) {
 
             let bfdaCompleted = false;
             let bfda
-            if (iterator.cycles <= BRUTE_FORCE_CYCLES_THRESHOLD) {
+            if (iterator.cycles <= BruteForceGlobal.BRUTE_FORCE_CYCLES_THRESHOLD) {
                 const bruteForce = new Cruncher(board, iterator);
 
                 const solutionCount = bruteForce.crunch();

@@ -5,9 +5,12 @@
 class BruteForceGlobal {
 
     // constants used in this processing
-    static BRUTE_FORCE_ANALYSIS_MAX_NODES = 2500000;
-    static PRUNE_BF_ANALYSIS = true;
-    static BRUTE_FORCE_ANALYSIS_TREE_DEPTH = 4;
+    static PLAY_BFDA_THRESHOLD = 1000;                   // number of remaining solutions for the Brute force analysis to start during play mode
+    static ANALYSIS_BFDA_THRESHOLD = 5000;               // number of solutions for the Brute force analysis to start when pressing "analyse"
+    static BRUTE_FORCE_ANALYSIS_MAX_NODES = 5000000;     // Max number of nodes processed during brute force before we stop
+    static BRUTE_FORCE_CYCLES_THRESHOLD = 5000000;       // Max number of cycles used to try and find the remaining solutions 
+    static PRUNE_BF_ANALYSIS = true;                     // Performance. Change to false to see the exact win rate for every living tile.
+    static BRUTE_FORCE_ANALYSIS_TREE_DEPTH = 4;          // Depth of tree kept and displayed in the console after a successful brute force
 
     static INDENT = "................................................................................";
 

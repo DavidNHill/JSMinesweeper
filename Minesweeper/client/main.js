@@ -143,13 +143,8 @@ const filePickerAvailable = ('showSaveFilePicker' in window);
 // things to do when the page visibility changes
 function visibilityChange() {
 
-    console.log("visibility changed to " + document.visibilityState);
-
-    //if (board != null) {
-    //    killGame(board.getID());
-    //}
-
-    return "";
+    //console.log("visibility changed to " + document.visibilityState);
+     
 }
 
 
@@ -2229,10 +2224,10 @@ function followCursor(e) {
     //console.log("Following cursor at X=" + e.offsetX + ", Y=" + e.offsetY);
 
     if (isExpanded) {
-        tooltip.style.left = (TILE_SIZE + e.clientX - 35) + 'px';
+        tooltip.style.left = (TILE_SIZE + e.clientX - 20) + 'px';
         tooltip.style.top = (e.clientY - TILE_SIZE * 1.5 - 5) + 'px';
     } else {
-        tooltip.style.left = (TILE_SIZE + e.clientX - 220) + 'px';
+        tooltip.style.left = (TILE_SIZE + e.clientX - 190) + 'px';
         tooltip.style.top = (e.clientY - TILE_SIZE * 1.5 - 70) + 'px';
     }
 
