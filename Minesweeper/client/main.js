@@ -1225,8 +1225,10 @@ async function newBoardFromString(data, inflate) {
                 const adjTiles = newBoard.getAdjacent(tile);
                 for (let i = 0; i < adjTiles.length; i++) {
                     const adjTile = adjTiles[i];
-                    let value = adjTile.getValue() + 1;
-                    adjTile.setValueOnly(value);
+                    if (!adjTile.isCovered()) {  // inflate tiles which aren't flags
+                        let value = adjTile.getValue() + 1;
+                        adjTile.setValueOnly(value);
+                    }
                 }
 
             }
@@ -2144,6 +2146,9 @@ async function checkBoard() {
         return;
     } 
 
+    // lock the canvas while we check the board
+    canvasLocked = true;
+
     window.requestAnimationFrame(() => renderHints([], []));
 
     previousBoardHash = currentBoardHash;
@@ -2155,10 +2160,11 @@ async function checkBoard() {
     if (badTile != null) {
         analysisButton.disabled = true;
         showMessage("The board is in an invalid state. Tile " + badTile.asText() + " is invalid.");
+        canvasLocked = false;
         return;
     }
 
-    const solutionCounter = await solver.countSolutions(board);
+    const solutionCounter = solver.countSolutions(board);
     board.resetForAnalysis(true, false);
 
     if (solutionCounter.finalSolutionsCount != 0) {
@@ -2183,6 +2189,7 @@ async function checkBoard() {
         showMessage("The board is in an invalid state. " + msg);
     }
 
+    canvasLocked = false;
 }
 
 
@@ -2577,6 +2584,11 @@ function on_mouseWheel(event) {
     const delta = Math.sign(event.deltaY);
 
     const tile = board.getTileXY(col, row);
+
+    // can't update a value on a flagged tile
+    if (tile.isFlagged()) {
+        return;
+    }
 
     const flagCount = board.adjacentFoundMineCount(tile);
     const covered = board.adjacentCoveredCount(tile);

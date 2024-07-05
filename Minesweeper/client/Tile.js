@@ -130,15 +130,21 @@ class Tile {
 	}
 
 	setCovered(covered) {
+		//console.log(this.asText() + " covered: " + covered);
 		this.is_covered = covered;
     }
 
 	setValue(value) {
+		//console.log(this.asText() + " setting value " + value + " and not covered");
 		this.value = value;
 		this.is_covered = false;
 	}
 
 	setValueOnly(value) {
+		if (this.is_flagged) {
+			console.log(this.asText() + " assigning a value " + value + " to a flagged tile!");
+		}
+
 		this.value = value;
     }
 

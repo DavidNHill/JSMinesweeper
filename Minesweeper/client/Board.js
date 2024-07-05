@@ -260,6 +260,11 @@ class Board {
 
 		for (let i = 0; i < this.tiles.length; i++) {
 			const tile = this.tiles[i];
+
+			if (!tile.isCovered() && tile.isFlagged()) {
+				console.log(tile.asText() + " is flagged but not covered!");
+			}
+
 			if (tile.isFlagged()) {
 				tile.foundBomb = flagIsMine;
 			} else {
@@ -306,7 +311,7 @@ class Board {
 			} else if (tile.getValue() < flagCount) {
 				console.log(tile.asText() + " is over flagged");
 			} else if (tile.getValue() > coveredCount) {
-				console.log(tile.asText() + " has an invalid value");
+				console.log(tile.asText() + " has an invalid value of " + tile.getValue() + " with only " + coveredCount + " surrounding covered tiles");
 				return tile;
             }
 
