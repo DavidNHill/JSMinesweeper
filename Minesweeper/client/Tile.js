@@ -30,6 +30,8 @@ class Tile {
 
 		this.skull = false;  // used when hardcore rule triggers
 
+		this.inflate = false; // used when constructing a compressed board
+
 		Object.seal(this); // prevent new values being created
 	}
 

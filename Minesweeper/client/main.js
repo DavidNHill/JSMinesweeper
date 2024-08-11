@@ -77,7 +77,8 @@ const docFastPlay = document.getElementById("fastPlay");
 const docNgMode = document.getElementById("noGuessMode");
 const docHardcore = document.getElementById("hardcore");
 const docOverlay = document.getElementById("overlay");
-const docAnalysisParm = document.getElementById("analysisParm");
+//const docAnalysisParm = document.getElementById("analysisParm");
+const urlQueryString = document.getElementById("urlQueryString");
 
 const docBeginner = document.getElementById("beginner");
 const docIntermediate = document.getElementById("intermediate");
@@ -126,6 +127,7 @@ let replayInterrupt = false;
 let replaying = false;
 
 let previousBoardHash = 0;
+let previousAnalysisQuery = "";
 let justPressedAnalyse = false;
 let dragging = false;  //whether we are dragging the cursor
 let dragTile;          // the last tile dragged over
@@ -648,7 +650,7 @@ function switchToAnalysis(doAnalysis) {
 
     updateMineCount(board.bombs_left);  // reset the mine count
 
- 
+    previousBoardHash = 0; // reset the board hash, so it gets recalculated
 }
 
 function setPageTitle() {
@@ -988,6 +990,8 @@ async function playAgain() {
 
         canvasLocked = false;  // just in case it was still locked (after an error for example)
 
+        placeAnalysisQuery();
+
         showMessage("Replay game requested");
     } else {
         showMessage("No game to replay");
@@ -1190,6 +1194,7 @@ async function newBoardFromString(data, inflate) {
             if (char == "F" || char == "M") {
                 tile.toggleFlag();
                 newBoard.bombs_left--;
+                tile.inflate = true;
             } else if (char == "0") {
                 tile.setValue(0);
             } else if (char == "1") {
@@ -1211,6 +1216,10 @@ async function newBoardFromString(data, inflate) {
             } else if (char == "I") {  // hidden but needs inflating, part of the compression of NF games
                 tile.setCovered(true);
                 tile.setFoundBomb();
+                tile.inflate = true;
+            } else if (char == "O") {  // a flag which doesn't need inflating
+                tile.toggleFlag();
+                newBoard.bombs_left--;
             } else {
                 tile.setCovered(true);
             }
@@ -1220,8 +1229,7 @@ async function newBoardFromString(data, inflate) {
     // if the data needs inflating then for each flag increase the adjacent tiles value by 1
     if (inflate) {
         for (let tile of newBoard.tiles) {
-            if (tile.isFlagged() || tile.isSolverFoundBomb()) {
-
+            if (tile.inflate) {
                 const adjTiles = newBoard.getAdjacent(tile);
                 for (let i = 0; i < adjTiles.length; i++) {
                     const adjTile = adjTiles[i];
@@ -1359,6 +1367,8 @@ async function newGame(width, height, mines, seed) {
     // store the board size in the url
     const boardSize = width + "x" + height + "x" + mines;
     setURLParms("board", boardSize);
+
+    placeAnalysisQuery();
 
     showMessage("New game requested with width " + width + ", height " + height + " and " + mines + " mines.");
 
@@ -2057,6 +2067,7 @@ async function doAnalysis() {
         canvasLocked = true;
     }
 
+    /*
     //console.log(docAnalysisParm.value);
     let compressed = "";
     if (docAnalysisParm.value == "full") {
@@ -2069,6 +2080,7 @@ async function doAnalysis() {
     if (compressed.length < 2000) {
         setURLParms("analysis", compressed);
     }
+    */
 
     // put out a message and wait long enough for the ui to update
     showMessage("Analysing...");
@@ -2129,10 +2141,6 @@ async function doAnalysis() {
 
 async function checkBoard() {
 
-    if (!analysisMode || replayMode) {
-        return;
-    }
-
     if (canvasLocked) {
         console.log("Not checking the board because analysis is being done");
     }
@@ -2146,12 +2154,20 @@ async function checkBoard() {
         return;
     } 
 
+    previousBoardHash = currentBoardHash;
+
+    // build the analysis URL Query string
+    placeAnalysisQuery();
+
+    // only check the board in analysis mode
+    if (!analysisMode || replayMode) {
+        return;
+    }
+
     // lock the canvas while we check the board
     canvasLocked = true;
 
     window.requestAnimationFrame(() => renderHints([], []));
-
-    previousBoardHash = currentBoardHash;
 
     console.log("Checking board with hash " + currentBoardHash);
 
@@ -2192,6 +2208,21 @@ async function checkBoard() {
     canvasLocked = false;
 }
 
+function placeAnalysisQuery() {
+
+    let compressed = null;
+    if (urlQueryString.checked) {
+        compressed = board.getSimpleCompressedData();
+    } else {
+        compressed = null;
+    }
+
+    if (previousAnalysisQuery != compressed) {
+        setURLParms("analysis", compressed);
+        previousAnalysisQuery = compressed;
+    }
+
+}
 
 // draw a tile to the canvas
 function draw(x, y, tileType) {
@@ -2497,7 +2528,7 @@ function on_click(event) {
         }
 
         // remove the analysis parm when playing a game
-        setURLParms("analysis", null);
+        //setURLParms("analysis", null);
 
         justPressedAnalyse = false;
 
