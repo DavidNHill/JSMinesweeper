@@ -271,11 +271,13 @@ async function startup() {
     // set the board details
     setBoardSizeOnGUI(width, height, mines);
 
+    // read the url string before it gets over written by the new game processing
+    const analysis = urlParams.get('analysis');
+
     // create the playable game;
     await newGame(width, height, mines, seed);
     gameBoard = board;
 
-    const analysis = urlParams.get('analysis');
     if (analysis != null) {
         const compressor = new Compressor();
 
