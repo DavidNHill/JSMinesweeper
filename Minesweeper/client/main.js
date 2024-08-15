@@ -2090,7 +2090,8 @@ async function doAnalysis() {
 
     // this will set all the obvious mines which makes the solution counter a lot more efficient on very large boards
     if (analysisMode) {
-        board.resetForAnalysis(!replayMode, true);  // in replay mode don't treat flags as mines
+        const flagIsMine = document.getElementById("flagIsMine").checked;
+        board.resetForAnalysis(!replayMode && flagIsMine, true);  // in replay mode don't treat flags as mines
     }
  
     const solutionCounter = solver.countSolutions(board);
