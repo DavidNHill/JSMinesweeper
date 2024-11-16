@@ -237,7 +237,9 @@ class EfficiencyHelper {
                         // consider each adjacent chord
                         for (let cl of adjChords) {
                             console.log("(" + act.x + "," + act.y + ") has adjacent chord " + cl.tile.asText() + " with net benefit " + cl.netBenefit);
-                            const tempCurrent = this.chordChordCombo(cl, tile, counter.finalSolutionsCount, currSolnCount.finalSolutionsCount);
+                            //const tempCurrent = this.chordChordCombo(cl, tile, counter.finalSolutionsCount, currSolnCount.finalSolutionsCount);
+
+                            const tempCurrent = this.chordChordCombo1(cl, tile, counter.finalSolutionsCount, currSolnCount.finalSolutionsCount, adjMines, prob);
 
                             // if the chord/chord is better, or the chord/chord is the same as a click/chord (prioritise the chord/chord)
                             if (tempCurrent > current || tempCurrent == current && adjChord == null) {  // keep track of the best chord / chord combo
@@ -245,6 +247,7 @@ class EfficiencyHelper {
                                 adjChord = cl;
                             }
                         }
+
 
                         // calculate the safety tally for this click
                         // probability engine can be null if all the remaining tiles are safe
@@ -328,7 +331,7 @@ class EfficiencyHelper {
  
         const chord1Tile = chord1.tile;
 
-        // now check each tile around the tile to be chorded 2nd and see how many mines to flag and tiles will be cleared
+        // now check each tile around the tile to be chorded 2nd and see how many mines to flag and extra tiles will be cleared
         //let alreadyCounted = 0;
         let needsFlag = 0;
         let clearable = 0;
@@ -364,6 +367,59 @@ class EfficiencyHelper {
 
     }
 
+    chordChordCombo1(chord1, chord2Tile, occurs, total, chord2AdjFlags, chord2Prob) {
+
+        const failedBenefit = chord1.netBenefit;
+
+        const chord1Tile = chord1.tile;
+
+        // now check each tile around the tile to be chorded 2nd and see how many mines to flag and extra tiles will be cleared
+        let adjChord1AndChord2 = 0;
+        let needsFlag = 0;
+        let adjChord2Only = 0;
+        let chordClick = 0;
+        for (let adjTile of this.board.getAdjacent(chord2Tile)) {
+
+            if (adjTile.isSolverFoundBomb()) {
+                chordClick = 1;
+            }
+
+            // if adjacent to chord1
+            if (chord1Tile.isAdjacent(adjTile) && !adjTile.isSolverFoundBomb() && adjTile.isCovered()) {
+                adjChord1AndChord2++;
+            } else if (adjTile.isSolverFoundBomb() && !adjTile.isFlagged()) {
+                if (!chord1Tile.isAdjacent(adjTile)) { // if adjacent to the first chord then a flag must already have been placed here
+                    needsFlag++;
+                }
+            } else if (!adjTile.isSolverFoundBomb() && adjTile.isCovered()) {
+                adjChord2Only++;
+            }
+        }
+
+        const adjChord1Only = chord1.benefit - 1 - adjChord1AndChord2;  
+
+        console.log("AdjChord1Only=" + adjChord1Only + ", AdjChord2Only=" + adjChord2Only + ", AdjChord1AndChord2=" + adjChord1AndChord2, "Chord2Value=" + chord2AdjFlags + ", prob=" + chord2Prob);
+        
+        // if the 2nd chord is a zero and the 1st chord has no tiles only adjacent to it then unless the zero probability < 0.5 chord/chord isn't better, unless it is a free chord
+        if (chord2AdjFlags == 0 && adjChord1Only == 0 && chord2Prob > 0.5 && chord1.cost > 1) {
+            console.log("Chord " + chord1Tile.asText() + " followed by Chord " + chord2Tile.asText() + ": Chord 2 is a zero with prob=" + chord2Prob + " and chord 1 has no tile only adjacent to it ==> chord/chord can't be a good option");
+            return 0;
+        }
+
+        const secondBenefit = adjChord2Only - needsFlag - chordClick;  // tiles cleared - flags placed - the chord click (which isn't needed if a zero is expected)
+
+        const score = BigInt(failedBenefit) * total + BigInt(secondBenefit) * occurs;
+
+        const expected = failedBenefit + divideBigInt(occurs, total, 6) * secondBenefit;
+
+        console.log("Chord " + chord1Tile.asText() + " followed by Chord " + chord2Tile.asText() + ": Chord 1: benefit " + chord1.netBenefit + ", Chord2: H=" + adjChord2Only + ", to F=" + needsFlag + ", Chord=" + chordClick
+            + ", Benefit=" + secondBenefit + " ==> expected benefit " + expected);
+
+        //var score = BigInt(failedBenefit) * total + BigInt(secondBenefit) * occurs;
+
+        return score;
+
+    }
 
     //
     // Below here is the logic for No-flag efficiency

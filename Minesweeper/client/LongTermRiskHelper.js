@@ -4,13 +4,16 @@ class LongTermRiskHelper {
 
 	constructor(board, pe, minesLeft, options)  {
 
+		this.INFLUENCE_THRESHOLD = 0.025;
+
 		this.board = board;
 		//this.wholeEdge = wholeEdge;
 		this.currentPe = pe;
 		this.minesLeft = minesLeft
 		this.options = options;
 
-		this.pseudo = null;
+		//this.pseudo = null;
+		this.pseudos = [];
 
 		this.influence5050s = new Array(this.board.width * this.board.height);
 		this.influenceEnablers = new Array(this.board.width * this.board.height);
@@ -30,15 +33,20 @@ class LongTermRiskHelper {
 
 		this.checkFor2Tile5050();
 
+		if (this.pseudos.length != 0) {
+			this.writeToConsole("2-tile pseudo found");
+			return this.pseudos;
+		}
+
 		this.checkForBox5050();
 
-		if (this.pseudo != null) {
-			this.writeToConsole("Tile " + this.pseudo.asText() + " is a 50/50, or safe");
+		if (this.pseudos.length != 0) {
+			this.writeToConsole("2x2 pseudo found");
 		}
 
 		//TODO remove mines found by the probability engine
 
-		return this.pseudo;
+		return this.pseudos;
 
 	}
 
@@ -59,6 +67,12 @@ class LongTermRiskHelper {
 		influence = this.addNotNull(influence, this.getVertical(tile, 4));
 		influence = this.addNotNull(influence, this.getVertical(tile2, 4));
 
+		if (influence > 0) {
+			const percentage = divideBigInt(influence, this.totalSolutions, 5) * 100;
+			this.writeToConsole("Tile " + tile.asText() + " aggregate 2-tile 50/50s has blast percentage " + percentage.toFixed(3) + "%");
+		}
+
+
 		// 4-tile 50/50
 		let influence4 = BigInt(0);
 		const tile3 = this.board.getTileXY(tile.getX() - 1, tile.getY() - 1);
@@ -69,7 +83,7 @@ class LongTermRiskHelper {
 
 		if (influence4 > 0) {
 			const percentage = divideBigInt(influence4, this.totalSolutions, 5) * 100;
-			this.writeToConsole("Tile " + tile.asText() + " best 4-tile 50/50 has percentage " + percentage.toFixed(3) + "%");
+			this.writeToConsole("Tile " + tile.asText() + " highest impact 4-tile 50/50 has blast percentage " + percentage.toFixed(3) + "%");
         }
 
 		influence = influence + influence4;
@@ -77,6 +91,8 @@ class LongTermRiskHelper {
 		// enablers also get influence, so consider that as well as the 50/50
 		if (this.influenceEnablers[tile.index] != null) {
 			influence = influence + this.influenceEnablers[tile.index];
+			const percentage = divideBigInt(this.influenceEnablers[tile.index], this.totalSolutions, 5) * 100;
+			this.writeToConsole("Tile " + tile.asText() + " 50/50 influence from being an enabler is " + percentage.toFixed(3) + "%");
 		}
 		
 		let maxInfluence;
@@ -115,11 +131,11 @@ class LongTermRiskHelper {
 
 				if (result != null) {
 					let influenceTally = this.addNotNull(BigInt(0), result);
-					//const influence = divideBigInt(influenceTally, this.currentPe.finalSolutionsCount, 4); 
+					const influenceRatio = divideBigInt(influenceTally, this.currentPe.finalSolutionsCount, 5) * 2; 
 					//this.writeToConsole("Tile " + tile1.asText() + " and " + tile2.asText() + " have horiontal 2-tile 50/50 influence " + influence);
 
-					this.addInfluence(influenceTally, result.enablers, [tile1, tile2]);
-					if (this.pseudo != null) {  // if we've found a pseudo then we can stop here
+					this.addInfluence(influenceTally, influenceRatio, result.enablers, [tile1, tile2]);
+					if (this.pseudos.length != 0) {  // if we've found a pseudo then we can stop here
 						return;
 					}
 				}
@@ -141,11 +157,12 @@ class LongTermRiskHelper {
 				if (result != null) {
 					
 					let influenceTally = this.addNotNull(BigInt(0), result);
-					//const influence = divideBigInt(influenceTally, this.currentPe.finalSolutionsCount, 4); 
+
+					const influenceRatio = divideBigInt(influenceTally, this.currentPe.finalSolutionsCount, 5); 
 					//this.writeToConsole("Tile " + tile1.asText() + " and " + tile2.asText() + " have vertical 2-tile 50/50 influence " + influence);
 
-					this.addInfluence(influenceTally, result.enablers, [tile1, tile2]);
-					if (this.pseudo != null) {  // if we've found a pseudo then we can stop here
+					this.addInfluence(influenceTally, influenceRatio, result.enablers, [tile1, tile2]);
+					if (this.pseudos.length != 0) {  // if we've found a pseudo then we can stop here
 						return;
 					}
 				}
@@ -208,9 +225,11 @@ class LongTermRiskHelper {
 			return null;
 		}
 
-		const percentage = divideBigInt(counter.finalSolutionsCount, this.totalSolutions, 5) * 100;
-
-		this.writeToConsole("Possible 50/50 - " + tile1.asText() + " " + tile2.asText() + " probability " + percentage.toFixed(3) + "%");
+		const ratio = divideBigInt(counter.finalSolutionsCount, this.totalSolutions, 5);
+		const percentage = ratio * 100 * 2;
+		if (ratio > this.INFLUENCE_THRESHOLD) {
+			this.writeToConsole("Possible 50/50 - " + tile1.asText() + " " + tile2.asText() + " chance of being 50/50 " + percentage.toFixed(3) + "%");
+		}
 
 		return new LTResult(counter.finalSolutionsCount, missingMines);
 
@@ -270,9 +289,12 @@ class LongTermRiskHelper {
 			return null;
 		}
 
-		const percentage = divideBigInt(counter.finalSolutionsCount, this.totalSolutions, 5) * 100;
+		const ratio = divideBigInt(counter.finalSolutionsCount, this.totalSolutions, 5);
+		const percentage = ratio * 100 * 2;
 
-		this.writeToConsole("Possible 50/50 - " + tile1.asText() + " " + tile2.asText() + " Probability " + percentage.toFixed(3) + "%");
+		if (ratio > this.INFLUENCE_THRESHOLD) {
+			this.writeToConsole("Possible 50/50 - " + tile1.asText() + " " + tile2.asText() + " chance of being 50/50 " + percentage.toFixed(3) + "%");
+		}
 
 		return new LTResult(counter.finalSolutionsCount, missingMines);
 
@@ -280,7 +302,7 @@ class LongTermRiskHelper {
 
 	checkForBox5050() {
 		
-		const maxMissingMines = 2;
+		const maxMissingMines = 4;
 		
 		this.writeToConsole("Checking for 4-tile 50/50 influence");
 
@@ -299,11 +321,11 @@ class LongTermRiskHelper {
 					
 					const influenceTally = this.addNotNull(BigInt(0), result);
 					
-					//const influence = divideBigInt(influenceTally, this.currentPe.finalSolutionsCount, 4); 
+					const influenceRatio = divideBigInt(influenceTally, this.currentPe.finalSolutionsCount, 5); 
 					//this.writeToConsole("Tile " + tile1.asText() + " " + tile2.asText() + " " + tile3.asText() + " " + tile4.asText() + " have box 4-tile 50/50 influence " + influence);
 
-					this.addInfluence(influenceTally, result.enablers, [tile1, tile2, tile3, tile4]);
-					if (this.pseudo != null) {  // if we've found a pseudo then we can stop here
+					this.addInfluence(influenceTally, influenceRatio, result.enablers, [tile1, tile2, tile3, tile4]);
+					if (this.pseudos.length != 0) {  // if we've found a pseudo then we can stop here
 						return;
 					}
 				}
@@ -369,9 +391,11 @@ class LongTermRiskHelper {
 			return null;
 		}
 
-		const percentage = divideBigInt(counter.finalSolutionsCount, this.totalSolutions, 5) * 100;
-
-		this.writeToConsole("Possible 50/50 - " + tile1.asText() + " " + tile2.asText() + " " + tile3.asText() + " " + tile4.asText() + " probability " + percentage.toFixed(3) + "%");
+		const ratio = divideBigInt(counter.finalSolutionsCount, this.totalSolutions, 5);
+		const percentage = ratio * 100 * 2;
+		if (ratio > this.INFLUENCE_THRESHOLD) {
+			this.writeToConsole("Possible 50/50 - " + tile1.asText() + " " + tile2.asText() + " " + tile3.asText() + " " + tile4.asText() + " chance of being 50/50 " + percentage.toFixed(3) + "%");
+		}
 
 		return new LTResult(counter.finalSolutionsCount, missingMines);
 
@@ -397,19 +421,19 @@ class LongTermRiskHelper {
 
 	}
 
-	addInfluence(influence, enablers, tiles) {
+	addInfluence(influenceTally, influenceRatio, enablers, tiles) {
 
-		const pseudos = [];
+		//const pseudos = [];
 
 		// the tiles which enable a 50/50 but aren't in it also get an influence
-		if (enablers != null) {
+		if (enablers != null && influenceRatio > this.INFLUENCE_THRESHOLD) {
 			for (let loc of enablers) {
 
 				// store the influence
 				if (this.influenceEnablers[loc.index] == null) {
-					this.influenceEnablers[loc.index] = influence;
+					this.influenceEnablers[loc.index] = influenceTally;
 				} else {
-					this.influenceEnablers[loc.index] = this.influenceEnablers[loc.index] + influence;
+					this.influenceEnablers[loc.index] = this.influenceEnablers[loc.index] + influenceTally;
 				}
 				//this.writeToConsole("Enabler " + loc.asText() + " has influence " + this.influences[loc.index]);
 			}
@@ -425,28 +449,32 @@ class LongTermRiskHelper {
 				mineTally = b.mineTally;
 			}
 			// If the mine influence covers the whole of the mine tally then it is a pseudo-5050
-			if (influence == mineTally && this.pseudo == null) {
+			if (influenceTally == mineTally) {
 				if (!this.currentPe.isDead(loc)) {  // don't accept dead tiles
-					pseudos.push(loc);
+					this.pseudos.push(loc);
 				}
 			}
 
 			// store the influence
-			if (this.influence5050s[loc.index] == null) {
-				this.influence5050s[loc.index] = influence;
-			} else {
-				//influences[loc.x][loc.y] = influences[loc.x][loc.y].max(influence);
-				this.influence5050s[loc.index] = this.influence5050s[loc.index] + influence;
+			if (influenceRatio > this.INFLUENCE_THRESHOLD) {
+				if (this.influence5050s[loc.index] == null) {
+					this.influence5050s[loc.index] = influenceTally;
+				} else {
+					//influences[loc.x][loc.y] = influences[loc.x][loc.y].max(influence);
+					this.influence5050s[loc.index] = this.influence5050s[loc.index] + influenceTally;
+				}
 			}
+
 			//this.writeToConsole("Interior " + loc.asText() + " has influence " + this.influences[loc.index]);
 		}
 
+		/*
 		if (pseudos.length == 3) {
 			this.pickPseudo(pseudos);
 		} else if (pseudos.length != 0) {
 			this.pseudo = pseudos[0];
         }
-
+		*/
 	}
 
 	pickPseudo(locations) {

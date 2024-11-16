@@ -378,6 +378,8 @@ class ProbabilityEngine {
     // return a tile which isn't dead
     notDead(area) {
 
+        const result = [];
+
         for (let tile of area) {
             let dead = false;
             for (let deadTile of this.deadTiles) {
@@ -387,12 +389,20 @@ class ProbabilityEngine {
                 }
             }
             if (!dead) {
-                return tile;
+                result.push(tile);
+                //return tile;
             }
         }
 
+        // if all dead return the input, otherwise only the living tiles
+        if (result.length == 0) {
+            return area;
+        } else {
+            return result;
+        }
+
         // if they are all dead, return the first
-        return area[0];
+        //return area[0];
     }
 
     noTrouble(link, area) {

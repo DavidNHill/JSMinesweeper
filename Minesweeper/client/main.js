@@ -306,6 +306,8 @@ async function startup() {
             // and switch the display board back to the game board
             board = gameBoard;
 
+            urlQueryString.checked = true;
+
          }
 
     }
@@ -335,7 +337,7 @@ async function startup() {
     }
 
     //bulkRun(21, 12500);  // seed '21' Played 12500 won 5192
-    //bulkRun(321, 10000);  // seed 321 played 10000 won 4141
+    //bulkRun(321, 10000);  // seed 321 played 10000 won 4142
 
     showMessage("Welcome to minesweeper solver dedicated to Annie");
 }

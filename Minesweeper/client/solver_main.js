@@ -6,9 +6,6 @@
 const OFFSETS = [[2, 0], [-2, 0], [0, 2], [0, -2]];
 const OFFSETS_ALL = [[2, -2], [2, -1], [2, 0], [2, 1], [2, 2], [-2, -2], [-2, -1], [-2, 0], [-2, 1], [-2, 2], [-1, 2], [0, 2], [1, 2], [-1, -2], [0, -2], [1, -2]];
 
-//const PLAY_BFDA_THRESHOLD = 1000;       // number of solutions for the Brute force analysis to start
-//const ANALYSIS_BFDA_THRESHOLD = 5000;
-//const BRUTE_FORCE_CYCLES_THRESHOLD = 5000000;
 const HARD_CUT_OFF = 0.90;        // cutoff for considering on edge possibilities below the best probability
 const OFF_EDGE_THRESHOLD = 0.95;  // when to include possibilities off the edge
 const PROGRESS_CONTRIBUTION = 0.2;  // how much progress counts towards the final score
@@ -19,6 +16,13 @@ const PLAY_STYLE_FLAGS = 1;
 const PLAY_STYLE_NOFLAGS = 2;
 const PLAY_STYLE_EFFICIENCY = 3;
 const PLAY_STYLE_NOFLAGS_EFFICIENCY = 4;
+
+class SolverGlobal {
+
+    static PRUNE_GUESSES = true;                      // Determines whether calculations continue after the tile can no longer be the best
+    static CALCULATE_LONG_TERM_SAFETY = true;         // Switches 50/50 influence processing on or off, also most pseudo-50/50 detection
+
+}
 
 // solver entry point
 async function solver(board, options) {
@@ -32,11 +36,11 @@ async function solver(board, options) {
 
     if (options.verbose == null) {
         options.verbose = true;
-        writeToConsole("WARN: Verbose parameter not received by the solver, setting verbose = true");
+        writeToConsole("WARNING: Verbose parameter not received by the solver, setting verbose = true");
     }
 
     if (options.playStyle == null) {
-        writeToConsole("WARN: playstyle parameter not received by the solver, setting play style to flagging");
+        writeToConsole("WARNING: playstyle parameter not received by the solver, setting play style to flagging");
         options.playStyle = PLAY_STYLE_FLAGS;
     }
 
@@ -53,7 +57,9 @@ async function solver(board, options) {
     // this is used to stop the guess heuristic from pruning results
     // has an impact on the processing speed
     if (options.guessPruning == null) {
-        options.guessPruning = true;
+        options.guessPruning = SolverGlobal.PRUNE_GUESSES;
+    } else {
+        options.guessPruning = options.guessPruning && SolverGlobal.PRUNE_GUESSES;
     }
 
     // this is used when using the solver to create a no-guessing board
@@ -391,37 +397,26 @@ async function solver(board, options) {
         if (pe.bestOnEdgeProbability != 1 && minesLeft > 1) {
             const unavoidable5050a = pe.checkForUnavoidable5050();
             if (unavoidable5050a != null) {
-                result.push(new Action(unavoidable5050a.getX(), unavoidable5050a.getY(), unavoidable5050a.probability, ACTION_CLEAR));
-                showMessage(unavoidable5050a.asText() + " is an unavoidable 50/50 guess." + formatSolutions(pe.finalSolutionsCount));
+
+                const actions = [];
+                for (const tile of unavoidable5050a) {
+                    actions.push(new Action(tile.getX(), tile.getY(), tile.probability, ACTION_CLEAR));
+                }
+
+                const returnActions = tieBreak(pe, actions, null, null, false);
+
+                const recommended = returnActions[0];
+                result.push(recommended);
+                showMessage(recommended.asText() + " is an unavoidable 50/50 guess." + formatSolutions(pe.finalSolutionsCount));
                 return addDeadTiles(result, pe.getDeadTiles());
+
+                //result.push(new Action(unavoidable5050a.getX(), unavoidable5050a.getY(), unavoidable5050a.probability, ACTION_CLEAR));
+                //showMessage(unavoidable5050a.asText() + " is an unavoidable 50/50 guess." + formatSolutions(pe.finalSolutionsCount));
+                //return addDeadTiles(result, pe.getDeadTiles());
+
+
             }
         }
-
-        /*
-        // if we don't have a certain guess then look for ...
-        //let ltr;
-        if (pe.bestOnEdgeProbability != 1 && minesLeft > 1) {
-
-            // See if there are any unavoidable 2 tile 50/50 guesses 
-            const unavoidable5050a = pe.checkForUnavoidable5050();
-            if (unavoidable5050a != null) {
-                result.push(new Action(unavoidable5050a.getX(), unavoidable5050a.getY(), unavoidable5050a.probability, ACTION_CLEAR));
-                showMessage(unavoidable5050a.asText() + " is an unavoidable 50/50 guess." + formatSolutions(pe.finalSolutionsCount));
-                return addDeadTiles(result, pe.getDeadTiles());
-            }
-
-            // look for any 50/50 or safe guesses 
-            //const unavoidable5050b = new FiftyFiftyHelper(board, pe.minesFound, options, pe.getDeadTiles(), witnessed, minesLeft).process();
-
-            //ltr = new LongTermRiskHelper(board, pe, minesLeft, options);
-            //const unavoidable5050b = ltr.findInfluence();
-            //if (unavoidable5050b != null) {
-            //    result.push(new Action(unavoidable5050b.getX(), unavoidable5050b.getY(), unavoidable5050b.probability, ACTION_CLEAR));
-            //   showMessage(unavoidable5050b.asText() + " is an unavoidable 50/50 guess, or safe." + formatSolutions(pe.finalSolutionsCount));
-            //    return addDeadTiles(result, pe.getDeadTiles());
-            //}
-        }
-        */
 
         // if we have an isolated edge process that
         if (pe.bestProbability < 1 && pe.isolatedEdgeBruteForce != null) {
@@ -532,8 +527,8 @@ async function solver(board, options) {
         }
 
         // if we don't have a safe move and we have too many solutions for brute force then look for ...
-        let ltr;
-        if (pe.bestOnEdgeProbability != 1 && minesLeft > 1) {
+        let ltr = null;
+        if (SolverGlobal.CALCULATE_LONG_TERM_SAFETY && pe.bestOnEdgeProbability != 1 && minesLeft > 1) {
 
             /*
             // See if there are any unavoidable 2 tile 50/50 guesses 
@@ -550,9 +545,18 @@ async function solver(board, options) {
 
             ltr = new LongTermRiskHelper(board, pe, minesLeft, options);
             const unavoidable5050b = ltr.findInfluence();
-            if (unavoidable5050b != null) {
-                result.push(new Action(unavoidable5050b.getX(), unavoidable5050b.getY(), unavoidable5050b.probability, ACTION_CLEAR));
-                showMessage(unavoidable5050b.asText() + " is an unavoidable 50/50 guess, or safe." + formatSolutions(pe.finalSolutionsCount));
+            if (unavoidable5050b.length != 0) {
+
+                const actions = [];
+                for (const tile of unavoidable5050b) {
+                    actions.push(new Action(tile.getX(), tile.getY(), tile.probability, ACTION_CLEAR));
+                }
+
+                const returnActions = tieBreak(pe, actions, partialBFDA, ltr, false);
+
+                const recommended = returnActions[0];
+                result.push(recommended);
+                showMessage(recommended.asText() + " is an unavoidable 50/50 guess, or safe." + formatSolutions(pe.finalSolutionsCount));
                 return addDeadTiles(result, pe.getDeadTiles());
             }
         }
@@ -613,7 +617,7 @@ async function solver(board, options) {
             } else {
  
                 if (pe.duration < 50) {  // if the probability engine didn't take long then use some tie-break logic
-                    result = tieBreak(pe, result, partialBFDA, ltr);
+                    result = tieBreak(pe, result, partialBFDA, ltr, SolverGlobal.CALCULATE_LONG_TERM_SAFETY);
                     if (result.length != 0) {
                         const recommended = result[0];
                         showMessage("The solver recommends clearing tile " + recommended.asText() + "." + formatSolutions(pe.finalSolutionsCount));
@@ -653,33 +657,35 @@ async function solver(board, options) {
 
     }
 
-    function tieBreak(pe, actions, bfda, ltr) {
+    function tieBreak(pe, actions, bfda, ltr, useLtr) {
 
         const start = Date.now();
 
         writeToConsole("");
         writeToConsole("-------- Starting Best Guess Analysis --------");
 
-        writeToConsole("---- Tiles with long term risk ----");
+        if (useLtr) {
+            writeToConsole("---- Tiles with long term risk ----");
+            const alreadyIncluded = new Set();
+            for (let action of actions) {
+                alreadyIncluded.add(board.getTileXY(action.x, action.y));
+            }
 
-        const alreadyIncluded = new Set();
-        for (let action of actions) {
-            alreadyIncluded.add(board.getTileXY(action.x, action.y));
-        }
-
-        const extraTiles = ltr.getInfluencedTiles(pe.bestProbability * 0.9);
-        for (let tile of extraTiles) {
-            if (alreadyIncluded.has(tile)) {
-                //writeToConsole(tile.asText() + " is already in the list of candidates to be analysed");
-            } else {
-                alreadyIncluded.add(tile);
-                actions.push(new Action(tile.getX(), tile.getY(), pe.getProbability(tile), ACTION_CLEAR));
-                writeToConsole("Tile " + tile.asText() + " added to the list of candidates to be analysed");
+            const extraTiles = ltr.getInfluencedTiles(pe.bestProbability * 0.9);
+            for (let tile of extraTiles) {
+                if (alreadyIncluded.has(tile)) {
+                    //writeToConsole(tile.asText() + " is already in the list of candidates to be analysed");
+                } else {
+                    alreadyIncluded.add(tile);
+                    actions.push(new Action(tile.getX(), tile.getY(), pe.getProbability(tile), ACTION_CLEAR));
+                    writeToConsole("Tile " + tile.asText() + " added to the list of candidates to be analysed");
+                }
+            }
+            if (extraTiles.length == 0) {
+                writeToConsole("- None found");
             }
         }
-        if (extraTiles.length == 0) {
-            writeToConsole("- None found");
-        }
+
 
         writeToConsole("");
 
@@ -1201,7 +1207,12 @@ async function solver(board, options) {
             safetyTally = pe.finalSolutionsCount - tileBox.mineTally;
         }
 
-        const tileInfluenceTally = ltr.findTileInfluence(tile);
+        let tileInfluenceTally;
+        if (ltr != null) {
+            tileInfluenceTally = ltr.findTileInfluence(tile);
+        } else {
+            tileInfluenceTally = BigInt(0);
+        }
         //console.log("Safety Tally " + safetyTally + ", tileInfluenceTally " + tileInfluenceTally);
 
         //const fiftyFiftyInfluenceTally = safetyTally + tileInfluenceTally;
@@ -1255,8 +1266,6 @@ async function solver(board, options) {
                 } else {
                     commonClears = andClearTiles(commonClears, work.localClears);
                 }
-
-                //const longTermSafety = ltr.getLongTermSafety(tile, work);
 
                 const safetyThisTileValue = divideBigInt(work.finalSolutionsCount, pe.finalSolutionsCount, 6);
 
