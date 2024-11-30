@@ -262,7 +262,8 @@ class Board {
 			const tile = this.tiles[i];
 
 			if (!tile.isCovered() && tile.isFlagged()) {
-				console.log(tile.asText() + " is flagged but not covered!");
+				console.warn(tile.asText() + " is flagged but not covered! Resetting to covered.");
+				tile.setCovered(true);
 			}
 
 			if (tile.isFlagged()) {

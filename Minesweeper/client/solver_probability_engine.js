@@ -375,22 +375,385 @@ class ProbabilityEngine {
         return null;
     }
 
+    checkForUnavoidable5050OrPseudo() {
+
+        const links = [];
+        const pseudoLinks = [];
+
+        for (let i = 0; i < this.prunedWitnesses.length; i++) {
+            const witness = this.prunedWitnesses[i];
+
+            if (witness.minesToFind == 1) {
+
+                // create a new link
+                const link = new Link();
+                link.witness = witness;
+
+                if (witness.tiles.length == 2) {
+                    link.tile1 = witness.tiles[0];
+                    link.tile2 = witness.tiles[1];
+
+                    this.assessLink(link);
+                    links.push(link);
+
+                } else {
+                    const rooted = this.findRootedLinks(witness);
+                    if (rooted.length == 0) {
+                        pseudoLinks.push(witness);
+                    }
+
+                    links.push(...rooted);
+                }
+            }
+        }
+
+        // if there is an unavoidable link then return that, prioritising real 50/50s over pseudo
+        let unavoidableLink = null;
+        for (let link of links) {
+            if (link.unavoidable) {
+                unavoidableLink = link;
+                if (!link.pseudo) {
+                    break;
+                }
+            }
+        }
+        if (unavoidableLink != null) {
+            this.writeToConsole("Tiles " + unavoidableLink.tile1.asText() + " and " + unavoidableLink.tile2.asText() + " form an unavoidable 50/50 guess");
+            return this.notDead([unavoidableLink.tile1, unavoidableLink.tile2]);
+        }
+
+        // this is the area the 50/50 spans
+        //let area5050 = [];
+        const chains = [];
+
+        // try and connect 2 or links together to form an unavoidable 50/50
+        for (let link of links) {
+            if (!link.processed && (link.closed1 && !link.closed2 || !link.closed1 && link.closed2)) {  // this is the XOR operator, so 1 and only 1 of these is closed
+
+                const chain = new Chain();
+                chain.whole5050.push(link.tile1);
+                chain.whole5050.push(link.tile2);
+                chain.trouble.push(...link.trouble);
+
+                if (link.pseudo) {
+                    chain.pseudo = true;
+                }
+
+                let extensions = 0;
+                if (!link.closed1) {
+                    chain.openTile = link.tile1;
+                } else {
+                    chain.openTile = link.tile2;
+                }
+
+                if (!link.dead1) {
+                    chain.living5050.push(link.tile1);
+                    if (link.pseudo) {
+                        chain.pseudoTiles.push(link.tile1);
+                    }
+                }
+                if (!link.dead2) {
+                    chain.living5050.push(link.tile2);
+                    if (link.pseudo) {
+                        chain.pseudoTiles.push(link.tile2);
+                    }
+                }
+                //area5050 = [link.tile1, link.tile2];
+
+                link.processed = true;
+
+                let noMatch = false;
+                while (chain.openTile != null && !noMatch) {
+
+                    noMatch = true;
+                    for (let extension of links) {
+                        if (!extension.processed && !(chain.pseudo && extension.pseudo)) {  // can't add another pseudo link to an already pseudo chain
+
+                            if (extension.tile1.isEqual(chain.openTile)) {
+                                extensions++;
+                                extension.processed = true;
+                                noMatch = false;
+
+                                if (extension.pseudo) {
+                                    chain.pseudo = true;
+
+                                    if (!extension.dead1) {
+                                        chain.pseudoTiles.push(extension.tile1);
+                                    }
+                                    if (!extension.dead2) {
+                                        chain.pseudoTiles.push(extension.tile2);
+                                    }
+                                }
+
+                                // accumulate the trouble tiles as we progress;
+                                chain.trouble.push(...extension.trouble);
+                                chain.whole5050.push(extension.tile2);   // tile2 is the new tile
+
+                                if (!extension.dead2) {
+                                    chain.living5050.push(extension.tile2);
+                                }
+
+                                if (extension.closed2) {
+                                    if (extensions % 2 == 0 && this.noTrouble(chain, chain.whole5050)) {
+                                        this.writeToConsole("Tile " + chain.openTile.asText() + " is an unavoidable guess, with " + extensions + " extensions");
+
+                                        if (extension.pseudo) {
+                                            return this.notDead([extension.tile1, extension.tile2]);
+                                        } else if (chain.living5050.length != 0) {
+                                            return chain.living5050;
+                                        } else {
+                                            return chain.whole5050;
+                                        }
+                                        
+                                    } else {
+                                        this.writeToConsole("Tile " + chain.openTile.asText() + " is a closed extension with " + (extensions + 1) + " parts");
+                                        chain.openTile = null;
+                                    }
+                                } else {  // found an open extension, now look for an extension for this
+                                    chain.openTile = extension.tile2;
+                                }
+                                break;
+                            }
+                            if (extension.tile2.isEqual(chain.openTile)) {
+                                extensions++;
+                                extension.processed = true;
+                                noMatch = false;
+
+                                if (extension.pseudo) {
+                                    chain.pseudo = true;
+
+                                    if (!extension.dead1) {
+                                        chain.pseudoTiles.push(extension.tile1);
+                                    }
+                                    if (!extension.dead2) {
+                                        chain.pseudoTiles.push(extension.tile2);
+                                    }
+                                }
+
+                                // accumulate the trouble tiles as we progress;
+                                chain.trouble.push(...extension.trouble);
+                                chain.whole5050.push(extension.tile1);   // tile 1 is the new tile
+
+                                if (!extension.dead1) {
+                                    chain.living5050.push(extension.tile1);
+                                }
+
+                                if (extension.closed1) {
+                                    if (extensions % 2 == 0 && this.noTrouble(chain, chain.whole5050)) {
+                                        this.writeToConsole("Tile " + chain.openTile.asText() + " is an unavoidable guess, with " + extensions + " extensions");
+
+                                        if (extension.pseudo) {
+                                            return this.notDead([extension.tile1, extension.tile2]);
+                                        } else if (chain.living5050.length != 0) {
+                                            return chain.living5050;
+                                        } else {
+                                            return chain.whole5050;
+                                        }
+
+                                    } else {
+                                        this.writeToConsole("Tile " + chain.openTile.asText() + " is a closed extension with " + (extensions + 1) + " parts");
+                                        chain.openTile = null;
+                                    }
+
+                                } else {  // found an open extension, now look for an extension for this
+                                    chain.openTile = extension.tile1;
+                                }
+
+                                break;
+                            }
+
+                        }
+
+                    }
+
+                }
+
+                if (noMatch) {
+                    chains.push(chain);
+                }
+
+            }
+        }
+
+
+        // can we join two chains together using a pseudo-link
+        top: for (let i = 0; i < pseudoLinks.length; i++) {
+            const witness = pseudoLinks[i];
+
+            let chain1 = null;
+            let chain2 = null;
+
+            let tally1;
+            let tally2;
+
+            search: for (let tile of witness.tiles) {
+                for (const chain of chains) {
+                    if (chain.openTile.isEqual(tile)) {
+                        if (chain1 == null) {
+                            chain1 = chain;
+                            tally1 = this.getBox(tile).mineTally;
+                            break;
+                        } else {
+                            chain2 = chain;
+                            tally2 = this.getBox(tile).mineTally;
+                            break search;
+                        }
+                    }
+                }
+            }
+
+            if (chain1 != null && chain2 != null ) {  // can't connect two pseudo chains together
+
+                const linker = new Link();
+                linker.tile1 = chain1.openTile;
+                linker.tile2 = chain2.openTile;
+
+                this.assessLink(linker);
+
+                const combinedChain = new Chain();
+                combinedChain.whole5050.push(...chain1.whole5050);
+                combinedChain.whole5050.push(...chain2.whole5050);
+
+                combinedChain.trouble.push(...linker.trouble);
+                combinedChain.trouble.push(...chain1.trouble);
+                combinedChain.trouble.push(...chain2.trouble);
+
+                // If both chains are pseudos then make sure the chosen tile is the safest
+                if (chain1.pseudo && chain2.pseudo) {
+                    let lowestTally;
+                    if (tally1 < tally2) {
+                        lowestTally = tally1;
+                    } else {
+                        lowestTally = tally2;
+                    }
+                    for (const tile of combinedChain.whole5050) {
+                        if (this.getBox(tile).mineTally < lowestTally) {
+                            continue top;  // if there is a safer tile then this potential pseudo is broken
+                        }
+                    }
+                }
+
+                if (combinedChain.whole5050.length % 2 == 0 && this.noTrouble(combinedChain, combinedChain.whole5050)) {
+                    if (tally1 == tally2) {
+                        return this.notDead([chain1.openTile, chain2.openTile]);
+                    } else if (tally1 < tally2) {
+                        return [chain1.openTile];
+                    } else {
+                        return [chain2.openTile];
+                    }
+                }
+            }
+         }
+
+        return null;
+    }
+
+    findRootedLinks(witness) {
+
+        const links = [];
+
+        for (let i = 0; i < witness.tiles.length; i++) {
+            const tile1 = witness.tiles[i];
+
+            for (let j = 0; j < witness.tiles.length; j++) {
+                const tile2 = witness.tiles[j];
+
+                if (tile2.getX() == tile1.getX() && tile2.getY() == tile1.getY() - 1) {
+
+                    const link = new Link();
+                    link.witness = witness;
+                    link.pseudo = true;
+                    link.tile1 = tile1;
+                    link.tile2 = tile2;
+
+                    this.assessLink(link);
+                    if (link.closed1 || link.closed2) {
+                        if (!link.dead1 || !link.dead2) {
+                            links.push(link);
+                        }
+                    }
+                }
+                
+                if (tile2.getX() == tile1.getX() + 1 && tile2.getY() == tile1.getY()) {
+
+                    const link = new Link();
+                    link.witness = witness;
+                    link.pseudo = true;
+                    link.tile1 = tile1;
+                    link.tile2 = tile2;
+
+                    this.assessLink(link);
+                    if (link.closed1 || link.closed2) {
+                        if (!link.dead1 || !link.dead2) {
+                            links.push(link);
+                        }
+                    }
+                }
+            }
+        }
+
+        return links;
+
+    }
+
+    assessLink(link) {
+
+        const tiles = [link.tile1, link.tile2];
+    
+        // if every monitoring tile also monitors all the other tiles then it can't provide any information
+        for (let j = 0; j < tiles.length; j++) {
+            const tile = tiles[j];
+
+            // get the witnesses monitoring this tile
+            for (let adjTile of this.board.getAdjacent(tile)) {
+
+                // ignore tiles which are mines
+                if (adjTile.isSolverFoundBomb()) {
+                    continue;
+                }
+
+                // are we one of the tiles other tiles, if so then no need to check
+                let toCheck = true;
+                for (let otherTile of tiles) {
+                    if (otherTile.isEqual(adjTile)) {
+                        toCheck = false;
+                        break;
+                    }
+                }
+
+                // if we are monitoring and not a mine then see if we are also monitoring all the other mines
+                if (toCheck) {
+                    for (let otherTile of tiles) {
+                        if (!adjTile.isAdjacent(otherTile)) {
+
+                            //console.log("Tile " + adjTile.asText() + " is not monitoring all the other witnessed tiles");
+                            link.trouble.push(adjTile);
+                            if (tile.isEqual(link.tile1)) {
+                                link.closed1 = false;
+                            } else {
+                                link.closed2 = false;
+                            }
+
+                            link.unavoidable = false;
+                        }
+                    }
+                }
+            }
+        }
+
+        link.dead1 = this.isDead(link.tile1);
+        link.dead2 = this.isDead(link.tile2);
+
+    }
+
     // return a tile which isn't dead
     notDead(area) {
 
         const result = [];
 
         for (let tile of area) {
-            let dead = false;
-            for (let deadTile of this.deadTiles) {
-                if (deadTile.isEqual(tile)) {
-                    dead = true;
-                    break;
-                }
-            }
-            if (!dead) {
+             if (!this.isDead(tile)) {
                 result.push(tile);
-                //return tile;
             }
         }
 
@@ -404,6 +767,20 @@ class ProbabilityEngine {
         // if they are all dead, return the first
         //return area[0];
     }
+
+    isDead(tile) {
+
+        for (let deadTile of this.deadTiles) {
+            if (deadTile.isEqual(tile)) {
+                return true;
+            }
+        }
+
+        return false;
+
+    }
+
+
 
     noTrouble(link, area) {
 
@@ -1969,14 +2346,42 @@ class Link {
 
     constructor() {
 
-        this.tile1;
+        this.witness = null;
+
+        this.tile1 = null;
         this.closed1 = true;
-        this.tile2;
+        this.dead1 = false;
+
+        this.tile2 = null;
         this.closed2 = true;
+        this.dead2 = false;
 
         this.processed = false;
+        this.pseudo = false;
+        this.unavoidable = true;
 
         this.trouble = [];
+
+        Object.seal(this); // prevent new values being created
+    }
+
+}
+
+// A series of links which might form a 50/50 
+class Chain {
+
+    constructor() {
+
+        this.whole5050 = [];
+        this.living5050 = [];
+        this.pseudoTiles = [];
+
+        this.openTile = null;
+        this.pseudo = false;
+
+        this.trouble = [];
+
+        Object.seal(this); // prevent new values being created
     }
 
 }

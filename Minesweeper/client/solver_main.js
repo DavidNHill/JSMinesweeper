@@ -392,10 +392,11 @@ async function solver(board, options) {
             return result;
         }
 
-
+        /*
         // See if there are any unavoidable 2 tile 50/50 guesses 
         if (pe.bestOnEdgeProbability != 1 && minesLeft > 1) {
-            const unavoidable5050a = pe.checkForUnavoidable5050();
+            //const unavoidable5050a = pe.checkForUnavoidable5050();
+            const unavoidable5050a = pe.checkForUnavoidable5050OrPseudo();
             if (unavoidable5050a != null) {
 
                 const actions = [];
@@ -407,7 +408,12 @@ async function solver(board, options) {
 
                 const recommended = returnActions[0];
                 result.push(recommended);
-                showMessage(recommended.asText() + " is an unavoidable 50/50 guess." + formatSolutions(pe.finalSolutionsCount));
+                if (recommended.prob == 0.5) {
+                    showMessage(recommended.asText() + " is an unavoidable 50/50 guess." + formatSolutions(pe.finalSolutionsCount));
+                } else {
+                    showMessage(recommended.asText() + " is an unavoidable 50/50 guess, or safe." + formatSolutions(pe.finalSolutionsCount));
+                }
+                
                 return addDeadTiles(result, pe.getDeadTiles());
 
                 //result.push(new Action(unavoidable5050a.getX(), unavoidable5050a.getY(), unavoidable5050a.probability, ACTION_CLEAR));
@@ -417,6 +423,7 @@ async function solver(board, options) {
 
             }
         }
+        */
 
         // if we have an isolated edge process that
         if (pe.bestProbability < 1 && pe.isolatedEdgeBruteForce != null) {
@@ -556,25 +563,41 @@ async function solver(board, options) {
 
                 const recommended = returnActions[0];
                 result.push(recommended);
-                showMessage(recommended.asText() + " is an unavoidable 50/50 guess, or safe." + formatSolutions(pe.finalSolutionsCount));
+                if (recommended.prob == 0.5) {  // 2935898204031399
+                    showMessage(recommended.asText() + " is an unavoidable 50/50 guess." + formatSolutions(pe.finalSolutionsCount));
+                } else {
+                    showMessage(recommended.asText() + " is an unavoidable 50/50 guess, or safe." + formatSolutions(pe.finalSolutionsCount));
+                }
+                //showMessage(recommended.asText() + " is an unavoidable 50/50 guess, or safe." + formatSolutions(pe.finalSolutionsCount));
                 return addDeadTiles(result, pe.getDeadTiles());
             }
         }
 
-        /*
-        // calculate 50/50 influence and check for a pseudo-50/50
-        let ltr;
+        // See if there are any unavoidable 2-tile 50/50 or pseudo 50/50 guesses
         if (pe.bestOnEdgeProbability != 1 && minesLeft > 1) {
+            //const unavoidable5050a = pe.checkForUnavoidable5050();
+            const unavoidable5050a = pe.checkForUnavoidable5050OrPseudo();
+            if (unavoidable5050a != null) {
 
-            ltr = new LongTermRiskHelper(board, pe, minesLeft, options);
-            const unavoidable5050b = ltr.findInfluence();
-            if (unavoidable5050b != null) {
-                result.push(new Action(unavoidable5050b.getX(), unavoidable5050b.getY(), unavoidable5050b.probability, ACTION_CLEAR));
-               showMessage(unavoidable5050b.asText() + " is an unavoidable 50/50 guess, or safe." + formatSolutions(pe.finalSolutionsCount));
+                const actions = [];
+                for (const tile of unavoidable5050a) {
+                    actions.push(new Action(tile.getX(), tile.getY(), tile.probability, ACTION_CLEAR));
+                }
+
+                const returnActions = tieBreak(pe, actions, partialBFDA, ltr, false);
+
+                const recommended = returnActions[0];
+                result.push(recommended);
+                //console.log(recommended.prob);
+                if (recommended.prob == 0.5) {  // 2935898204031399
+                    showMessage(recommended.asText() + " is an unavoidable 50/50 guess." + formatSolutions(pe.finalSolutionsCount));
+                } else {
+                    showMessage(recommended.asText() + " is an unavoidable 50/50 guess, or safe." + formatSolutions(pe.finalSolutionsCount));
+                }
+
                 return addDeadTiles(result, pe.getDeadTiles());
             }
         }
-        */
 
         // ... otherwise we will use the probability engines results
 

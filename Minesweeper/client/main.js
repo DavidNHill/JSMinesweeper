@@ -2404,7 +2404,7 @@ function on_click(event) {
             // toggle the flag and return the tiles which need to be redisplayed
             tiles = analysis_toggle_flag(tile);
 
-            console.log("Number of bombs " + board.num_bombs + "  bombs left to find " + board.bombs_left);
+            console.log("Number of mines " + board.num_bombs + ",  mines left to find " + board.bombs_left);
 
         } else {
             console.log("Mouse button " + button + " ignored");
