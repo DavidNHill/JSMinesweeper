@@ -13,7 +13,9 @@
 
     <!-- Title at the top -->
     <h1 id="headerPanel" style="position: absolute; left: 0px; top: 0px; height: 50px; right: 0px; overflow-y: auto;">
-        <button type="button" style="zoom: 0.9;" id="switchButton" onclick="setAnalysis()">Switch to Analyser</button>
+        <img src="resources/images/bomb.png" style="width: 48px; vertical-align: middle;" onclick="propertiesOpen()"/>
+        <!-- button type="button" style="zoom: 0.9; vertical-align: middle;" id="settingsButton" onclick="propertiesOpen()"><img src="resources/images/bomb.png" style="width: 30px;" /></button -->
+        <button type="button" style="zoom: 1; vertical-align: middle; top: 5px;" id="switchButton" onclick="setAnalysis()">Switch to Analyser</button>
         <label id="title" style="font-size: 36px; vertical-align: middle;">Minesweeper player</label>
         <label style="float: right; padding-right: 10px;">
             <a href="https://github.com/DavidNHill/JSMinesweeper#readme" target="_blank"><i>help</i></a>
@@ -143,7 +145,7 @@
             <div id="display" style="display: flex; flex-direction: row; height: 50px;">
                 <div>
                     <canvas class="led" id="myMinesLeft" style="position: relative; left: 3px; top:3px; width: 60px; height: 36px" oncontextmenu="return false"></canvas>
-                    <input type="image" src='resources/images/flaggedWrong_thin.png' id="leftClickFlag" onclick="doToggleFlag()" style="position: relative; left: 20px; top: 2px; width: 40px; height: 40px;"/>
+                    <input type="image" src='resources/images/flaggedWrong_thin.png' id="leftClickFlag" onclick="doToggleFlag()" style="position: relative; left: 20px; top: 2px; width: 40px; height: 40px;" />
                 </div>
                 <div class="hidden" style="flex: 0">
                     <input type="image" src='resources/images/flaggedWrong_thin.png' id="newGameSmiley" onclick="doToggleFlag()" style="position: relative; top:6px; width:40px; height: 40px" />
@@ -188,7 +190,7 @@
             <label id="messageLineBottom" style="font-size: 18px; overflow-y: auto; padding-left: 0px"></label>
         </div>
     </div>
- 
+
 
     <!-- Local storage popup -->
     <div id="localStorage" class="modal">
@@ -207,12 +209,55 @@
     </div>
 
     <!-- Properties popup -->
-    <div id="properties">
+    <div id="properties" class="modal" style="display: none;" >
         <!-- Modal content -->
-        <div style="position: relative; width: 200px; height: 300px" --->
-            <div id="propertiesHeader">Properties</div>
-            <table style="width: 100%" id="propertiesTable" size="24">
-            </table>
+        <div id="propertiesBox" class="modal-content" style="position: absolute; top: 100px; left: 100px; width: 300px; height: 400px;">
+
+            <div id="propertiesHeader" style="font-size: 30px; height: 32px; padding: 0px;">Settings</div>
+
+            <div style="margin-top: 1em; margin-left: 1em;" class="checkboxes">
+                <label style="padding-top: 0px;">Functionality</label>
+                <label><input type="checkbox" class="checkbox" id="useLTR" checked /> <span>Consider long term risk</span></label>
+            </div>
+
+            <div style="margin-top: 1em; margin-left: 1em;" class="checkboxes">
+                <label>Performance vs Information</label>
+                <label><input type="checkbox" class="checkbox" id="pruneGuesses" checked /> <span>Prune guesses</span></label>
+                <label><input type="checkbox" class="checkbox" id="pruneBruteForce" checked /> <span>Prune brute force</span></label>
+            </div>
+
+            <div style="margin-top: 1em; margin-left: 1em;">
+                <label style="display: inline-block; width: 280px;">Analysis Mode</label>
+
+                <div class="checkboxes">
+                    <label style="display: inline-block; width: 280px;">
+                        <input type="checkbox" class="checkbox" id="defaultLockMineCounter" />
+                        <span>Always lock mine count</span>
+                    </label>
+                </div>
+
+                <label style="display: inline-block; width: 280px;">
+                    <select id="bruteForceMaxSolutions">
+                        <option value="0">Zero</option>
+                        <option value="1">2,500</option>
+                        <option selected value="2">5,000</option>
+                        <option value="3">7,500</option>
+                        <option value="4">10,000</option>
+                        <option value="5">12,500</option>
+                        <option value="6">15,000</option>
+                        <option value="7">17,500</option>
+                        <option value="8">20,000</option>
+                    </select>
+                    Max brute force solutions
+                </label>
+            </div>
+
+
+            <div style="margin-top: 1em; margin-left: 1em;" class="checkboxes">
+                <label>Persist setting</label>
+                <label><input type="checkbox" class="checkbox" id="saveSettings" /> <span>Save settings locally</span></label>
+            </div>
+
             <button style="position: absolute; bottom: 5px; Right: 15px" id="propertiesClose" onclick="propertiesClose()">Close</button>
         </div>
     </div>

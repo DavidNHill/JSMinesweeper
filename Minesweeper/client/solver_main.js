@@ -311,6 +311,7 @@ async function solver(board, options) {
 
         // if the tiles off the edge are definitely safe then clear them all
         let offEdgeAllSafe = false;
+        let offEdgeSafeCount = 0;
         if (pe.offEdgeProbability == 1) {
             const edgeSet = new Set();  // build a set containing all the on edge tiles
             for (let i = 0; i < witnessed.length; i++) {
@@ -320,19 +321,18 @@ async function solver(board, options) {
             for (let i = 0; i < allCoveredTiles.length; i++) {
                 const tile = allCoveredTiles[i];
                 if (!edgeSet.has(tile.index)) {
+                    offEdgeSafeCount++;
                     result.push(new Action(tile.getX(), tile.getY(), 1, ACTION_CLEAR));
                 }
             }
 
             if (result.length > 0) {
-                writeToConsole("The Probability Engine has determined all off edge tiles must be safe");
+                //writeToConsole("The solver has determined all floating tiles must be safe");
                 offEdgeAllSafe = true;
-                //showMessage("The solver has determined all off edge tiles must be safe");
-                //return result;
             }
 
         } else if (pe.offEdgeProbability == 0 && pe.fullAnalysis) {  
-            writeToConsole("The Probability Engine has determined all off edge tiles must be mines");
+            //writeToConsole("The Solver has determined all floating tiles must be mines");
             const edgeSet = new Set();  // build a set containing all the on edge tiles
             for (let i = 0; i < witnessed.length; i++) {
                 edgeSet.add(witnessed[i].index);
@@ -342,7 +342,6 @@ async function solver(board, options) {
                 const tile = allCoveredTiles[i];
                 if (!edgeSet.has(tile.index) && !tile.isFlagged()) {
                     pe.minesFound.push(tile)
-                    //tile.setFoundBomb();
                 }
             }
         }
@@ -364,7 +363,8 @@ async function solver(board, options) {
                 //}
             }
 
-            showMessage("The probability engine has found " + pe.localClears.length + " safe clears and " + pe.minesFound.length + " mines");
+            const totalSafe = pe.localClears.length + offEdgeSafeCount;
+            showMessage("The solver has found " + totalSafe + " safe files." + formatSolutions(pe.finalSolutionsCount));
             return new EfficiencyHelper(board, witnesses, witnessed, result, options.playStyle, pe, allCoveredTiles).process();
         } 
 
@@ -374,7 +374,7 @@ async function solver(board, options) {
             if (pe.bestOnEdgeProbability >= pe.offEdgeProbability) {
                 result.push(pe.getBestCandidates(1));  // get best options
             } else {
-                writeToConsole("Off edge is best, off edge prob = " + pe.offEdgeProbability + ", on edge prob = " + pe.bestOnEdgeProbability, true);
+                writeToConsole("Floating tiles are safest, off edge safety = " + pe.offEdgeProbability + ", on edge safety = " + pe.bestOnEdgeProbability, true);
                 const bestGuessTile = offEdgeGuess(board, witnessed);
                 result.push(new Action(bestGuessTile.getX(), bestGuessTile.getY(), pe.offEdgeProbability), ACTION_CLEAR);
             }
@@ -481,7 +481,8 @@ async function solver(board, options) {
         let partialBFDA = null;
         if (pe.bestProbability < 1 && pe.finalSolutionsCount < bfdaThreshold) {
 
-            showMessage("The solver is starting brute force deep analysis on " + pe.finalSolutionsCount + " solutions");
+            //showMessage("The solver is starting brute force deep analysis on " + pe.finalSolutionsCount + " solutions");
+            showMessage("The solver is determining the " + pe.finalSolutionsCount + " solutions so they can be brute forced.");
             await sleep(1);
 
             pe.generateIndependentWitnesses();

@@ -24,6 +24,8 @@ const SKULL = 14;
 
 const PLAY_CLIENT_SIDE = true;
 
+let ALWAYS_LOCK_MINE_COUNTER = false;
+
 let BINOMIAL;
 
 // holds the images
@@ -183,13 +185,14 @@ async function startup() {
     }
     console.log("Browser supports Input Device Capabilities: " + supportsInputDeviceCapabilities);
 
-    //const urlParams = new URLSearchParams(window.location.search);
-    const testParm = urlParams.get('test');
-    if (testParm == "y") {
-        localStorageButton.style.display = "block";
-    } else {
-        localStorageButton.style.display = "none";
+    loadSettings()
+
+    // set this if necessary based on the settings
+    if (ALWAYS_LOCK_MINE_COUNTER) {
+        lockMineCount.checked = true;
     }
+
+    localStorageButton.style.display = "none";
 
     const rngParm = urlParams.get('rng');
     if (rngParm == "old") {
@@ -206,10 +209,10 @@ async function startup() {
 
     const start = urlParams.get('start');
 
-    if (urlParams.has("nopruning")) {
-        console.log("WARNING: The Analyse button has Pruning turned off - pruning remains for all other solver calls");
-        guessAnalysisPruning = false;
-    }
+    //if (urlParams.has("nopruning")) {
+    //   console.log("WARNING: The Analyse button has Pruning turned off - pruning remains for all other solver calls");
+    //    guessAnalysisPruning = false;
+    //}
 
     const boardSize = urlParams.get('board');
 
@@ -266,7 +269,7 @@ async function startup() {
 
     // make the properties div draggable
     dragElement(propertiesPanel);
-    propertiesClose();
+    //propertiesClose();
 
     // set the board details
     setBoardSizeOnGUI(width, height, mines);
@@ -417,10 +420,101 @@ function fetchLocalStorage() {
 
 function propertiesClose() {
     propertiesPanel.style.display = "none";
+
+    BruteForceGlobal.PRUNE_BF_ANALYSIS = document.getElementById("pruneBruteForce").checked;
+
+    SolverGlobal.CALCULATE_LONG_TERM_SAFETY = document.getElementById("useLTR").checked;
+    SolverGlobal.PRUNE_GUESSES = document.getElementById("pruneGuesses").checked;
+
+    BruteForceGlobal.ANALYSIS_BFDA_THRESHOLD = document.getElementById("bruteForceMaxSolutions").value * 2500;
+
+    ALWAYS_LOCK_MINE_COUNTER = document.getElementById("defaultLockMineCounter").checked;
+
+    if (document.getElementById("saveSettings").checked) {
+        saveSettings();
+    } else {
+        localStorage.removeItem("settings");
+    }
+
 }
 
 function propertiesOpen() {
+
+    document.getElementById("saveSettings").checked = (localStorage.getItem("settings") != null);
+
+    document.getElementById("pruneBruteForce").checked = BruteForceGlobal.PRUNE_BF_ANALYSIS;
+
+    document.getElementById("useLTR").checked = SolverGlobal.CALCULATE_LONG_TERM_SAFETY;
+    document.getElementById("pruneGuesses").checked = SolverGlobal.PRUNE_GUESSES;
+
+    let value = Math.round(BruteForceGlobal.ANALYSIS_BFDA_THRESHOLD / 2500);
+    if (value < 0) {
+        value = 0;
+    } else if (value > 8) {
+        value = 8;
+    }
+
+    document.getElementById("bruteForceMaxSolutions").value = value;
+
+    document.getElementById("defaultLockMineCounter").checked = ALWAYS_LOCK_MINE_COUNTER;
+ 
     propertiesPanel.style.display = "block";
+}
+
+const SETTINGS_VERSION = "1";
+
+function saveSettings() {
+
+    const settings = {};
+
+    settings.version = SETTINGS_VERSION;
+    settings.pruneBruteForce = BruteForceGlobal.PRUNE_BF_ANALYSIS;
+    settings.pruneGuesses = SolverGlobal.PRUNE_GUESSES;
+    settings.useLTR = SolverGlobal.CALCULATE_LONG_TERM_SAFETY;
+
+    settings.maxAnalysisBfSolutions = BruteForceGlobal.ANALYSIS_BFDA_THRESHOLD;
+    settings.alwaysLockMineCounter = ALWAYS_LOCK_MINE_COUNTER;
+
+    localStorage.setItem("settings", JSON.stringify(settings));
+
+}
+
+function loadSettings() {
+
+    const settingsX = localStorage.getItem("settings");
+    if (settingsX == null) {
+        console.log("No local settings found");
+        return;
+    }
+
+    //console.log(settingsX);
+
+    const settings = JSON.parse(settingsX);
+
+
+    if (settings.pruneBruteForce != null) {
+        BruteForceGlobal.PRUNE_BF_ANALYSIS = settings.pruneBruteForce;
+    }
+
+    if (settings.pruneGuesses != null) {
+        SolverGlobal.PRUNE_GUESSES = settings.pruneBruteForce;
+    }
+
+    if (settings.useLTR != null) {
+        SolverGlobal.CALCULATE_LONG_TERM_SAFETY = settings.useLTR;
+    }
+
+    if (settings.maxAnalysisBfSolutions != null) {
+        BruteForceGlobal.ANALYSIS_BFDA_THRESHOLD = settings.maxAnalysisBfSolutions;
+    }
+
+    if (settings.alwaysLockMineCounter != null) {
+        ALWAYS_LOCK_MINE_COUNTER = settings.alwaysLockMineCounter;
+    }
+}
+
+function changeBruteForceMaxSolutions() {
+    //BruteForceGlobal.ANALYSIS_BFDA_THRESHOLD = document.getElementById("bruteForceMaxSolutions").value * 2500;
 }
 
 // pop up a file save dialogue to store the layout as MBF format
@@ -1339,9 +1433,9 @@ async function newGame(width, height, mines, seed) {
     if (analysisMode) {
         lockMineCount.checked = !document.getElementById('buildZero').checked;  // lock the mine count or not
         buildMode.checked = !lockMineCount.checked;
-        //showDownloadLink(true, "");
-    } else {
-        //showDownloadLink(false, "");
+        if (ALWAYS_LOCK_MINE_COUNTER) {
+            lockMineCount.checked = true;
+        }
     }
 
     let drawTile = HIDDEN;
@@ -2550,9 +2644,9 @@ function analysis_toggle_flag(tile) {
 
     const tiles = [];
 
-    if (!tile.isCovered()) {
-        tile.setCovered(true);
-    }
+    //if (!tile.isCovered()) {
+    //    tile.setCovered(true);
+    //}
 
     let delta;
     if (tile.isFlagged()) {
@@ -2566,7 +2660,7 @@ function analysis_toggle_flag(tile) {
     // if we have locked the mine count then adjust the bombs left 
     if (lockMineCount.checked) {
         if (delta == 1 && board.bombs_left == 0) {
-            showMessage("Can't reduce mines to find to below zero whilst the mine count is locked");
+            showMessage("Can't reduce mines to find to below zero when the mine count is locked");
             return tiles;
         }
         board.bombs_left = board.bombs_left - delta;
@@ -2575,6 +2669,11 @@ function analysis_toggle_flag(tile) {
     } else {   // otherwise adjust the total number of bombs
         const tally = board.getFlagsPlaced();
         board.num_bombs = tally + board.bombs_left + delta;
+    }
+
+
+    if (!tile.isCovered()) {
+        tile.setCovered(true);
     }
 
     // if the adjacent tiles values are in step then keep them in step
@@ -3047,7 +3146,8 @@ async function callKillGame(id) {
 
 // generic function to make a div dragable (https://www.w3schools.com/howto/howto_js_draggable.asp)
 function dragElement(elmnt) {
-    let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+    let deltaX = 0, deltaY = 0, prevX = 0, prevY = 0;
+    let box = document.getElementById(elmnt.id + "Box");
     if (document.getElementById(elmnt.id + "Header")) {
         // if present, the header is where you move the DIV from:
         document.getElementById(elmnt.id + "Header").onmousedown = dragMouseDown;
@@ -3060,8 +3160,8 @@ function dragElement(elmnt) {
         //e = e || window.event;
         e.preventDefault();
         // get the mouse cursor position at startup:
-        pos3 = e.clientX;
-        pos4 = e.clientY;
+        prevX = e.screenX;
+        prevY = e.screenY;
         //console.log("Pos3=" + pos3 + ", Pos4=" + pos4);
         document.onmouseup = closeDragElement;
         // call a function whenever the cursor moves:
@@ -3072,14 +3172,15 @@ function dragElement(elmnt) {
         //e = e || window.event;
         e.preventDefault();
         // calculate the new cursor position:
-        pos1 = pos3 - e.clientX;
-        pos2 = pos4 - e.clientY;
-        //console.log("Pos1=" + pos1 + ", Pos2=" + pos2);
-        pos3 = e.clientX;
-        pos4 = e.clientY;
+        deltaX = e.screenX - prevX;
+        deltaY = e.screenY - prevY;
+        //console.log("ScreenX=" + e.screenX + ", ScreenY=" + e.screenY + ", DeltaX=" + deltaX + ", DeltaY=" + deltaY);
+        prevX = e.screenX;
+        prevY = e.screenY;
         // set the element's new position:
-        elmnt.style.top = (elmnt.offsetTop - pos2 - 25) + "px";
-        elmnt.style.left = (elmnt.offsetLeft - pos1 - 5) + "px";
+        box.style.top = (box.offsetTop + deltaY) + "px";
+        box.style.left = (box.offsetLeft + deltaX) + "px";
+
     }
 
     function closeDragElement() {

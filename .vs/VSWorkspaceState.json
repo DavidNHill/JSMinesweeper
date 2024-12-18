@@ -3,9 +3,8 @@
     "",
     "\\Minesweeper",
     "\\Minesweeper\\client",
-    "\\Minesweeper\\Utility",
-    "\\resources"
+    "\\Minesweeper\\Utility"
   ],
-  "SelectedNode": "\\index.html",
+  "SelectedNode": "\\Minesweeper\\client\\Brute_force.js",
   "PreviewInSolutionExplorer": false
 }
