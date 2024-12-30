@@ -497,7 +497,7 @@ function loadSettings() {
     }
 
     if (settings.pruneGuesses != null) {
-        SolverGlobal.PRUNE_GUESSES = settings.pruneBruteForce;
+        SolverGlobal.PRUNE_GUESSES = settings.pruneGuesses;
     }
 
     if (settings.useLTR != null) {
