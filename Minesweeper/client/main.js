@@ -57,6 +57,7 @@ wholeBoard.ondragover = dragOverHandler;
 
 // define the other html elements we need
 const tooltip = document.getElementById('tooltip');
+const reductionCheckBox = document.getElementById("reduction");
 const autoPlayCheckBox = document.getElementById("autoplay");
 const showHintsCheckBox = document.getElementById("showhints");
 const acceptGuessesCheckBox = document.getElementById("acceptguesses");
@@ -936,6 +937,9 @@ function renderTiles(tiles) {
 
         } else {
             tileType = tile.getValue();
+            if (!analysisMode && reductionCheckBox.checked) {
+                tileType -= board.adjacentFlagsPlaced(tile);
+            }
         }
         draw(tile.x, tile.y, tileType);
     }
@@ -2678,13 +2682,13 @@ function analysis_toggle_flag(tile) {
 
     // if the adjacent tiles values are in step then keep them in step
     if (buildMode.checked) {
-        const adjTiles = board.getAdjacent(tile);
-        for (let i = 0; i < adjTiles.length; i++) {
-            const adjTile = adjTiles[i];
-            const adjFlagCount = board.adjacentFlagsPlaced(adjTile);
+    const adjTiles = board.getAdjacent(tile);
+    for (let i = 0; i < adjTiles.length; i++) {
+        const adjTile = adjTiles[i];
+        const adjFlagCount = board.adjacentFlagsPlaced(adjTile);
             if (adjTile.getValue() == adjFlagCount) {
-                adjTile.setValueOnly(adjFlagCount + delta);
-                tiles.push(adjTile);
+            adjTile.setValueOnly(adjFlagCount + delta);
+        tiles.push(adjTile);
             }
         }
     }
@@ -2963,6 +2967,9 @@ async function sendActionsMessage(message) {
                     board.bombs_left++;
                 }
                 tiles.push(tile);
+                if (reductionCheckBox.checked) {
+                    tiles.push(...board.getAdjacent(tile));
+                } 
             }
 
         } else if (action == 3) {  // a tile which is a mine (these get returned when the game is lost)
@@ -3209,6 +3216,11 @@ function load_image(image_path) {
 function load_images() {
 
     console.log('Loading images...');
+
+    for (let i = -7; i <= -1; i++) {
+        const file_path = "resources/images/" + i.toString() + ".png";
+        images[i] = load_image(file_path);
+    }
 
     for (let i = 0; i <= 8; i++) {
         const file_path = "resources/images/" + i.toString() + ".png";
