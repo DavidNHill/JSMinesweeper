@@ -2682,13 +2682,13 @@ function analysis_toggle_flag(tile) {
 
     // if the adjacent tiles values are in step then keep them in step
     if (buildMode.checked) {
-    const adjTiles = board.getAdjacent(tile);
-    for (let i = 0; i < adjTiles.length; i++) {
-        const adjTile = adjTiles[i];
-        const adjFlagCount = board.adjacentFlagsPlaced(adjTile);
+        const adjTiles = board.getAdjacent(tile);
+        for (let i = 0; i < adjTiles.length; i++) {
+            const adjTile = adjTiles[i];
+            const adjFlagCount = board.adjacentFlagsPlaced(adjTile);
             if (adjTile.getValue() == adjFlagCount) {
-            adjTile.setValueOnly(adjFlagCount + delta);
-        tiles.push(adjTile);
+                adjTile.setValueOnly(adjFlagCount + delta);
+                tiles.push(adjTile);
             }
         }
     }
