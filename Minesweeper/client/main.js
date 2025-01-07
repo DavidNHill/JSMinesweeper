@@ -818,21 +818,8 @@ function renderHints(hints, otherActions, drawOverlay) {
      // put percentage over the tile 
     if (drawOverlay) {
 
-        if (TILE_SIZE == 12) {
-            ctxHints.font = "7px serif";
-        } else if (TILE_SIZE == 16) {
-            ctxHints.font = "10px serif";
-        } else if (TILE_SIZE == 20) {
-            ctxHints.font = "12px serif";
-        } else if (TILE_SIZE == 24) {
-            ctxHints.font = "14px serif";
-        } else if (TILE_SIZE == 28) {
-            ctxHints.font = "16px serif";
-        } if (TILE_SIZE == 32) {
-            ctxHints.font = "21px serif";
-        } else {
-            ctxHints.font = "6x serif";
-        }
+        const fontSize = Math.max(6, Math.floor(TILE_SIZE * 0.6));
+        ctxHints.font = `${fontSize}px serif`;
 
         ctxHints.globalAlpha = 1;
         ctxHints.fillStyle = "black";
