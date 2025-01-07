@@ -939,6 +939,9 @@ function renderTiles(tiles) {
             tileType = tile.getValue();
             if (!analysisMode && reductionCheckBox.checked) {
                 tileType -= board.adjacentFlagsPlaced(tile);
+                if (tileType < 0) {
+                    tileType += images.length;
+                }
             }
         }
         draw(tile.x, tile.y, tileType);
@@ -3217,11 +3220,6 @@ function load_images() {
 
     console.log('Loading images...');
 
-    for (let i = -7; i <= -1; i++) {
-        const file_path = "resources/images/" + i.toString() + ".png";
-        images[i] = load_image(file_path);
-    }
-
     for (let i = 0; i <= 8; i++) {
         const file_path = "resources/images/" + i.toString() + ".png";
         images.push(load_image(file_path));
@@ -3237,6 +3235,11 @@ function load_images() {
     images.push(load_image("resources/images/flaggedWrong.png"));
     images.push(load_image("resources/images/exploded.png"));
     images.push(load_image("resources/images/skull.png"));
+
+    for (let i = -7; i <= -1; i++) {
+        const file_path = "resources/images/" + i.toString() + ".png";
+        images.push(load_image(file_path));
+    }
 
     console.log(images.length + ' Images Loaded');
 
