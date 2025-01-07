@@ -745,7 +745,7 @@ function switchToAnalysis(doAnalysis) {
 
     changeTileSize();
 
-    renderHints([]);  // clear down hints
+    // renderHints([]);  // clear down hints
 
     updateMineCount(board.bombs_left);  // reset the mine count
 
@@ -1490,6 +1490,12 @@ function changeTileSize() {
     browserResized();  // do we need scroll bars?
 
     renderTiles(board.tiles); // draw the board
+
+    if (!analysisMode && showHintsCheckBox.checked) {
+        doAnalysis()
+    } else {
+        renderHints([]);
+    }
 
 }
 
