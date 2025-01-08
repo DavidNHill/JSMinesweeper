@@ -57,6 +57,7 @@ wholeBoard.ondragover = dragOverHandler;
 
 // define the other html elements we need
 const tooltip = document.getElementById('tooltip');
+const reductionCheckBox = document.getElementById("reduction");
 const autoPlayCheckBox = document.getElementById("autoplay");
 const showHintsCheckBox = document.getElementById("showhints");
 const acceptGuessesCheckBox = document.getElementById("acceptguesses");
@@ -936,6 +937,12 @@ function renderTiles(tiles) {
 
         } else {
             tileType = tile.getValue();
+            if (!analysisMode && reductionCheckBox.checked) {
+                tileType -= board.adjacentFlagsPlaced(tile);
+                if (tileType < 0) {
+                    tileType += images.length;
+                }
+            }
         }
         draw(tile.x, tile.y, tileType);
     }
@@ -2963,6 +2970,9 @@ async function sendActionsMessage(message) {
                     board.bombs_left++;
                 }
                 tiles.push(tile);
+                if (reductionCheckBox.checked) {
+                    tiles.push(...board.getAdjacent(tile));
+                } 
             }
 
         } else if (action == 3) {  // a tile which is a mine (these get returned when the game is lost)
@@ -3225,6 +3235,11 @@ function load_images() {
     images.push(load_image("resources/images/flaggedWrong.png"));
     images.push(load_image("resources/images/exploded.png"));
     images.push(load_image("resources/images/skull.png"));
+
+    for (let i = -7; i <= -1; i++) {
+        const file_path = "resources/images/" + i.toString() + ".png";
+        images.push(load_image(file_path));
+    }
 
     console.log(images.length + ' Images Loaded');
 
