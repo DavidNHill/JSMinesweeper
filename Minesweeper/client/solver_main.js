@@ -365,7 +365,7 @@ async function solver(board, options) {
 
             const totalSafe = pe.localClears.length + offEdgeSafeCount;
             showMessage("The solver has found " + totalSafe + " safe files." + formatSolutions(pe.finalSolutionsCount));
-            return new EfficiencyHelper(board, witnesses, witnessed, result, options.playStyle, pe, allCoveredTiles).process()
+            return new EfficiencyHelper(board, witnesses, witnessed, result, options.playStyle, pe, allCoveredTiles).process();
         } 
 
 
