@@ -22,6 +22,8 @@ const FLAGGED_WRONG = 12;
 const EXPLODED = 13;
 const SKULL = 14;
 
+const MINUS = 10;
+
 const PLAY_CLIENT_SIDE = true;
 
 let ALWAYS_LOCK_MINE_COUNTER = false;
@@ -257,6 +259,7 @@ async function startup() {
     canvas.addEventListener("mousedown", (event) => on_click(event));
     canvas.addEventListener("mouseup", (event) => mouseUpEvent(event));
     canvas.addEventListener('mousemove', (event) => followCursor(event));
+    canvas.addEventListener('wheel', (event) => followCursor(event));
     canvas.addEventListener('wheel', (event) => on_mouseWheel(event));
     canvas.addEventListener('mouseenter', (event) => on_mouseEnter(event));
     canvas.addEventListener('mouseleave', (event) => on_mouseLeave(event));
@@ -436,6 +439,12 @@ function propertiesClose() {
         saveSettings();
     } else {
         localStorage.removeItem("settings");
+    }
+
+    if (!analysisMode && showHintsCheckBox.checked) {
+        doAnalysis(false)
+    } else {
+        renderHints([]);
     }
 
 }
@@ -752,7 +761,7 @@ function switchToAnalysis(doAnalysis) {
 
     changeTileSize();
 
-    renderHints([]);  // clear down hints
+    // renderHints([]);  // clear down hints
 
     updateMineCount(board.bombs_left);  // reset the mine count
 
@@ -825,21 +834,8 @@ function renderHints(hints, otherActions, drawOverlay) {
      // put percentage over the tile 
     if (drawOverlay) {
 
-        if (TILE_SIZE == 12) {
-            ctxHints.font = "7px serif";
-        } else if (TILE_SIZE == 16) {
-            ctxHints.font = "10px serif";
-        } else if (TILE_SIZE == 20) {
-            ctxHints.font = "12px serif";
-        } else if (TILE_SIZE == 24) {
-            ctxHints.font = "14px serif";
-        } else if (TILE_SIZE == 28) {
-            ctxHints.font = "16px serif";
-        } if (TILE_SIZE == 32) {
-            ctxHints.font = "21px serif";
-        } else {
-            ctxHints.font = "6x serif";
-        }
+        const fontSize = Math.max(6, Math.floor(TILE_SIZE * 0.6));
+        ctxHints.font = `${fontSize}px serif`;
 
         ctxHints.globalAlpha = 1;
         ctxHints.fillStyle = "black";
@@ -959,7 +955,7 @@ function renderTiles(tiles) {
 
 function updateMineCount(minesLeft) {
 
-    let work = minesLeft;
+    let work = Math.abs(minesLeft);
     const digits = getDigitCount(minesLeft);
 
     let position = digits - 1;
@@ -968,10 +964,14 @@ function updateMineCount(minesLeft) {
 
     for (let i = 0; i < DIGITS; i++) {
 
-        const digit = work % 10;
-        work = (work - digit) / 10;
+        if (minesLeft < 0 && i == DIGITS - digits) {
+            ctxBombsLeft.drawImage(led_images[MINUS], DIGIT_WIDTH * position + 2, 2, DIGIT_WIDTH - 4, DIGIT_HEIGHT - 4);
+        } else {
+            const digit = work % 10;
+            work = (work - digit) / 10;
 
-        ctxBombsLeft.drawImage(led_images[digit], DIGIT_WIDTH * position + 2, 2, DIGIT_WIDTH - 4, DIGIT_HEIGHT - 4);
+            ctxBombsLeft.drawImage(led_images[digit], DIGIT_WIDTH * position + 2, 2, DIGIT_WIDTH - 4, DIGIT_HEIGHT - 4);
+        }
 
         position--;
     }
@@ -1105,6 +1105,7 @@ async function playAgain() {
         placeAnalysisQuery();
 
         showMessage("Replay game requested");
+        document.getElementById("newGameSmiley").src = 'resources/images/face.svg';
     } else {
         showMessage("No game to replay");
     }
@@ -1229,6 +1230,7 @@ async function newGameFromMBF(mbf) {
     canvasLocked = false;  // just in case it was still locked (after an error for example)
 
     //showMessage("Game "  + width + "x" + height + "/" + mines + " created from MBF file");
+    document.getElementById("newGameSmiley").src = 'resources/images/face.svg';
  
 }
 
@@ -1372,6 +1374,7 @@ async function newBoardFromString(data, inflate) {
     buildMode.checked = false;
 
     canvasLocked = false;  // just in case it was still locked (after an error for example)
+    document.getElementById("newGameSmiley").src = 'resources/images/face.svg';
 
 }
 
@@ -1483,6 +1486,7 @@ async function newGame(width, height, mines, seed) {
     placeAnalysisQuery();
 
     showMessage("New game requested with width " + width + ", height " + height + " and " + mines + " mines.");
+    document.getElementById("newGameSmiley").src = 'resources/images/face.svg';
 
 }
 
@@ -1510,6 +1514,12 @@ function changeTileSize() {
     browserResized();  // do we need scroll bars?
 
     renderTiles(board.tiles); // draw the board
+
+    if (!analysisMode && showHintsCheckBox.checked) {
+        doAnalysis(false)
+    } else {
+        renderHints([]);
+    }
 
 }
 
@@ -2169,7 +2179,7 @@ async function sleep(msec) {
     return new Promise(resolve => setTimeout(resolve, msec));
 }
 
-async function doAnalysis() {
+async function doAnalysis(fullBFDA) {
 
     if (canvasLocked) {
         console.log("Already analysing... request rejected");
@@ -2221,7 +2231,7 @@ async function doAnalysis() {
 
         options.fullProbability = true;
         options.guessPruning = guessAnalysisPruning;
-        options.fullBFDA = true;
+        options.fullBFDA = fullBFDA;
         options.hardcore = docHardcore.checked;
 
         const solve = await solver(board, options);  // look for solutions
@@ -2352,7 +2362,7 @@ function followCursor(e) {
     //console.log("Follow cursor, touch event? " + e.sourceCapabilities.firesTouchEvents);
 
     // if we got here from a touch event then don't do tool tip
-    if (supportsInputDeviceCapabilities && e.sourceCapabilities.firesTouchEvents) {
+    if (supportsInputDeviceCapabilities && e.sourceCapabilities != null && e.sourceCapabilities.firesTouchEvents) {
         tooltip.innerText = "";
         return;
     }
@@ -2369,14 +2379,6 @@ function followCursor(e) {
     }
 
     //console.log("Following cursor at X=" + e.offsetX + ", Y=" + e.offsetY);
-
-    if (isExpanded) {
-        tooltip.style.left = (TILE_SIZE + e.clientX - 20) + 'px';
-        tooltip.style.top = (e.clientY - TILE_SIZE * 1.5 - 5) + 'px';
-    } else {
-        tooltip.style.left = (TILE_SIZE + e.clientX - 190) + 'px';
-        tooltip.style.top = (e.clientY - TILE_SIZE * 1.5 - 70) + 'px';
-    }
 
     if (dragging && analysisMode) {
 
@@ -2410,6 +2412,25 @@ function followCursor(e) {
         const tile = board.getTileXY(col, row);
         tooltip.innerText = tile.asText() + " " + tile.getHintText();
         tooltip.style.display = "inline-block";
+    }
+
+    const screenWidth = window.innerWidth;
+    const tooltipWidth = tooltip.offsetWidth;
+
+    if (isExpanded) {
+        if (TILE_SIZE / 2 + e.clientX + tooltipWidth >= screenWidth) {
+            tooltip.style.left = (e.clientX - TILE_SIZE / 2 - tooltipWidth - 12) + 'px';
+        } else {
+            tooltip.style.left = (TILE_SIZE / 2 + e.clientX - 12) + 'px';
+        }
+        tooltip.style.top = (e.clientY - tooltip.offsetHeight / 2 - 5) + 'px';
+    } else {
+        if (TILE_SIZE / 2 + e.clientX + tooltipWidth >= screenWidth) {
+            tooltip.style.left = (e.clientX - TILE_SIZE / 2 - tooltipWidth - 182) + 'px';
+        } else {
+            tooltip.style.left = (TILE_SIZE / 2 + e.clientX - 182) + 'px';
+        }
+        tooltip.style.top = (e.clientY - tooltip.offsetHeight / 2 - 70) + 'px';
     }
 
 }
@@ -3018,8 +3039,10 @@ async function sendActionsMessage(message) {
         let efficiency;
         if (reply.header.status == "won") {
             efficiency = (100 * value3BV / actionsMade).toFixed(2) + "%";
+            document.getElementById("newGameSmiley").src = 'resources/images/face_win.svg';
         } else {
             efficiency = (100 * solved3BV / actionsMade).toFixed(2) + "%";
+            document.getElementById("newGameSmiley").src = 'resources/images/face_lose.svg';
         }
 
         showMessage("The game has been " + reply.header.status + ". 3BV: " + solved3BV + "/" + value3BV + ",  Actions: " + actionsMade + ",  Efficiency: " + efficiency);
@@ -3228,6 +3251,7 @@ function load_images() {
     }
 
     led_images.push(load_image("resources/images/led9.svg"));
+    led_images.push(load_image("resources/images/led-.svg"));
 
     images.push(load_image("resources/images/bomb.png"));
     images.push(load_image("resources/images/facingDown.png"));
