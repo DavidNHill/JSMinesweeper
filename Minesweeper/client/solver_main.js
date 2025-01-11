@@ -683,7 +683,7 @@ async function solver(board, options) {
 
         // identify the dead tiles
         for (let tile of deadTiles) {   // show all dead tiles 
-            if (tile.probability != 0) {
+            if (tile.probability != 0 && tile.probability != 1) {
                 const action = new Action(tile.getX(), tile.getY(), tile.probability);
                 action.dead = true;
                 result.push(action);
