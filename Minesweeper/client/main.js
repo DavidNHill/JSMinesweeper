@@ -440,6 +440,12 @@ function propertiesClose() {
         localStorage.removeItem("settings");
     }
 
+    if (!analysisMode && showHintsCheckBox.checked) {
+        doAnalysis()
+    } else {
+        renderHints([]);
+    }
+
 }
 
 function propertiesOpen() {
