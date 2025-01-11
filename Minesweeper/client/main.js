@@ -1666,7 +1666,7 @@ function keyPressedEvent(e) {
     let newValue = null;
     if (e.key == 'a') {
         if (!analysisButton.disabled) {  // don't allow the hotkey if the button is disabled
-            doAnalysis();
+            doAnalysis(true);
         }
 
     } else if (analysisMode) {
