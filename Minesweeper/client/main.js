@@ -2353,7 +2353,7 @@ function followCursor(e) {
     //console.log("Follow cursor, touch event? " + e.sourceCapabilities.firesTouchEvents);
 
     // if we got here from a touch event then don't do tool tip
-    if (supportsInputDeviceCapabilities && e.sourceCapabilities?.firesTouchEvents) {
+    if (supportsInputDeviceCapabilities && e.sourceCapabilities != null && e.sourceCapabilities.firesTouchEvents) {
         tooltip.innerText = "";
         return;
     }
