@@ -339,7 +339,12 @@ async function createNoGuessGame(header, index) {
 	let game
 	while (!won && loopCheck < maxLoops && !ngCancel) {
 
-		const seed = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+		let seed;
+		if (header.seed != null && header.seed != 0) {
+			seed = header.seed;
+		} else {
+			seed = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
+		}
 
 		game = new ServerGame(header.id, header.width, header.height, header.mines, index, seed, "zero");
 
@@ -426,11 +431,16 @@ async function createNoGuessGame(header, index) {
 			won = true;
         }
 
+		if (header.seed != null && header.seed != 0) {
+			break;
+        }
+
     }
 
 	console.log(revealedTiles.header.status);
 	if (revealedTiles.header.status != WON) {
 		ngText.innerHTML = "** FAILED **";
+		ngModal.style.display = "block";
 		await sleep(1000);
     }
 
