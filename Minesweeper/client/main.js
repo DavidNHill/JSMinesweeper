@@ -22,6 +22,8 @@ const FLAGGED_WRONG = 12;
 const EXPLODED = 13;
 const SKULL = 14;
 
+const MINUS = 10;
+
 const PLAY_CLIENT_SIDE = true;
 
 let ALWAYS_LOCK_MINE_COUNTER = false;
@@ -940,7 +942,7 @@ function renderTiles(tiles) {
 
 function updateMineCount(minesLeft) {
 
-    let work = minesLeft;
+    let work = Math.abs(minesLeft);
     const digits = getDigitCount(minesLeft);
 
     let position = digits - 1;
@@ -949,10 +951,14 @@ function updateMineCount(minesLeft) {
 
     for (let i = 0; i < DIGITS; i++) {
 
-        const digit = work % 10;
-        work = (work - digit) / 10;
+        if (minesLeft < 0 && i == DIGITS - digits) {
+            ctxBombsLeft.drawImage(led_images[MINUS], DIGIT_WIDTH * position + 2, 2, DIGIT_WIDTH - 4, DIGIT_HEIGHT - 4);
+        } else {
+            const digit = work % 10;
+            work = (work - digit) / 10;
 
-        ctxBombsLeft.drawImage(led_images[digit], DIGIT_WIDTH * position + 2, 2, DIGIT_WIDTH - 4, DIGIT_HEIGHT - 4);
+            ctxBombsLeft.drawImage(led_images[digit], DIGIT_WIDTH * position + 2, 2, DIGIT_WIDTH - 4, DIGIT_HEIGHT - 4);
+        }
 
         position--;
     }
@@ -3233,6 +3239,7 @@ function load_images() {
     }
 
     led_images.push(load_image("resources/images/led9.svg"));
+    led_images.push(load_image("resources/images/led-.svg"));
 
     images.push(load_image("resources/images/bomb.png"));
     images.push(load_image("resources/images/facingDown.png"));
