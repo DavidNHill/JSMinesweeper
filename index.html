@@ -154,10 +154,8 @@
             <div id="display" style="display: flex; flex-direction: row; height: 50px;">
                 <div>
                     <canvas class="led" id="myMinesLeft" style="position: relative; left: 3px; top:3px; width: 60px; height: 36px" oncontextmenu="return false"></canvas>
-                    <input type="image" src='resources/images/flaggedWrong_thin.png' id="leftClickFlag" onclick="doToggleFlag()" style="position: relative; left: 20px; top: 2px; width: 40px; height: 40px;" />
-                </div>
-                <div class="hidden" style="flex: 0">
-                    <input type="image" src='resources/images/flaggedWrong_thin.png' id="newGameSmiley" onclick="doToggleFlag()" style="position: relative; top:6px; width:40px; height: 40px" />
+                    <input type="image" src='resources/images/flaggedWrong_thin.png' id="leftClickFlag" onclick="doToggleFlag()" style="position: relative; left: 5px; top: 2px; width: 40px; height: 40px;" />
+                    <input type="image" src='resources/images/face.svg' id="newGameSmiley" onclick="apply()" style="position: relative; left: 5px; top: 2px; width: 40px; height: 40px;" />
                 </div>
                 <div style="flex-grow: 1;">
                     <button class="small" type="button" style="position: relative; font-size: 22px; float: right; top: 6px; right: 6px; " id="toggleScreen" onclick="doToggleScreen()">+</button>

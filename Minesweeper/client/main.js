@@ -1092,6 +1092,7 @@ async function playAgain() {
         placeAnalysisQuery();
 
         showMessage("Replay game requested");
+        document.getElementById("newGameSmiley").src = 'resources/images/face.svg';
     } else {
         showMessage("No game to replay");
     }
@@ -1216,6 +1217,7 @@ async function newGameFromMBF(mbf) {
     canvasLocked = false;  // just in case it was still locked (after an error for example)
 
     //showMessage("Game "  + width + "x" + height + "/" + mines + " created from MBF file");
+    document.getElementById("newGameSmiley").src = 'resources/images/face.svg';
  
 }
 
@@ -1359,6 +1361,7 @@ async function newBoardFromString(data, inflate) {
     buildMode.checked = false;
 
     canvasLocked = false;  // just in case it was still locked (after an error for example)
+    document.getElementById("newGameSmiley").src = 'resources/images/face.svg';
 
 }
 
@@ -1470,6 +1473,7 @@ async function newGame(width, height, mines, seed) {
     placeAnalysisQuery();
 
     showMessage("New game requested with width " + width + ", height " + height + " and " + mines + " mines.");
+    document.getElementById("newGameSmiley").src = 'resources/images/face.svg';
 
 }
 
@@ -3026,8 +3030,10 @@ async function sendActionsMessage(message) {
         let efficiency;
         if (reply.header.status == "won") {
             efficiency = (100 * value3BV / actionsMade).toFixed(2) + "%";
+            document.getElementById("newGameSmiley").src = 'resources/images/face_win.svg';
         } else {
             efficiency = (100 * solved3BV / actionsMade).toFixed(2) + "%";
+            document.getElementById("newGameSmiley").src = 'resources/images/face_lose.svg';
         }
 
         showMessage("The game has been " + reply.header.status + ". 3BV: " + solved3BV + "/" + value3BV + ",  Actions: " + actionsMade + ",  Efficiency: " + efficiency);
