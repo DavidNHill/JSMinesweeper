@@ -20,6 +20,7 @@ const PLAY_STYLE_NOFLAGS_EFFICIENCY = 4;
 class SolverGlobal {
 
     static PRUNE_GUESSES = true;                      // Determines whether calculations continue after the tile can no longer be the best
+    static EARLY_FIFTY_FIFTY_CHECKING = true;         // Determines whether 50/50 checking is done when there are safe tiles
     static CALCULATE_LONG_TERM_SAFETY = true;         // Switches 50/50 influence processing on or off, also most pseudo-50/50 detection
 
 }
@@ -369,7 +370,7 @@ async function solver(board, options) {
 
             if (!options.noGuessingMode) {
                 // See if there are any unavoidable 2 tile 50/50 guesses 
-                if (!options.hardcore && minesLeft > 1) {
+                if (SolverGlobal.EARLY_FIFTY_FIFTY_CHECKING && !options.hardcore && minesLeft > 1) {
                     //const unavoidable5050a = pe.checkForUnavoidable5050();
                     const unavoidable5050a = pe.checkForUnavoidable5050OrPseudo();
                     if (unavoidable5050a != null) {
