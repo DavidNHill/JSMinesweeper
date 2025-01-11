@@ -36,7 +36,7 @@
             <div class="checkboxes" style="margin-top: 10px;">
                 <label><input type="checkbox" class="checkbox" id="gameTypeZero" /> <span>Opening on start</span></label>
                 <label><input type="checkbox" class="checkbox" id="noGuessMode" /> <span>No Guess</span></label>
-                <label><input type="checkbox" class="checkbox" id="fastPlay" /> <span>Fast mode</span></label>
+                <label><input type="checkbox" class="checkbox" id="fastPlay" onclick="if (this.checked) startSolver()" /> <span>Fast mode</span></label>
                 <label><input type="checkbox" class="checkbox" id="hardcore" /> <span>Hard Core</span></label>
             </div>
         </div>
@@ -107,8 +107,8 @@
         <div style="margin-top: 1em;" class="checkboxes" id="play1">
             <label><input type="checkbox" class="checkbox" id="reduction" onclick="renderTiles(board.tiles)" /> <span>Reduction</span></label>
             <label><input type="checkbox" class="checkbox" id="showhints" onclick="this.checked ? doAnalysis(false) : renderHints([])" checked /> <span>Show hints</span></label>
-            <label><input type="checkbox" class="checkbox" id="autoplay" /> <span>Auto play</span></label>
-            <label><input type="checkbox" class="checkbox" id="acceptguesses" /> <span>Accept guesses</span></label>
+            <label><input type="checkbox" class="checkbox" id="autoplay" onclick="if (this.checked) startSolver()" checked /> <span>Auto play</span></label>
+            <label><input type="checkbox" class="checkbox" id="acceptguesses" onclick="if (document.getElementById('autoplay').checked && this.checked) startSolver()" /> <span>Accept guesses</span></label>
 
         </div>
 
