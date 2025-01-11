@@ -365,11 +365,7 @@ async function solver(board, options) {
 
             const totalSafe = pe.localClears.length + offEdgeSafeCount;
             showMessage("The solver has found " + totalSafe + " safe files." + formatSolutions(pe.finalSolutionsCount));
-            result = new EfficiencyHelper(board, witnesses, witnessed, result, options.playStyle, pe, allCoveredTiles).process()
-            if (!options.noGuessingMode) {
-                result = addDeadTiles(result, pe.getDeadTiles());
-            }
-            return result;
+            return new EfficiencyHelper(board, witnesses, witnessed, result, options.playStyle, pe, allCoveredTiles).process()
         } 
 
 
@@ -683,7 +679,7 @@ async function solver(board, options) {
 
         // identify the dead tiles
         for (let tile of deadTiles) {   // show all dead tiles 
-            if (tile.probability != 0 && tile.probability != 1) {
+            if (tile.probability != 0) {
                 const action = new Action(tile.getX(), tile.getY(), tile.probability);
                 action.dead = true;
                 result.push(action);
