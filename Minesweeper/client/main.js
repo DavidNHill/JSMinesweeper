@@ -257,6 +257,7 @@ async function startup() {
     canvas.addEventListener("mousedown", (event) => on_click(event));
     canvas.addEventListener("mouseup", (event) => mouseUpEvent(event));
     canvas.addEventListener('mousemove', (event) => followCursor(event));
+    canvas.addEventListener('wheel', (event) => followCursor(event));
     canvas.addEventListener('wheel', (event) => on_mouseWheel(event));
     canvas.addEventListener('mouseenter', (event) => on_mouseEnter(event));
     canvas.addEventListener('mouseleave', (event) => on_mouseLeave(event));
@@ -2342,7 +2343,7 @@ function followCursor(e) {
     //console.log("Follow cursor, touch event? " + e.sourceCapabilities.firesTouchEvents);
 
     // if we got here from a touch event then don't do tool tip
-    if (supportsInputDeviceCapabilities && e.sourceCapabilities.firesTouchEvents) {
+    if (supportsInputDeviceCapabilities && e.sourceCapabilities?.firesTouchEvents) {
         tooltip.innerText = "";
         return;
     }
@@ -2359,14 +2360,6 @@ function followCursor(e) {
     }
 
     //console.log("Following cursor at X=" + e.offsetX + ", Y=" + e.offsetY);
-
-    if (isExpanded) {
-        tooltip.style.left = (TILE_SIZE + e.clientX - 20) + 'px';
-        tooltip.style.top = (e.clientY - TILE_SIZE * 1.5 - 5) + 'px';
-    } else {
-        tooltip.style.left = (TILE_SIZE + e.clientX - 190) + 'px';
-        tooltip.style.top = (e.clientY - TILE_SIZE * 1.5 - 70) + 'px';
-    }
 
     if (dragging && analysisMode) {
 
@@ -2400,6 +2393,25 @@ function followCursor(e) {
         const tile = board.getTileXY(col, row);
         tooltip.innerText = tile.asText() + " " + tile.getHintText();
         tooltip.style.display = "inline-block";
+    }
+
+    const screenWidth = window.innerWidth;
+    const tooltipWidth = tooltip.offsetWidth;
+
+    if (isExpanded) {
+        if (TILE_SIZE / 2 + e.clientX + tooltipWidth >= screenWidth) {
+            tooltip.style.left = (e.clientX - TILE_SIZE / 2 - tooltipWidth - 12) + 'px';
+        } else {
+            tooltip.style.left = (TILE_SIZE / 2 + e.clientX - 12) + 'px';
+        }
+        tooltip.style.top = (e.clientY - tooltip.offsetHeight / 2 - 5) + 'px';
+    } else {
+        if (TILE_SIZE / 2 + e.clientX + tooltipWidth >= screenWidth) {
+            tooltip.style.left = (e.clientX - TILE_SIZE / 2 - tooltipWidth - 182) + 'px';
+        } else {
+            tooltip.style.left = (TILE_SIZE / 2 + e.clientX - 182) + 'px';
+        }
+        tooltip.style.top = (e.clientY - tooltip.offsetHeight / 2 - 70) + 'px';
     }
 
 }
