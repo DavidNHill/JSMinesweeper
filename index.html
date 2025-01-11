@@ -37,7 +37,7 @@
                 <label><input type="checkbox" class="checkbox" id="gameTypeZero" /> <span>Opening on start</span></label>
                 <label><input type="checkbox" class="checkbox" id="noGuessMode" /> <span>No Guess</span></label>
                 <label><input type="checkbox" class="checkbox" id="fastPlay" /> <span>Fast mode</span></label>
-                <label><input type="checkbox" class="checkbox" id="hardcore" /> <span>Hard Core</span></label>
+                <label><input type="checkbox" class="checkbox" id="hardcore" onclick="document.getElementById('showhints').checked ? doAnalysis() : renderHints([])" /> <span>Hard Core</span></label>
             </div>
         </div>
 

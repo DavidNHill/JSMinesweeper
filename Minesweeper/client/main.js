@@ -2212,14 +2212,10 @@ async function doAnalysis() {
             options.playStyle = PLAY_STYLE_NOFLAGS_EFFICIENCY; 
         } 
 
-        if (docOverlay.value != "none") {
-            options.fullProbability = true;
-        } else {
-            options.fullProbability = false;
-        }
-
+        options.fullProbability = true;
         options.guessPruning = guessAnalysisPruning;
         options.fullBFDA = true;
+        options.hardcore = docHardcore.checked;
 
         const solve = await solver(board, options);  // look for solutions
         const hints = solve.actions;
@@ -3052,11 +3048,8 @@ async function sendActionsMessage(message) {
             options.playStyle = PLAY_STYLE_NOFLAGS_EFFICIENCY;
         } 
 
-        if (docOverlay.value != "none" || docHardcore.checked) {
-            options.fullProbability = true;
-        } else {
-            options.fullProbability = false;
-        }
+        options.fullProbability = true;
+        options.hardcore = docHardcore.checked;
 
         let hints;
         let other;
