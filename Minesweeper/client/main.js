@@ -441,7 +441,7 @@ function propertiesClose() {
     }
 
     if (!analysisMode && showHintsCheckBox.checked) {
-        doAnalysis()
+        doAnalysis(false)
     } else {
         renderHints([]);
     }
@@ -1509,7 +1509,7 @@ function changeTileSize() {
     renderTiles(board.tiles); // draw the board
 
     if (!analysisMode && showHintsCheckBox.checked) {
-        doAnalysis()
+        doAnalysis(false)
     } else {
         renderHints([]);
     }
@@ -2172,7 +2172,7 @@ async function sleep(msec) {
     return new Promise(resolve => setTimeout(resolve, msec));
 }
 
-async function doAnalysis() {
+async function doAnalysis(fullBFDA) {
 
     if (canvasLocked) {
         console.log("Already analysing... request rejected");
@@ -2229,7 +2229,7 @@ async function doAnalysis() {
         }
 
         options.guessPruning = guessAnalysisPruning;
-        options.fullBFDA = true;
+        options.fullBFDA = fullBFDA;
 
         const solve = await solver(board, options);  // look for solutions
         const hints = solve.actions;
