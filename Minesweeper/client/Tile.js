@@ -14,6 +14,7 @@ class Tile {
         this.is_bomb = null;   // this gets set when the game is lost
         this.exploded = false;  // this gets set if this tile was the one clicked
 		this.index = index;
+		this.is_start = false;
 
         this.onEdge = false;
         this.hint = false;
@@ -87,6 +88,10 @@ class Tile {
     }
 
     setProbability(prob, progress, safety2) {
+		if (this.x == 0 && this.y == 0) {
+			console.log("Setting probability for " + this.asText() + " to " + prob);
+		}
+
         this.probability = prob;
         this.hasHint = true;
 

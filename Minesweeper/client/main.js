@@ -21,6 +21,7 @@ const FLAGGED = 11;
 const FLAGGED_WRONG = 12;
 const EXPLODED = 13;
 const SKULL = 14;
+const START = 15;
 
 const MINUS = 10;
 
@@ -929,7 +930,11 @@ function renderTiles(tiles) {
             tileType = SKULL;
 
         } else if (tile.isCovered()) {
-            tileType = HIDDEN;
+            if (tile.is_start) {
+                tileType = START;
+            } else {
+                tileType = HIDDEN;
+            }
 
         } else {
             tileType = tile.getValue();
@@ -1083,11 +1088,16 @@ async function playAgain() {
     if (board != null && !analysisMode) {
         callKillGame(board.getID());
 
+        const game = getGame(board.getID());
+        const startIndex = game.startIndex;
         const reply = copyGame(board.getID());
 
         const id = reply.id;
 
         board = new Board(id, board.width, board.height, board.num_bombs, board.seed, board.gameType);
+
+        const tile = board.getTile(startIndex);
+        tile.is_start = true;
 
         changeTileSize();
 
@@ -3259,6 +3269,7 @@ function load_images() {
     images.push(load_image("resources/images/flaggedWrong.png"));
     images.push(load_image("resources/images/exploded.png"));
     images.push(load_image("resources/images/skull.png"));
+    images.push(load_image("resources/images/start.png"));
 
     for (let i = -7; i <= -1; i++) {
         const file_path = "resources/images/" + i.toString() + ".png";
