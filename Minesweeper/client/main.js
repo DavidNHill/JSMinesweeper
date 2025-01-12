@@ -1503,7 +1503,7 @@ async function newGame(width, height, mines, seed, start) {
     showMessage("New game requested with width " + width + ", height " + height + " and " + mines + " mines.");
     document.getElementById("newGameSmiley").src = 'resources/images/face.svg';
 
-    if (start == null && autoPlayCheckBox.checked && acceptGuessesCheckBox.checked) {
+    if (!analysisMode && start == null && autoPlayCheckBox.checked && acceptGuessesCheckBox.checked) {
         await startSolver();
     }
 
