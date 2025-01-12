@@ -2205,6 +2205,7 @@ async function doAnalysis(fullBFDA) {
         return;
     } else {
         console.log("Doing analysis");
+        analysisButton.disabled = true;
         canvasLocked = true;
     }
 
@@ -2275,8 +2276,8 @@ async function doAnalysis(fullBFDA) {
         window.requestAnimationFrame(() => renderHints([], []));
     }
 
-    // by delaying removing the logical lock we absorb any secondary clicking of the button / hot key
-    // setTimeout(function () { canvasLocked = false; }, 200);
+    // by delaying re-enabling we absorb any secondary clicking of the button / hot key
+    setTimeout(function () { analysisButton.disabled = false; }, 200);
     canvasLocked = false;
 
 }
