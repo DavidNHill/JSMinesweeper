@@ -1083,17 +1083,13 @@ async function playAgain() {
     if (board != null && !analysisMode) {
         callKillGame(board.getID());
 
-        // this is a message to the server or local
-        // use new ID to clean up old requests
-        let reply;
-        if (PLAY_CLIENT_SIDE) {
-            reply = getNextGameID();
-        } else {
-            const json_data = await fetch("/requestID");
-            reply = await json_data.json();
-        }
+        const mbf = getMbfData(board.getID());
+        const view = new Uint8Array(mbf);
 
-        console.log("<== " + JSON.stringify(reply));
+        console.log(...view);
+
+        const reply = createGameFromMFB(view);  // this function is in MinesweeperGame.js
+
         const id = reply.id;
 
         board = new Board(id, board.width, board.height, board.num_bombs, board.seed, board.gameType);
