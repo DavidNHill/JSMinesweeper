@@ -308,7 +308,7 @@ async function startup() {
 
             console.log(boardString);
 
-            newBoardFromString(boardString, true);
+            await newBoardFromString(boardString, true);
 
             // make the analysis board this board
             analysisBoard = board;
