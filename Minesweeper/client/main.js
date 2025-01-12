@@ -3190,6 +3190,9 @@ async function startSolver() {
 
     canvasLocked = true;
     await handleSolver(Date.now(), board.id);
+    if (!board.isStarted()) {
+        board.setStarted();
+    }
 }
 
 // send a JSON message to the server asking it to kill the game
