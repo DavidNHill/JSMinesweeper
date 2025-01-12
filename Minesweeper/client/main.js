@@ -285,7 +285,7 @@ async function startup() {
     await solver();
 
     // create the playable game;
-    await newGame(width, height, mines, seed);
+    await newGame(width, height, mines, seed, start);
     gameBoard = board;
 
     if (analysis != null) {
@@ -1433,7 +1433,7 @@ function loadReplayData(file) {
 
 }
 
-async function newGame(width, height, mines, seed) {
+async function newGame(width, height, mines, seed, start) {
 
     console.log("New game requested: Width=" + width + " Height=" + height + " Mines=" + mines + " Seed=" + seed);
 
@@ -1503,7 +1503,7 @@ async function newGame(width, height, mines, seed) {
     showMessage("New game requested with width " + width + ", height " + height + " and " + mines + " mines.");
     document.getElementById("newGameSmiley").src = 'resources/images/face.svg';
 
-    if (autoPlayCheckBox.checked && acceptGuessesCheckBox.checked) {
+    if (start == null && autoPlayCheckBox.checked && acceptGuessesCheckBox.checked) {
         await startSolver();
     }
 
