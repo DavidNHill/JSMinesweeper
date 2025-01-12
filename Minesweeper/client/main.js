@@ -1372,8 +1372,8 @@ async function newBoardFromString(data, inflate) {
     // switch to the board
     board = newBoard;
 
+    document.getElementById("canvas").style.cursor = "default";
     canvasLocked = false;  // just in case it was still locked (after an error for example)
-    document.getElementById("newGameSmiley").src = 'resources/images/face.svg';
 
     // this redraws the board
     await changeTileSize();
@@ -1387,6 +1387,8 @@ async function newBoardFromString(data, inflate) {
 
     lockMineCount.checked = true;
     buildMode.checked = false;
+
+    document.getElementById("newGameSmiley").src = 'resources/images/face.svg';
 
     if (autoPlayCheckBox.checked && acceptGuessesCheckBox.checked) {
         await startSolver();
@@ -1487,8 +1489,8 @@ async function newGame(width, height, mines, seed) {
         board = new Board(id, width, height, mines, seed, gameType);
     }
 
+    document.getElementById("canvas").style.cursor = "default";
     canvasLocked = false;  // just in case it was still locked (after an error for example)
-    document.getElementById("newGameSmiley").src = 'resources/images/face.svg';
 
     await changeTileSize();
 
