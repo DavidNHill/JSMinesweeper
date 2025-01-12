@@ -3184,6 +3184,11 @@ async function handleSolver(solverStart, headerId) {
 }
 
 async function startSolver() {
+    if (board.isGameover()) {
+        console.log("The game is over - nothing to solve");
+        return;
+    }
+
     if (canvasLocked) {
         console.log("The canvas is logically locked");
         return;
