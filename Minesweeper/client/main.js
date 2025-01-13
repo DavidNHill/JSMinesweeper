@@ -1522,6 +1522,14 @@ function doToggleFlag() {
 
 }
 
+async function updateHints() {
+    if (!board.isGameover() && !analysisMode && showHintsCheckBox.checked) {
+        await doAnalysis(false);
+    } else {
+        renderHints([]);
+    }
+}
+
 async function changeTileSize(analyse) {
 
     TILE_SIZE = parseInt(docTileSize.value);
