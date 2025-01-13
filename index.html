@@ -374,9 +374,9 @@
         function doNewGame(width, height, mines) {
 
             if (document.getElementById("useSeed").checked) {
-                newGame(width, height, mines, document.getElementById("seed").value, null);
+                newGame(width, height, mines, document.getElementById("seed").value, false);
             } else {
-                newGame(width, height, mines, 0, null);
+                newGame(width, height, mines, 0, false);
             }
 
         }
