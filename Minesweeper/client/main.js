@@ -308,7 +308,7 @@ async function startup() {
 
             console.log(boardString);
 
-            await newBoardFromString(boardString, true);
+            await newBoardFromString(boardString, true, false);
 
             // make the analysis board this board
             analysisBoard = board;
@@ -752,7 +752,7 @@ async function switchToAnalysis(doAnalysis) {
 
     setPageTitle();
 
-    await changeTileSize();
+    await changeTileSize(true);
 
     // renderHints([]);  // clear down hints
 
@@ -1097,7 +1097,7 @@ async function playAgain() {
         document.getElementById("canvas").style.cursor = "default";
         canvasLocked = false;  // just in case it was still locked (after an error for example)
 
-        await changeTileSize();
+        await changeTileSize(true);
 
         updateMineCount(board.num_bombs);
 
@@ -1106,7 +1106,7 @@ async function playAgain() {
         showMessage("Replay game requested");
         document.getElementById("newGameSmiley").src = 'resources/images/face.svg';
 
-        if (autoPlayCheckBox.checked && acceptGuessesCheckBox.checked) {
+        if (!analysisMode && autoPlayCheckBox.checked && acceptGuessesCheckBox.checked) {
             await startSolver();
         }
     } else {
@@ -1227,7 +1227,7 @@ async function newGameFromMBF(mbf) {
     document.getElementById("canvas").style.cursor = "default";
     canvasLocked = false;  // just in case it was still locked (after an error for example)
 
-    await changeTileSize();
+    await changeTileSize(true);
 
     //showDownloadLink(false, ""); // remove the download link
 
@@ -1236,7 +1236,7 @@ async function newGameFromMBF(mbf) {
     //showMessage("Game "  + width + "x" + height + "/" + mines + " created from MBF file");
     document.getElementById("newGameSmiley").src = 'resources/images/face.svg';
  
-    if (autoPlayCheckBox.checked && acceptGuessesCheckBox.checked) {
+    if (!analysisMode && autoPlayCheckBox.checked && acceptGuessesCheckBox.checked) {
         await startSolver();
     }
  
@@ -1249,7 +1249,7 @@ async function newBoardFromFile(file) {
     fr.onloadend = async function (e) {
 
         if (analysisMode) {
-            await newBoardFromString(e.target.result);
+            await newBoardFromString(e.target.result, false, true);
             showMessage("Position loaded from file " + file.name);
         } else {
             const mbf = StringToMBF(e.target.result);
@@ -1273,7 +1273,7 @@ async function newBoardFromFile(file) {
 
 }
 
-async function newBoardFromString(data, inflate) {
+async function newBoardFromString(data, inflate, analyse) {
 
     if (inflate == null) {
         inflate = false;
@@ -1372,7 +1372,7 @@ async function newBoardFromString(data, inflate) {
     canvasLocked = false;  // just in case it was still locked (after an error for example)
 
     // this redraws the board
-    await changeTileSize();
+    await changeTileSize(analyse);
 
     updateMineCount(board.bombs_left);
 
@@ -1386,7 +1386,7 @@ async function newBoardFromString(data, inflate) {
 
     document.getElementById("newGameSmiley").src = 'resources/images/face.svg';
 
-    if (autoPlayCheckBox.checked && acceptGuessesCheckBox.checked) {
+    if (!analysisMode && autoPlayCheckBox.checked && acceptGuessesCheckBox.checked) {
         await startSolver();
     }
 
@@ -1420,7 +1420,7 @@ function loadReplayData(file) {
         setPageTitle();
 
         // this redraws the board
-        await changeTileSize();
+        await changeTileSize(true);
 
         updateMineCount(board.bombs_left);
 
@@ -1433,7 +1433,7 @@ function loadReplayData(file) {
 
 }
 
-async function newGame(width, height, mines, seed, start) {
+async function newGame(width, height, mines, seed, analyse) {
 
     console.log("New game requested: Width=" + width + " Height=" + height + " Mines=" + mines + " Seed=" + seed);
 
@@ -1488,7 +1488,7 @@ async function newGame(width, height, mines, seed, start) {
     document.getElementById("canvas").style.cursor = "default";
     canvasLocked = false;  // just in case it was still locked (after an error for example)
 
-    await changeTileSize();
+    await changeTileSize(analyse);
 
     updateMineCount(board.num_bombs);
 
@@ -1503,7 +1503,7 @@ async function newGame(width, height, mines, seed, start) {
     showMessage("New game requested with width " + width + ", height " + height + " and " + mines + " mines.");
     document.getElementById("newGameSmiley").src = 'resources/images/face.svg';
 
-    if (!analysisMode && start && autoPlayCheckBox.checked && acceptGuessesCheckBox.checked) {
+    if (!analysisMode && analyse && autoPlayCheckBox.checked && acceptGuessesCheckBox.checked) {
         await startSolver();
     }
 
@@ -1522,7 +1522,7 @@ function doToggleFlag() {
 
 }
 
-async function changeTileSize() {
+async function changeTileSize(analyse) {
 
     TILE_SIZE = parseInt(docTileSize.value);
 
@@ -1534,7 +1534,7 @@ async function changeTileSize() {
 
     renderTiles(board.tiles); // draw the board
 
-    if (!analysisMode && showHintsCheckBox.checked) {
+    if (!analysisMode && analyse && showHintsCheckBox.checked) {
         await doAnalysis(false);
     } else {
         renderHints([]);
@@ -1727,7 +1727,7 @@ function keyPressedEvent(e) {
         } else if (e.key == 'v' && e.ctrlKey) {
             //console.log("Control-V pressed");
             navigator.clipboard.readText().then(
-                clipText => newBoardFromString(clipText));
+                clipText => newBoardFromString(clipText, false, true));
         } else if (e.key == 'ArrowRight') {
              if (replayMode) {
                 if (e.shiftKey) {
