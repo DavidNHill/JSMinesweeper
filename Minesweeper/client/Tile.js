@@ -88,9 +88,6 @@ class Tile {
     }
 
     setProbability(prob, progress, safety2) {
-		if (this.x == 0 && this.y == 0) {
-			console.log("Setting probability for " + this.asText() + " to " + prob);
-		}
 
         this.probability = prob;
         this.hasHint = true;
