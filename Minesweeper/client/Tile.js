@@ -88,7 +88,6 @@ class Tile {
     }
 
     setProbability(prob, progress, safety2) {
-
         this.probability = prob;
         this.hasHint = true;
 
