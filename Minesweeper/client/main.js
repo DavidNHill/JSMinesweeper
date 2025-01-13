@@ -285,7 +285,7 @@ async function startup() {
     await solver();
 
     // create the playable game;
-    await newGame(width, height, mines, seed, analysis == null && start != null);
+    await newGame(width, height, mines, seed, analysis == null && start == null);
     gameBoard = board;
 
     if (analysis != null) {
