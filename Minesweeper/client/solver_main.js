@@ -348,7 +348,7 @@ async function solver(board, options) {
         }
 
         // have we found any local clears which we can use or everything off the edge is safe
-        if (pe.localClears.length > 0 || pe.minesFound.length > 0 || offEdgeAllSafe) {
+        if (pe.localClears.length > 0 || offEdgeAllSafe) {
             for (let tile of pe.localClears) {   // place each local clear into an action
                 tile.setProbability(1);
                 const action = new Action(tile.getX(), tile.getY(), 1, ACTION_CLEAR);
@@ -418,6 +418,15 @@ async function solver(board, options) {
             return result;
         } 
 
+
+        for (let tile of pe.minesFound) {   // place each found flag
+            tile.setProbability(0);
+            tile.setFoundBomb();
+            //if (options.playStyle == PLAY_STYLE_FLAGS) {
+                const action = new Action(tile.getX(), tile.getY(), 0, ACTION_FLAG);
+                result.push(action);
+            //}
+        }
 
         // this is part of the no-guessing board creation logic
         if (pe.bestProbability < 1 && options.noGuessingMode) {
@@ -613,7 +622,7 @@ async function solver(board, options) {
                 const returnActions = tieBreak(pe, actions, partialBFDA, ltr, false);
 
                 const recommended = returnActions[0];
-                result.push(recommended);
+                result.push(...returnActions);
                 if (recommended.prob == 0.5) {  // 2935898204031399
                     showMessage(recommended.asText() + " is an unavoidable 50/50 guess." + formatSolutions(pe.finalSolutionsCount));
                 } else {
@@ -638,7 +647,7 @@ async function solver(board, options) {
                 const returnActions = tieBreak(pe, actions, partialBFDA, ltr, false);
 
                 const recommended = returnActions[0];
-                result.push(recommended);
+                result.push(...returnActions);
                 //console.log(recommended.prob);
                 if (recommended.prob == 0.5) {  // 2935898204031399
                     showMessage(recommended.asText() + " is an unavoidable 50/50 guess." + formatSolutions(pe.finalSolutionsCount));
