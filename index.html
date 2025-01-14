@@ -36,7 +36,7 @@
             <div class="checkboxes" style="margin-top: 10px;">
                 <label><input type="checkbox" class="checkbox" id="gameTypeZero" /> <span>Opening on start</span></label>
                 <label><input type="checkbox" class="checkbox" id="noGuessMode" /> <span>No Guess</span></label>
-                <label><input type="checkbox" class="checkbox" id="fastPlay" /> <span>Fast mode</span></label>
+                <label><input type="checkbox" class="checkbox" id="fastPlay" onclick="if (this.checked) startSolver()" /> <span>Fast mode</span></label>
                 <label><input type="checkbox" class="checkbox" id="hardcore" /> <span>Hard Core</span></label>
             </div>
         </div>
@@ -76,7 +76,7 @@
 
         <div style="margin-top: 10px;">
             <label>Style:</label>
-            <select id="playstyle" onchange="document.getElementById('showhints').checked ? doAnalysis(false) : renderHints([])">
+            <select id="playstyle" onchange="updateHints()">
                 <option value="flag">Flagging</option>
                 <option value="noflag">No flagging</option>
                 <option value="eff">Safe efficiency</option>
@@ -86,7 +86,7 @@
 
         <div style="margin-top: 10px;">
             <label>Tile size:</label>
-            <select id="tilesize" onchange="changeTileSize()">
+            <select id="tilesize" onchange="changeTileSize(true)">
                 <option value="8">8px</option>
                 <option value="12">12px</option>
                 <option value="16">16px</option>
@@ -106,15 +106,15 @@
 
         <div style="margin-top: 1em;" class="checkboxes" id="play1">
             <label><input type="checkbox" class="checkbox" id="reduction" onclick="renderTiles(board.tiles)" /> <span>Reduction</span></label>
-            <label><input type="checkbox" class="checkbox" id="showhints" onclick="this.checked ? doAnalysis(false) : renderHints([])" checked /> <span>Show hints</span></label>
-            <label><input type="checkbox" class="checkbox" id="autoplay" /> <span>Auto play</span></label>
-            <label><input type="checkbox" class="checkbox" id="acceptguesses" /> <span>Accept guesses</span></label>
+            <label><input type="checkbox" class="checkbox" id="showhints" onclick="updateHints()" checked /> <span>Show hints</span></label>
+            <label><input type="checkbox" class="checkbox" id="autoplay" onclick="if (this.checked) startSolver()" checked /> <span>Auto play</span></label>
+            <label><input type="checkbox" class="checkbox" id="acceptguesses" onclick="if (document.getElementById('autoplay').checked && this.checked) startSolver()" /> <span>Accept guesses</span></label>
 
         </div>
 
         <div style="margin-top: 10px;">
             <label>Overlay:</label>
-            <select id="overlay" onchange="document.getElementById('showhints').checked ? doAnalysis(false) : renderHints([])">
+            <select id="overlay" onchange="updateHints()">
                 <option value="none">None</option>
                 <option value="safety">Safety %</option>
                 <option value="mine" selected>Mine %</option>
@@ -374,9 +374,9 @@
         function doNewGame(width, height, mines) {
 
             if (document.getElementById("useSeed").checked) {
-                newGame(width, height, mines, document.getElementById("seed").value);
+                newGame(width, height, mines, document.getElementById("seed").value, true);
             } else {
-                newGame(width, height, mines, 0);
+                newGame(width, height, mines, 0, true);
             }
 
         }
