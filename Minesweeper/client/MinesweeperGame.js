@@ -82,7 +82,8 @@ function createGameFromMFB(blob) {
 	const height = blob[1];
 	const mines = blob[2] * 256 + blob[3];
 
-	const id = gameID++;
+	gameID++; // This returns the old game id
+	const id = gameID; // This is the new game id
 
 	const game = new ServerGame(id, width, height, mines, 0, 0, "safe");
 

@@ -282,8 +282,11 @@ async function startup() {
     // read the url string before it gets over written by the new game processing
     const analysis = urlParams.get('analysis');
 
+    // initialise the solver for newGame
+    await solver();
+
     // create the playable game;
-    await newGame(width, height, mines, seed);
+    await newGame(width, height, mines, seed, analysis == null && start == null);
     gameBoard = board;
 
     if (analysis != null) {
@@ -306,7 +309,7 @@ async function startup() {
 
             console.log(boardString);
 
-            newBoardFromString(boardString, true);
+            await newBoardFromString(boardString, true, false);
 
             // make the analysis board this board
             analysisBoard = board;
@@ -320,9 +323,6 @@ async function startup() {
 
     }
 
-    // initialise the solver
-    await solver();
-
     //await newGame(width, height, mines, seed); // default to a new expert game
 
     // create an initial analysis board if we haven't already done so
@@ -331,7 +331,7 @@ async function startup() {
         analysisBoard.setAllZero();
 
     } else {
-        switchToAnalysis(true);
+        await switchToAnalysis(true);
     }
 
     setInterval(checkBoard, 1000);
@@ -708,7 +708,7 @@ async function savePosition(e) {
 }
 
 
-function switchToAnalysis(doAnalysis) {
+async function switchToAnalysis(doAnalysis) {
 
     // can't switch modes while the solver is working
     if (canvasLocked) {
@@ -753,7 +753,7 @@ function switchToAnalysis(doAnalysis) {
 
     setPageTitle();
 
-    changeTileSize();
+    await changeTileSize(true);
 
     // renderHints([]);  // clear down hints
 
@@ -1090,25 +1090,35 @@ async function playAgain() {
 
         const game = getGame(board.getID());
         const startIndex = game.startIndex;
-        const reply = copyGame(board.getID());
+        const mbf = getMbfData(board.getID());
+        const view = new Uint8Array(mbf);
+
+        console.log(...view);
+
+        const reply = createGameFromMFB(view);  // this function is in MinesweeperGame.js
 
         const id = reply.id;
 
         board = new Board(id, board.width, board.height, board.num_bombs, board.seed, board.gameType);
 
+        document.getElementById("canvas").style.cursor = "default";
+        canvasLocked = false;  // just in case it was still locked (after an error for example)
+
         const tile = board.getTile(startIndex);
         tile.is_start = true;
 
-        changeTileSize();
+        await changeTileSize(true);
 
         updateMineCount(board.num_bombs);
-
-        canvasLocked = false;  // just in case it was still locked (after an error for example)
 
         placeAnalysisQuery();
 
         showMessage("Replay game requested");
         document.getElementById("newGameSmiley").src = 'resources/images/face.svg';
+
+        if (!analysisMode && autoPlayCheckBox.checked && acceptGuessesCheckBox.checked) {
+            await startSolver();
+        }
     } else {
         showMessage("No game to replay");
     }
@@ -1224,16 +1234,21 @@ async function newGameFromMBF(mbf) {
 
     setPageTitle();
 
-    changeTileSize();
+    document.getElementById("canvas").style.cursor = "default";
+    canvasLocked = false;  // just in case it was still locked (after an error for example)
+
+    await changeTileSize(true);
 
     //showDownloadLink(false, ""); // remove the download link
 
     updateMineCount(board.num_bombs);
 
-    canvasLocked = false;  // just in case it was still locked (after an error for example)
-
     //showMessage("Game "  + width + "x" + height + "/" + mines + " created from MBF file");
     document.getElementById("newGameSmiley").src = 'resources/images/face.svg';
+ 
+    if (!analysisMode && autoPlayCheckBox.checked && acceptGuessesCheckBox.checked) {
+        await startSolver();
+    }
  
 }
 
@@ -1244,7 +1259,7 @@ async function newBoardFromFile(file) {
     fr.onloadend = async function (e) {
 
         if (analysisMode) {
-            await newBoardFromString(e.target.result);
+            await newBoardFromString(e.target.result, false, true);
             showMessage("Position loaded from file " + file.name);
         } else {
             const mbf = StringToMBF(e.target.result);
@@ -1268,7 +1283,7 @@ async function newBoardFromFile(file) {
 
 }
 
-async function newBoardFromString(data, inflate) {
+async function newBoardFromString(data, inflate, analyse) {
 
     if (inflate == null) {
         inflate = false;
@@ -1363,8 +1378,11 @@ async function newBoardFromString(data, inflate) {
     // switch to the board
     board = newBoard;
 
+    document.getElementById("canvas").style.cursor = "default";
+    canvasLocked = false;  // just in case it was still locked (after an error for example)
+
     // this redraws the board
-    changeTileSize();
+    await changeTileSize(analyse);
 
     updateMineCount(board.bombs_left);
 
@@ -1376,8 +1394,11 @@ async function newBoardFromString(data, inflate) {
     lockMineCount.checked = true;
     buildMode.checked = false;
 
-    canvasLocked = false;  // just in case it was still locked (after an error for example)
     document.getElementById("newGameSmiley").src = 'resources/images/face.svg';
+
+    if (!analysisMode && autoPlayCheckBox.checked && acceptGuessesCheckBox.checked) {
+        await startSolver();
+    }
 
 }
 
@@ -1409,7 +1430,7 @@ function loadReplayData(file) {
         setPageTitle();
 
         // this redraws the board
-        changeTileSize();
+        await changeTileSize(true);
 
         updateMineCount(board.bombs_left);
 
@@ -1422,7 +1443,7 @@ function loadReplayData(file) {
 
 }
 
-async function newGame(width, height, mines, seed) {
+async function newGame(width, height, mines, seed, analyse) {
 
     console.log("New game requested: Width=" + width + " Height=" + height + " Mines=" + mines + " Seed=" + seed);
 
@@ -1474,13 +1495,14 @@ async function newGame(width, height, mines, seed) {
         board = new Board(id, width, height, mines, seed, gameType);
     }
 
-    changeTileSize();
+    document.getElementById("canvas").style.cursor = "default";
+    canvasLocked = false;  // just in case it was still locked (after an error for example)
+
+    await changeTileSize(analyse);
 
     updateMineCount(board.num_bombs);
 
     setPageTitle();
-
-    canvasLocked = false;  // just in case it was still locked (after an error for example)
 
     // store the board size in the url
     const boardSize = width + "x" + height + "x" + mines;
@@ -1490,6 +1512,10 @@ async function newGame(width, height, mines, seed) {
 
     showMessage("New game requested with width " + width + ", height " + height + " and " + mines + " mines.");
     document.getElementById("newGameSmiley").src = 'resources/images/face.svg';
+
+    if (!analysisMode && analyse && autoPlayCheckBox.checked && acceptGuessesCheckBox.checked) {
+        await startSolver();
+    }
 
 }
 
@@ -1506,7 +1532,15 @@ function doToggleFlag() {
 
 }
 
-function changeTileSize() {
+async function updateHints() {
+    if (!board.isGameover() && !analysisMode && showHintsCheckBox.checked) {
+        await doAnalysis(false);
+    } else {
+        renderHints([]);
+    }
+}
+
+async function changeTileSize(analyse) {
 
     TILE_SIZE = parseInt(docTileSize.value);
 
@@ -1518,8 +1552,8 @@ function changeTileSize() {
 
     renderTiles(board.tiles); // draw the board
 
-    if (!analysisMode && showHintsCheckBox.checked) {
-        doAnalysis(false)
+    if (!board.isGameover() && !analysisMode && analyse && showHintsCheckBox.checked) {
+        await doAnalysis(false);
     } else {
         renderHints([]);
     }
@@ -1711,7 +1745,7 @@ function keyPressedEvent(e) {
         } else if (e.key == 'v' && e.ctrlKey) {
             //console.log("Control-V pressed");
             navigator.clipboard.readText().then(
-                clipText => newBoardFromString(clipText));
+                clipText => newBoardFromString(clipText, false, true));
         } else if (e.key == 'ArrowRight') {
              if (replayMode) {
                 if (e.shiftKey) {
@@ -2189,6 +2223,7 @@ async function doAnalysis(fullBFDA) {
         return;
     } else {
         console.log("Doing analysis");
+        analysisButton.disabled = true;
         canvasLocked = true;
     }
 
@@ -2259,9 +2294,9 @@ async function doAnalysis(fullBFDA) {
         window.requestAnimationFrame(() => renderHints([], []));
     }
 
-    // by delaying removing the logical lock we absorb any secondary clicking of the button / hot key
-    setTimeout(function () { canvasLocked = false; }, 200);
-    //canvasLocked = false;
+    // by delaying re-enabling we absorb any secondary clicking of the button / hot key
+    setTimeout(function () { analysisButton.disabled = false; }, 200);
+    canvasLocked = false;
 
 }
 
@@ -2939,7 +2974,8 @@ async function sendActionsMessage(message) {
 
     if (board.id != reply.header.id) {
         console.log("Game when message sent " + reply.header.id + " game now " + board.id + " ignoring reply");
-        canvasLocked = false;
+        // Canvas was already unlocked when the new game started, but could be locked because of analysis
+        // canvasLocked = false;
         return;
     }
 
@@ -3057,7 +3093,13 @@ async function sendActionsMessage(message) {
     }
 
     //const solverStart = Date.now();
+    await handleSolver(solverStart, reply.header.id);
 
+    return reply;
+
+}
+
+async function handleSolver(solverStart, headerId) {
     let assistedPlay = docFastPlay.checked;
     let assistedPlayHints;
     if (assistedPlay) {
@@ -3104,9 +3146,10 @@ async function sendActionsMessage(message) {
 
         const solverDuration = Date.now() - solverStart;
 
-        if (board.id != reply.header.id) {
-            console.log("Game when Solver started " + reply.header.id + " game now " + board.id + " ignoring solver results");
-            canvasLocked = false;
+        if (board.id != headerId) {
+            console.log("Game when Solver started " + headerId + " game now " + board.id + " ignoring solver results");
+            // Canvas was already unlocked when the new game started, but could be locked because of analysis
+            // canvasLocked = false;
             return;
         }
 
@@ -3155,9 +3198,25 @@ async function sendActionsMessage(message) {
         document.getElementById("canvas").style.cursor = "default";
         showMessage("The solver is not running. Press the 'Analyse' button to see the solver's suggested move.");
     }
- 
-    return reply;
 
+}
+
+async function startSolver() {
+    if (board.isGameover()) {
+        console.log("The game is over - nothing to solve");
+        return;
+    }
+
+    if (canvasLocked) {
+        console.log("The canvas is logically locked");
+        return;
+    }
+
+    canvasLocked = true;
+    await handleSolver(Date.now(), board.id);
+    if (!board.isStarted()) {
+        board.setStarted();
+    }
 }
 
 // send a JSON message to the server asking it to kill the game
