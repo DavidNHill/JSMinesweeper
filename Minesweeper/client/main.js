@@ -1116,7 +1116,7 @@ async function playAgain() {
         showMessage("Replay game requested");
         document.getElementById("newGameSmiley").src = 'resources/images/face.svg';
 
-        if (!analysisMode && (autoPlayCheckBox.checked && acceptGuessesCheckBox.checked || docHardcore.checked)) {
+        if (!analysisMode && (autoPlayCheckBox.checked || docHardcore.checked)) {
             await startSolver();
         }
     } else {
