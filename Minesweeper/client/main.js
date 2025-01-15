@@ -829,13 +829,25 @@ function renderHints(hints, otherActions, drawOverlay) {
         board.getTileXY(hint.x, hint.y).colored = true;
     }
 
+    ctxHints.globalAlpha = 1;
+
+    // these are from the efficiency play style and are the known moves which haven't been made
+    for (let action of otherActions) {
+        if (action.action == ACTION_CLEAR) {
+            ctxHints.fillStyle = "#00FF00";
+        } else {
+            ctxHints.fillStyle = "#FF0000";
+        }
+        board.getTileXY(action.x, action.y).colored = true;
+        ctxHints.fillRect((action.x + 0.35) * TILE_SIZE, (action.y + 0.35) * TILE_SIZE, 0.3 * TILE_SIZE, 0.3 * TILE_SIZE);
+    }
+
      // put percentage over the tile 
     if (drawOverlay) {
 
         const fontSize = Math.max(6, Math.floor(TILE_SIZE * 0.50));
         ctxHints.font = `700 ${fontSize}px "Open Sans", sans-serif`;
 
-        ctxHints.globalAlpha = 1;
         for (let tile of board.tiles) {
             if (tile.getHasHint() && tile.isCovered() && !tile.isFlagged() && tile.probability != null) {
                 if (!tile.colored || (tile.probability != 1 && tile.probability != 0)) {  // show the percentage unless we've already colour coded it
@@ -872,22 +884,6 @@ function renderHints(hints, otherActions, drawOverlay) {
                 }
             }
         }
-    }
-
-
-    if (otherActions == null) {
-        return;
-    }
-
-    ctxHints.globalAlpha = 1;
-    // these are from the efficiency play style and are the known moves which haven't been made
-    for (let action of otherActions) {
-        if (action.action == ACTION_CLEAR) {
-            ctxHints.fillStyle = "#00FF00";
-        } else {
-            ctxHints.fillStyle = "#FF0000";
-        }
-        ctxHints.fillRect((action.x + 0.35) * TILE_SIZE, (action.y + 0.35) * TILE_SIZE, 0.3 * TILE_SIZE, 0.3 * TILE_SIZE);
     }
 
 }
