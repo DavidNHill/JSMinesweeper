@@ -122,7 +122,6 @@ class Tile {
 		this.efficiencyProbability = 0;
 		this.efficiencyText = "";
 		this.probability = -1;
-		this.colored = false;
     }
 
     setOnEdge() {

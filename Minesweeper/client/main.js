@@ -792,6 +792,10 @@ function renderHints(hints, otherActions, drawOverlay) {
         return;
     }
 
+    for (let tile of board.tiles) {
+        tile.colored = false;
+    }
+
     let firstGuess = 0;  // used to identify the first (best) guess, subsequent guesses are just for info 
     for (let i = 0; i < hints.length; i++) {
 
@@ -834,8 +838,8 @@ function renderHints(hints, otherActions, drawOverlay) {
         ctxHints.globalAlpha = 1;
         for (let tile of board.tiles) {
             if (tile.getHasHint() && tile.isCovered() && !tile.isFlagged() && tile.probability != null) {
-                if (!showHintsCheckBox.checked || (tile.probability != 1 && tile.probability != 0)) {  // show the percentage unless we've already colour coded it
-                    if (showHintsCheckBox.checked && tile.colored || !tile.isSolverFoundBomb() && !tile.onEdge) {
+                if (!tile.colored || (tile.probability != 1 && tile.probability != 0)) {  // show the percentage unless we've already colour coded it
+                    if (tile.colored || !tile.isSolverFoundBomb() && !tile.onEdge) {
                         ctxHints.fillStyle = "rgb(136, 136, 136)";
                     } else if (tile.probability < 0.15) {
                         ctxHints.fillStyle = "rgb(221, 0, 0)";
