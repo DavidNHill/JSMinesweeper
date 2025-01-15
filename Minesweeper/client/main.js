@@ -1095,7 +1095,7 @@ async function playAgain() {
 
         console.log(...view);
 
-        const reply = createGameFromMFB(view);  // this function is in MinesweeperGame.js
+        const reply = createGameFromMFB(view, startIndex);  // this function is in MinesweeperGame.js
 
         const id = reply.id;
 
@@ -1219,7 +1219,7 @@ async function newGameFromMBF(mbf) {
     const height = view[1];
     const mines = view[2] * 256 + view[3];
 
-    const reply = createGameFromMFB(view);  // this function is in MinesweeperGame.js
+    const reply = createGameFromMFB(view, 0);  // this function is in MinesweeperGame.js
 
     const id = reply.id;
 
