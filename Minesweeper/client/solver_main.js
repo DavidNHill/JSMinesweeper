@@ -1427,7 +1427,7 @@ async function solver(board, options) {
         // generate an array of tiles from the map
         for (let index of work) {
             const tile = board.getTile(index);
-            tile.setOnEdge(true);
+            // tile.setOnEdge(true);
             witnessed.push(tile);
         }
 

@@ -20,6 +20,7 @@ class Tile {
         this.probability = -1;  // of being safe
 		this.hintText = "";
 		this.hasHint = false;
+		this.colored = false;
 
 		this.efficiencyValue = "";   // the value we need to be to be chordable
 		this.efficiencyProbability = 0;  // the probability of being that value
@@ -121,6 +122,7 @@ class Tile {
 		this.efficiencyProbability = 0;
 		this.efficiencyText = "";
 		this.probability = -1;
+		this.colored = false;
     }
 
     setOnEdge() {
