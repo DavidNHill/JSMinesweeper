@@ -2414,12 +2414,6 @@ function followCursor(e) {
     const col = Math.floor(e.offsetX / TILE_SIZE);
     hoverTile = board.getTileXY(col, row);
 
-    // if not showing hints don't show tooltip
-    if (!showHintsCheckBox.checked && !analysisMode && !justPressedAnalyse) {
-        tooltip.innerText = "";
-        return;
-    }
-
     //console.log("Following cursor at X=" + e.offsetX + ", Y=" + e.offsetY);
 
     if (dragging && analysisMode) {
@@ -2452,7 +2446,12 @@ function followCursor(e) {
         return;
     } else {
         const tile = board.getTileXY(col, row);
-        tooltip.innerText = tile.asText() + " " + tile.getHintText();
+        // if not showing hints don't show hint
+        if (showHintsCheckBox.checked || analysisMode || justPressedAnalyse) {
+            tooltip.innerText = tile.asText() + " " + tile.getHintText();
+        } else {
+            tooltip.innerText = tile.asText();
+        }
         tooltip.style.display = "inline-block";
     }
 
