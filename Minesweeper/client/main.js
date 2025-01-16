@@ -807,8 +807,12 @@ function renderHints(hints, otherActions, drawOverlay) {
             ctxHints.fillStyle = "#FF0000";
         } else if (hint.prob == 1) {  // safe
             ctxHints.fillStyle = "#00FF00";
+            firstGuess = 2;
         } else if (hint.dead) {  // uncertain but dead
             ctxHints.fillStyle = "black";
+            if (firstGuess == 0) {
+                firstGuess = 1;
+            }
         } else {  //uncertain
             ctxHints.fillStyle = "orange";
             if (firstGuess == 0) {
