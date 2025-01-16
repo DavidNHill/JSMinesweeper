@@ -343,8 +343,10 @@ async function startup() {
         board.setStarted();
     }
 
-    //bulkRun(21, 12500);  // seed '21' Played 12500 won 5192
-    //bulkRun(321, 10000);  // seed 321 played 10000 won 4142
+    //bulkRun(21, 12500, false);  // seed '21' Played 12500 won 5192
+    //bulkRun(321, 10000, false);  // seed 321 played 10000 won 4142
+    //bulkRun(0, 1000, false);  // classic: seed '0' Won 424/1000 (42.40%)
+    //bulkRun(0, 1000, true);  // modern: seed '0' Won 546/1000 (54.60%)
 
     showMessage("Welcome to minesweeper solver dedicated to Annie");
 }
@@ -998,7 +1000,7 @@ function showDownloadLink(show, url) {
 
 }
 
-async function bulkRun(runSeed, size) {
+async function bulkRun(runSeed, size, modern) {
 
     const options = {};
     options.playStyle = PLAY_STYLE_NOFLAGS;
@@ -1013,7 +1015,16 @@ async function bulkRun(runSeed, size) {
     let won = 0;
 
     const rng = JSF(runSeed);  // create an RNG based on the seed
-    const startIndex = 0;
+
+    let startIndex;
+    let gameType;
+    if (modern) {
+        startIndex = 93;
+        gameType = "zero"
+    } else {
+        startIndex = 0;
+        gameType = "safe"
+    }
 
     while (played < size) {
 
@@ -1021,9 +1032,9 @@ async function bulkRun(runSeed, size) {
 
         const gameSeed = rng() * Number.MAX_SAFE_INTEGER;
 
-        const game = new ServerGame(0, 30, 16, 99, startIndex, gameSeed, "safe");
+        const game = new ServerGame(0, 30, 16, 99, startIndex, gameSeed, gameType);
 
-        const board = new Board(0, 30, 16, 99, gameSeed, "safe");
+        const board = new Board(0, 30, 16, 99, gameSeed, gameType);
 
         let tile = game.getTile(startIndex);
 
@@ -1083,6 +1094,8 @@ async function bulkRun(runSeed, size) {
         console.log("Won " + won + "/" + played + " (" + winPercentage + "%)");
 
     }
+
+    console.log("Bulk run finished in " + (Date.now() - startTime) + " milliseconds")
 }
 
 async function playAgain() {
