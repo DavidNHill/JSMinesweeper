@@ -372,7 +372,13 @@ async function solver(board, options) {
                 // See if there are any unavoidable 2 tile 50/50 guesses 
                 if (SolverGlobal.EARLY_FIFTY_FIFTY_CHECKING && !options.hardcore && minesLeft > 1) {
                     //const unavoidable5050a = pe.checkForUnavoidable5050();
-                    const unavoidable5050a = pe.checkForUnavoidable5050OrPseudo();
+                    let unavoidable5050a;
+                    if (options.playStyle == PLAY_STYLE_EFFICIENCY || options.playStyle == PLAY_STYLE_NOFLAGS_EFFICIENCY) {
+                        unavoidable5050a = pe.checkForUnavoidable5050();
+                    } else {
+                        unavoidable5050a = pe.checkForUnavoidable5050OrPseudo();
+                    }
+
                     if (unavoidable5050a != null) {
 
                         const actions = [];
