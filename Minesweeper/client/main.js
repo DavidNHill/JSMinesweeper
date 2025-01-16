@@ -831,15 +831,17 @@ function renderHints(hints, otherActions, drawOverlay) {
 
     ctxHints.globalAlpha = 1;
 
-    // these are from the efficiency play style and are the known moves which haven't been made
-    for (let action of otherActions) {
-        if (action.action == ACTION_CLEAR) {
-            ctxHints.fillStyle = "#00FF00";
-        } else {
-            ctxHints.fillStyle = "#FF0000";
+    if (otherActions != null) {
+        // these are from the efficiency play style and are the known moves which haven't been made
+        for (let action of otherActions) {
+            if (action.action == ACTION_CLEAR) {
+                ctxHints.fillStyle = "#00FF00";
+            } else {
+                ctxHints.fillStyle = "#FF0000";
+            }
+            board.getTileXY(action.x, action.y).colored = true;
+            ctxHints.fillRect((action.x + 0.35) * TILE_SIZE, (action.y + 0.35) * TILE_SIZE, 0.3 * TILE_SIZE, 0.3 * TILE_SIZE);
         }
-        board.getTileXY(action.x, action.y).colored = true;
-        ctxHints.fillRect((action.x + 0.35) * TILE_SIZE, (action.y + 0.35) * TILE_SIZE, 0.3 * TILE_SIZE, 0.3 * TILE_SIZE);
     }
 
      // put percentage over the tile 
