@@ -1005,7 +1005,7 @@ class ProbabilityEngine {
 
         this.recursions++;
         if (this.recursions % 1000 == 0) {
-            console.log("Probability Engine recursision = " + this.recursions);
+            this.writeToConsole("Probability Engine recursision = " + this.recursions);
         }
 
         const result = [];

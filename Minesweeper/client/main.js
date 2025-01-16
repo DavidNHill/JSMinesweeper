@@ -1021,8 +1021,6 @@ async function bulkRun(runSeed, size) {
 
         const gameSeed = rng() * Number.MAX_SAFE_INTEGER;
 
-        console.log(gameSeed);
-
         const game = new ServerGame(0, 30, 16, 99, startIndex, gameSeed, "safe");
 
         const board = new Board(0, 30, 16, 99, gameSeed, "safe");
@@ -1057,15 +1055,17 @@ async function bulkRun(runSeed, size) {
 
                 } else {   // otherwise we're trying to clear
 
-                    tile = game.getTile(board.xy_to_index(action.x, action.y));
+                    if (i == 0 || action.prob == 1) {
+                        tile = game.getTile(board.xy_to_index(action.x, action.y));
 
-                    revealedTiles = game.clickTile(tile);
+                        revealedTiles = game.clickTile(tile);
 
-                    if (revealedTiles.header.status != IN_PLAY) {  // if won or lost nothing more to do
-                        break;
+                        if (revealedTiles.header.status != IN_PLAY) {  // if won or lost nothing more to do
+                            break;
+                        }
+
+                        applyResults(board, revealedTiles);
                     }
-
-                    applyResults(board, revealedTiles);
 
                     if (action.prob != 1) {  // do no more actions after a guess
                     	break;
@@ -1075,15 +1075,14 @@ async function bulkRun(runSeed, size) {
 
         }
 
-        console.log(revealedTiles.header.status);
-
         if (revealedTiles.header.status == WON) {
             won++;
         }
 
-    }
+        const winPercentage = (won / played * 100).toFixed(2);
+        console.log("Won " + won + "/" + played + " (" + winPercentage + "%)");
 
-    console.log("Played " + played + " won " + won);
+    }
 }
 
 async function playAgain() {

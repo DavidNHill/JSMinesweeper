@@ -238,7 +238,7 @@ async function solver(board, options) {
 
         // add any trivial moves we've found
         if (options.fullProbability || options.playStyle == PLAY_STYLE_EFFICIENCY || options.playStyle == PLAY_STYLE_NOFLAGS_EFFICIENCY) {
-            console.log("Skipping trivial analysis since Probability Engine analysis is required")
+            writeToConsole("Skipping trivial analysis since Probability Engine analysis is required")
         } else {
             result.push(...trivial_actions(board, witnesses));
         }
