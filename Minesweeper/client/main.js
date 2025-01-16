@@ -1004,6 +1004,8 @@ async function bulkRun(runSeed, size) {
     options.playStyle = PLAY_STYLE_NOFLAGS;
     options.verbose = false;
     options.advancedGuessing = true;
+    options.fullProbability = true;
+    options.hardcore = false;
 
     const startTime = Date.now();
 
@@ -1924,6 +1926,7 @@ async function replayForward(replayType) {
         options.fullProbability = true;
         options.advancedGuessing = false;
         options.verbose = false;
+        options.hardcore = false;
 
         let hints;
         let other;
@@ -2136,6 +2139,7 @@ async function replayBackward(replayType) {
             options.fullProbability = true;
             options.advancedGuessing = false;
             options.verbose = false;
+            options.hardcore = false;
 
             let hints;
             let other;
