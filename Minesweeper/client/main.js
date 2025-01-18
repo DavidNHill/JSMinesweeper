@@ -803,6 +803,7 @@ function renderHints(hints, otherActions, drawOverlay) {
 
         if (hint.action == ACTION_CHORD) {
             ctxHints.fillStyle = "#00FF00";
+            firstGuess = 2;
         } else if (hint.prob == 0) {   // mine
             ctxHints.fillStyle = "#FF0000";
         } else if (hint.prob == 1) {  // safe
