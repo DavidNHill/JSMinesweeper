@@ -146,7 +146,15 @@ class EfficiencyHelper {
             }
 
             for (let act of this.playStyle == PLAY_STYLE_RISKY_EFFICIENCY ? this.coveredTiles : this.actions) {
-                if (this.playStyle == PLAY_STYLE_RISKY_EFFICIENCY ? !act.isSolverFoundBomb() : act.action == ACTION_CLEAR) {
+                if (this.playStyle == PLAY_STYLE_RISKY_EFFICIENCY) {
+                    if (act.isSolverFoundBomb()) {
+                        continue;
+                    }
+
+                    act = new Action(act.x, act.y, act.probability, ACTION_CLEAR);
+                }
+
+                if (act.action == ACTION_CLEAR) {
 
                     // this is the default move;
                     if (firstClear == null) {
