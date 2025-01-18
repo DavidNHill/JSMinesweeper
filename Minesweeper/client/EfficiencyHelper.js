@@ -145,14 +145,19 @@ class EfficiencyHelper {
                 highest = BigInt(0);
             }
 
-            for (let act of this.playStyle == PLAY_STYLE_RISKY_EFFICIENCY ? this.coveredTiles : this.actions) {
-                if (this.playStyle == PLAY_STYLE_RISKY_EFFICIENCY) {
-                    if (act.isSolverFoundBomb()) {
-                        continue;
+            let actions;
+            if (this.playStyle == PLAY_STYLE_EFFICIENCY) {
+                actions = this.actions;
+            } else {
+                actions = [];
+                for (let tile of this.coveredTiles) {
+                    if (!tile.isSolverFoundBomb()) {
+                        actions.push(new Action(tile.x, tile.y, tile.probability, ACTION_CLEAR));
                     }
-
-                    act = new Action(act.x, act.y, act.probability, ACTION_CLEAR);
                 }
+            }
+
+            for (let act of actions) {
 
                 if (act.action == ACTION_CLEAR) {
 
