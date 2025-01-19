@@ -344,8 +344,10 @@ async function startup() {
         board.setStarted();
     }
 
-    //bulkRun(21, 12500);  // seed '21' Played 12500 won 5192
-    //bulkRun(321, 10000);  // seed 321 played 10000 won 4142
+    //bulkRun(21, 12500, false);  // seed '21' Played 12500 won 5192
+    //bulkRun(321, 10000, false);  // seed 321 played 10000 won 4142
+    //bulkRun(0, 1000, false);  // classic: seed '0' Won 424/1000 (42.40%)
+    //bulkRun(0, 1000, true);  // modern: seed '0' Won 546/1000 (54.60%)
 
     showMessage("Welcome to minesweeper solver dedicated to Annie");
 }
@@ -428,6 +430,7 @@ function propertiesClose() {
 
     BruteForceGlobal.PRUNE_BF_ANALYSIS = document.getElementById("pruneBruteForce").checked;
 
+    SolverGlobal.EARLY_FIFTY_FIFTY_CHECKING = document.getElementById("early5050").checked;
     SolverGlobal.CALCULATE_LONG_TERM_SAFETY = document.getElementById("useLTR").checked;
     SolverGlobal.PRUNE_GUESSES = document.getElementById("pruneGuesses").checked;
 
@@ -455,6 +458,7 @@ function propertiesOpen() {
 
     document.getElementById("pruneBruteForce").checked = BruteForceGlobal.PRUNE_BF_ANALYSIS;
 
+    document.getElementById("early5050").checked = SolverGlobal.EARLY_FIFTY_FIFTY_CHECKING;
     document.getElementById("useLTR").checked = SolverGlobal.CALCULATE_LONG_TERM_SAFETY;
     document.getElementById("pruneGuesses").checked = SolverGlobal.PRUNE_GUESSES;
 
@@ -481,6 +485,7 @@ function saveSettings() {
     settings.version = SETTINGS_VERSION;
     settings.pruneBruteForce = BruteForceGlobal.PRUNE_BF_ANALYSIS;
     settings.pruneGuesses = SolverGlobal.PRUNE_GUESSES;
+    settings.early5050 = SolverGlobal.EARLY_FIFTY_FIFTY_CHECKING;
     settings.useLTR = SolverGlobal.CALCULATE_LONG_TERM_SAFETY;
 
     settings.maxAnalysisBfSolutions = BruteForceGlobal.ANALYSIS_BFDA_THRESHOLD;
@@ -509,6 +514,10 @@ function loadSettings() {
 
     if (settings.pruneGuesses != null) {
         SolverGlobal.PRUNE_GUESSES = settings.pruneGuesses;
+    }
+
+    if (settings.early5050 != null) {
+        SolverGlobal.EARLY_FIFTY_FIFTY_CHECKING = settings.early5050;
     }
 
     if (settings.useLTR != null) {
@@ -996,12 +1005,14 @@ function showDownloadLink(show, url) {
 
 }
 
-async function bulkRun(runSeed, size) {
+async function bulkRun(runSeed, size, modern) {
 
     const options = {};
     options.playStyle = PLAY_STYLE_NOFLAGS;
     options.verbose = false;
     options.advancedGuessing = true;
+    options.fullProbability = true;
+    options.hardcore = false;
 
     const startTime = Date.now();
 
@@ -1009,7 +1020,16 @@ async function bulkRun(runSeed, size) {
     let won = 0;
 
     const rng = JSF(runSeed);  // create an RNG based on the seed
-    const startIndex = 0;
+
+    let startIndex;
+    let gameType;
+    if (modern) {
+        startIndex = 93;
+        gameType = "zero"
+    } else {
+        startIndex = 0;
+        gameType = "safe"
+    }
 
     while (played < size) {
 
@@ -1017,11 +1037,9 @@ async function bulkRun(runSeed, size) {
 
         const gameSeed = rng() * Number.MAX_SAFE_INTEGER;
 
-        console.log(gameSeed);
+        const game = new ServerGame(0, 30, 16, 99, startIndex, gameSeed, gameType);
 
-        const game = new ServerGame(0, 30, 16, 99, startIndex, gameSeed, "safe");
-
-        const board = new Board(0, 30, 16, 99, gameSeed, "safe");
+        const board = new Board(0, 30, 16, 99, gameSeed, gameType);
 
         let tile = game.getTile(startIndex);
 
@@ -1053,15 +1071,17 @@ async function bulkRun(runSeed, size) {
 
                 } else {   // otherwise we're trying to clear
 
-                    tile = game.getTile(board.xy_to_index(action.x, action.y));
+                    if (i == 0 || action.prob == 1) {
+                        tile = game.getTile(board.xy_to_index(action.x, action.y));
 
-                    revealedTiles = game.clickTile(tile);
+                        revealedTiles = game.clickTile(tile);
 
-                    if (revealedTiles.header.status != IN_PLAY) {  // if won or lost nothing more to do
-                        break;
+                        if (revealedTiles.header.status != IN_PLAY) {  // if won or lost nothing more to do
+                            break;
+                        }
+
+                        applyResults(board, revealedTiles);
                     }
-
-                    applyResults(board, revealedTiles);
 
                     if (action.prob != 1) {  // do no more actions after a guess
                     	break;
@@ -1071,15 +1091,16 @@ async function bulkRun(runSeed, size) {
 
         }
 
-        console.log(revealedTiles.header.status);
-
         if (revealedTiles.header.status == WON) {
             won++;
         }
 
+        const winPercentage = (won / played * 100).toFixed(2);
+        console.log("Won " + won + "/" + played + " (" + winPercentage + "%)");
+
     }
 
-    console.log("Played " + played + " won " + won);
+    console.log("Bulk run finished in " + (Date.now() - startTime) + " milliseconds")
 }
 
 async function playAgain() {
@@ -1927,6 +1948,7 @@ async function replayForward(replayType) {
         options.fullProbability = true;
         options.advancedGuessing = false;
         options.verbose = false;
+        options.hardcore = false;
 
         let hints;
         let other;
@@ -2139,6 +2161,7 @@ async function replayBackward(replayType) {
             options.fullProbability = true;
             options.advancedGuessing = false;
             options.verbose = false;
+            options.hardcore = false;
 
             let hints;
             let other;
@@ -2267,14 +2290,10 @@ async function doAnalysis(fullBFDA) {
             options.playStyle = PLAY_STYLE_NOFLAGS_EFFICIENCY; 
         } 
 
-        if (docOverlay.value != "none") {
-            options.fullProbability = true;
-        } else {
-            options.fullProbability = false;
-        }
-
+        options.fullProbability = true;
         options.guessPruning = guessAnalysisPruning;
         options.fullBFDA = fullBFDA;
+        options.hardcore = docHardcore.checked;
 
         const solve = await solver(board, options);  // look for solutions
         const hints = solve.actions;
@@ -3126,11 +3145,8 @@ async function handleSolver(solverStart, headerId) {
             options.playStyle = PLAY_STYLE_NOFLAGS_EFFICIENCY;
         } 
 
-        if (docOverlay.value != "none" || docHardcore.checked) {
-            options.fullProbability = true;
-        } else {
-            options.fullProbability = false;
-        }
+        options.fullProbability = true;
+        options.hardcore = docHardcore.checked;
 
         let hints;
         let other;
