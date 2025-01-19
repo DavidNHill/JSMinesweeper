@@ -109,7 +109,7 @@
             <label><input type="checkbox" class="checkbox" id="showhints" onclick="updateHints()" checked /> <span>Show hints</span></label>
             <label><input type="checkbox" class="checkbox" id="autoplay" onclick="if (this.checked) startSolver()" checked /> <span>Auto play</span></label>
             <label><input type="checkbox" class="checkbox" id="acceptguesses" onclick="if (document.getElementById('autoplay').checked && this.checked) startSolver()" /> <span>Accept guesses</span></label>
-            <label><input type="checkbox" class="checkbox" id="autoretry" /> <span>Auto retry</span></label>
+            <label><input type="checkbox" class="checkbox" id="autoretry" onclick="if (board.isGameover() && !board.won && this.checked) apply()" /> <span>Auto retry</span></label>
 
         </div>
 
