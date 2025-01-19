@@ -21,6 +21,7 @@ const FLAGGED = 11;
 const FLAGGED_WRONG = 12;
 const EXPLODED = 13;
 const SKULL = 14;
+const START = 15;
 
 const MINUS = 10;
 
@@ -938,7 +939,11 @@ function renderTiles(tiles) {
             tileType = SKULL;
 
         } else if (tile.isCovered()) {
-            tileType = HIDDEN;
+            if (tile.is_start) {
+                tileType = START;
+            } else {
+                tileType = HIDDEN;
+            }
 
         } else {
             tileType = tile.getValue();
@@ -1104,12 +1109,14 @@ async function playAgain() {
     if (board != null && !analysisMode) {
         callKillGame(board.getID());
 
+        const game = getGame(board.getID());
+        const startIndex = game.startIndex;
         const mbf = getMbfData(board.getID());
         const view = new Uint8Array(mbf);
 
         console.log(...view);
 
-        const reply = createGameFromMFB(view);  // this function is in MinesweeperGame.js
+        const reply = createGameFromMFB(view, startIndex);  // this function is in MinesweeperGame.js
 
         const id = reply.id;
 
@@ -1117,6 +1124,9 @@ async function playAgain() {
 
         document.getElementById("canvas").style.cursor = "default";
         canvasLocked = false;  // just in case it was still locked (after an error for example)
+
+        const tile = board.getTile(startIndex);
+        tile.is_start = true;
 
         await changeTileSize(true);
 
@@ -1127,7 +1137,7 @@ async function playAgain() {
         showMessage("Replay game requested");
         document.getElementById("newGameSmiley").src = 'resources/images/face.svg';
 
-        if (!analysisMode && autoPlayCheckBox.checked && acceptGuessesCheckBox.checked) {
+        if (!analysisMode && (autoPlayCheckBox.checked || docHardcore.checked)) {
             await startSolver();
         }
     } else {
@@ -1230,7 +1240,7 @@ async function newGameFromMBF(mbf) {
     const height = view[1];
     const mines = view[2] * 256 + view[3];
 
-    const reply = createGameFromMFB(view);  // this function is in MinesweeperGame.js
+    const reply = createGameFromMFB(view, 0);  // this function is in MinesweeperGame.js
 
     const id = reply.id;
 
@@ -3333,6 +3343,7 @@ function load_images() {
     images.push(load_image("resources/images/flaggedWrong.png"));
     images.push(load_image("resources/images/exploded.png"));
     images.push(load_image("resources/images/skull.png"));
+    images.push(load_image("resources/images/start.png"));
 
     for (let i = -7; i <= -1; i++) {
         const file_path = "resources/images/" + i.toString() + ".png";

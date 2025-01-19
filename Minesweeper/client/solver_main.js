@@ -149,6 +149,7 @@ async function solver(board, options) {
     async function doSolve(board, options) {
 
         // find all the tiles which are revealed and have un-revealed / un-flagged adjacent squares
+        let startTile = null;
         const allCoveredTiles = [];
         const witnesses = [];
         const witnessed = [];
@@ -179,6 +180,9 @@ async function solver(board, options) {
             } else if (tile.isCovered()) {
                 squaresLeft++;
                 allCoveredTiles.push(tile);
+                if (tile.is_start) {
+                    startTile = tile;
+                }
                 continue;  // if the tile hasn't been revealed yet then nothing to consider
             }
 
@@ -348,7 +352,7 @@ async function solver(board, options) {
         }
 
         // have we found any local clears which we can use or everything off the edge is safe
-        if (pe.localClears.length > 0 || offEdgeAllSafe) {
+        if (pe.localClears.length > 0 || offEdgeAllSafe || startTile != null) {
             for (let tile of pe.localClears) {   // place each local clear into an action
                 tile.setProbability(1);
                 const action = new Action(tile.getX(), tile.getY(), 1, ACTION_CLEAR);
@@ -364,7 +368,13 @@ async function solver(board, options) {
                 //}
             }
 
-            const totalSafe = pe.localClears.length + offEdgeSafeCount;
+            let totalSafe = pe.localClears.length + offEdgeSafeCount;
+            if (startTile != null) {
+                startTile.setProbability(1);
+                const action = new Action(startTile.getX(), startTile.getY(), 1, ACTION_CLEAR);
+                result.push(action);
+                totalSafe++;
+            }
             showMessage("The solver has found " + totalSafe + " safe files." + formatSolutions(pe.finalSolutionsCount));
             result = new EfficiencyHelper(board, witnesses, witnessed, result, options.playStyle, pe, allCoveredTiles).process()
 

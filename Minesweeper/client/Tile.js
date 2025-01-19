@@ -14,6 +14,7 @@ class Tile {
         this.is_bomb = null;   // this gets set when the game is lost
         this.exploded = false;  // this gets set if this tile was the one clicked
 		this.index = index;
+		this.is_start = false;
 
         this.onEdge = false;
         this.hint = false;
