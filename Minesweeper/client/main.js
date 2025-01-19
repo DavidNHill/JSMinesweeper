@@ -793,6 +793,10 @@ function renderHints(hints, otherActions, drawOverlay) {
         return;
     }
 
+    for (let tile of board.tiles) {
+        tile.colored = false;
+    }
+
     let firstGuess = 0;  // used to identify the first (best) guess, subsequent guesses are just for info 
     for (let i = 0; i < hints.length; i++) {
 
@@ -800,12 +804,17 @@ function renderHints(hints, otherActions, drawOverlay) {
 
         if (hint.action == ACTION_CHORD) {
             ctxHints.fillStyle = "#00FF00";
+            firstGuess = 2;
         } else if (hint.prob == 0) {   // mine
             ctxHints.fillStyle = "#FF0000";
         } else if (hint.prob == 1) {  // safe
             ctxHints.fillStyle = "#00FF00";
+            firstGuess = 2;
         } else if (hint.dead) {  // uncertain but dead
             ctxHints.fillStyle = "black";
+            if (firstGuess == 0) {
+                firstGuess = 1;
+            }
         } else {  //uncertain
             ctxHints.fillStyle = "orange";
             if (firstGuess == 0) {
@@ -823,19 +832,42 @@ function renderHints(hints, otherActions, drawOverlay) {
             firstGuess = 2;
         }
 
+        board.getTileXY(hint.x, hint.y).colored = true;
+    }
+
+    ctxHints.globalAlpha = 1;
+
+    if (otherActions != null) {
+        // these are from the efficiency play style and are the known moves which haven't been made
+        for (let action of otherActions) {
+            if (action.action == ACTION_CLEAR) {
+                ctxHints.fillStyle = "#00FF00";
+            } else {
+                ctxHints.fillStyle = "#FF0000";
+            }
+            board.getTileXY(action.x, action.y).colored = true;
+            ctxHints.fillRect((action.x + 0.35) * TILE_SIZE, (action.y + 0.35) * TILE_SIZE, 0.3 * TILE_SIZE, 0.3 * TILE_SIZE);
+        }
     }
 
      // put percentage over the tile 
     if (drawOverlay) {
 
-        const fontSize = Math.max(6, Math.floor(TILE_SIZE * 0.6));
-        ctxHints.font = `${fontSize}px serif`;
+        const fontSize = Math.max(6, Math.floor(TILE_SIZE * 0.50));
+        ctxHints.font = `700 ${fontSize}px "Open Sans", sans-serif`;
 
-        ctxHints.globalAlpha = 1;
-        ctxHints.fillStyle = "black";
         for (let tile of board.tiles) {
             if (tile.getHasHint() && tile.isCovered() && !tile.isFlagged() && tile.probability != null) {
-                if (!showHintsCheckBox.checked || (tile.probability != 1 && tile.probability != 0)) {  // show the percentage unless we've already colour coded it
+                if (!tile.colored || (tile.probability != 1 && tile.probability != 0)) {  // show the percentage unless we've already colour coded it
+                    if (tile.colored || !tile.isSolverFoundBomb() && !tile.onEdge) {
+                        ctxHints.fillStyle = "rgb(136, 136, 136)";
+                    } else if (tile.probability < 0.15) {
+                        ctxHints.fillStyle = "rgb(221, 0, 0)";
+                    } else if (tile.probability > 0.85) {
+                        ctxHints.fillStyle = "rgb(0, 102, 0)";
+                    } else {
+                        ctxHints.fillStyle = "rgb(170, 85, 0)";
+                    }
 
                     let value;
                     if (docOverlay.value == "safety") {
@@ -845,8 +877,10 @@ function renderHints(hints, otherActions, drawOverlay) {
                     }
 
                     let value1;
-                    if (value < 9.95) {
-                        value1 = value.toFixed(1);
+                    if (value > 0 && value < 1) {
+                        value1 = "1";
+                    } else if (value > 99 && value < 100) {
+                        value1 = "99";
                     } else {
                         value1 = value.toFixed(0);
                     }
@@ -858,22 +892,6 @@ function renderHints(hints, otherActions, drawOverlay) {
                 }
             }
         }
-    }
-
-
-    if (otherActions == null) {
-        return;
-    }
-
-    ctxHints.globalAlpha = 1;
-    // these are from the efficiency play style and are the known moves which haven't been made
-    for (let action of otherActions) {
-        if (action.action == ACTION_CLEAR) {
-            ctxHints.fillStyle = "#00FF00";
-        } else {
-            ctxHints.fillStyle = "#FF0000";
-        }
-        ctxHints.fillRect((action.x + 0.35) * TILE_SIZE, (action.y + 0.35) * TILE_SIZE, 0.3 * TILE_SIZE, 0.3 * TILE_SIZE);
     }
 
 }
