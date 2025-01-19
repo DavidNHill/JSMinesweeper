@@ -76,7 +76,7 @@ function copyGame(id) {
 }
 
 // called from main.js
-function createGameFromMFB(blob) {
+function createGameFromMFB(blob, startIndex) {
 
 	const width = blob[0];
 	const height = blob[1];
@@ -85,7 +85,7 @@ function createGameFromMFB(blob) {
 	gameID++; // This returns the old game id
 	const id = gameID; // This is the new game id
 
-	const game = new ServerGame(id, width, height, mines, 0, 0, "safe");
+	const game = new ServerGame(id, width, height, mines, startIndex, 0, "safe");
 
 	game.resetMines(blob);
 	game.generateMbfUrl();
