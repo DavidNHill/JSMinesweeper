@@ -67,6 +67,7 @@ const autoPlayCheckBox = document.getElementById("autoplay");
 const showHintsCheckBox = document.getElementById("showhints");
 const acceptGuessesCheckBox = document.getElementById("acceptguesses");
 const autoRetryCheckBox = document.getElementById("autoretry");
+const useSeed = document.getElementById("useSeed");
 const seedText = document.getElementById("seed");
 const gameTypeSafe = document.getElementById("gameTypeSafe");
 const gameTypeZero = document.getElementById("gameTypeZero");
@@ -3364,7 +3365,7 @@ async function sendActionsMessage(message) {
         window.requestAnimationFrame(() => updateMineCount(board.bombs_left));
     }
 
-    if (board.isGameover() && !board.won && autoRetryCheckBox.checked) {
+    if (board.isGameover() && !board.won && autoRetryCheckBox.checked && !useSeed.checked) {
         apply();
         return;
     }
