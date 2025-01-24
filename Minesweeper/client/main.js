@@ -63,6 +63,7 @@ const tooltip = document.getElementById('tooltip');
 const reductionCheckBox = document.getElementById("reduction");
 const autoPlayCheckBox = document.getElementById("autoplay");
 const showHintsCheckBox = document.getElementById("showhints");
+const showProbabilitiesCheckbox = document.getElementById("showprobabilities");
 const acceptGuessesCheckBox = document.getElementById("acceptguesses");
 const seedText = document.getElementById("seed");
 const gameTypeSafe = document.getElementById("gameTypeSafe");
@@ -782,7 +783,7 @@ function setPageTitle() {
 function renderHints(hints, otherActions, drawOverlay) {
 
     if (drawOverlay == null) {
-        drawOverlay = (docOverlay.value != "none")
+        drawOverlay = showProbabilitiesCheckbox.checked;
     }
 
     //console.log(hints.length + " hints to render");
@@ -2234,7 +2235,7 @@ async function sleep(msec) {
     return new Promise(resolve => setTimeout(resolve, msec));
 }
 
-async function doAnalysis(fullBFDA) {
+async function doAnalysis(manual) {
 
     if (canvasLocked) {
         console.log("Already analysing... request rejected");
@@ -2292,14 +2293,14 @@ async function doAnalysis(fullBFDA) {
         }
 
         options.guessPruning = guessAnalysisPruning;
-        options.fullBFDA = fullBFDA;
+        options.fullBFDA = manual;
 
         const solve = await solver(board, options);  // look for solutions
         const hints = solve.actions;
 
         justPressedAnalyse = true;
 
-        window.requestAnimationFrame(() => renderHints(hints, solve.other));
+        window.requestAnimationFrame(() => renderHints(hints, solve.other, manual || showProbabilitiesCheckbox.checked));
 
         // show the next tile to be clicked if in replay mode
         if (analysisMode && replayMode) {
@@ -2309,7 +2310,7 @@ async function doAnalysis(fullBFDA) {
  
     } else {
         showMessage("The board is in an invalid state");
-        window.requestAnimationFrame(() => renderHints([], []));
+        window.requestAnimationFrame(() => renderHints([], [], manual || showProbabilitiesCheckbox.checked));
     }
 
     // by delaying re-enabling we absorb any secondary clicking of the button / hot key
@@ -3129,7 +3130,7 @@ async function handleSolver(solverStart, headerId) {
     }
 
     // do we want to show hints
-    if (showHintsCheckBox.checked || autoPlayCheckBox.checked || assistedPlayHints.length != 0 || docOverlay.value != "none" || docHardcore.checked) {
+    if (showHintsCheckBox.checked || autoPlayCheckBox.checked || assistedPlayHints.length != 0 || showProbabilitiesCheckbox.checked || docHardcore.checked) {
 
         document.getElementById("canvas").style.cursor = "wait";
 
