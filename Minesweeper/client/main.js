@@ -442,7 +442,7 @@ function propertiesClose() {
         localStorage.removeItem("settings");
     }
 
-    if (!analysisMode && showHintsCheckBox.checked) {
+    if (!board.isGameover() && !analysisMode && (showHintsCheckBox.checked || showProbabilitiesCheckbox.checked)) {
         doAnalysis(false)
     } else {
         renderHints([]);
@@ -1552,7 +1552,7 @@ function doToggleFlag() {
 }
 
 async function updateHints() {
-    if (!board.isGameover() && !analysisMode && showHintsCheckBox.checked) {
+    if (!board.isGameover() && !analysisMode && (showHintsCheckBox.checked || showProbabilitiesCheckbox.checked)) {
         await doAnalysis(false);
     } else {
         renderHints([]);
@@ -1571,7 +1571,7 @@ async function changeTileSize(analyse) {
 
     renderTiles(board.tiles); // draw the board
 
-    if (!board.isGameover() && !analysisMode && analyse && showHintsCheckBox.checked) {
+    if (!board.isGameover() && !analysisMode && (showHintsCheckBox.checked || showProbabilitiesCheckbox.checked)) {
         await doAnalysis(false);
     } else {
         renderHints([]);
@@ -2240,6 +2240,9 @@ async function doAnalysis(manual) {
     if (canvasLocked) {
         console.log("Already analysing... request rejected");
         return;
+    } else if (!manual && !showHintsCheckBox.checked && !showProbabilitiesCheckbox.checked) {
+        console.log("Analysis not required");
+        return;
     } else {
         console.log("Doing analysis");
         analysisButton.disabled = true;
@@ -2300,7 +2303,12 @@ async function doAnalysis(manual) {
 
         justPressedAnalyse = true;
 
-        window.requestAnimationFrame(() => renderHints(hints, solve.other, manual || showProbabilitiesCheckbox.checked));
+        if (manual || showHintsCheckBox.checked) {
+            window.requestAnimationFrame(() => renderHints(hints, solve.other, manual || showProbabilitiesCheckbox.checked));
+        } else {
+            window.requestAnimationFrame(() => renderHints([], [], manual || showProbabilitiesCheckbox.checked));
+            showMessage("Press the 'Analyse' button to see the solver's suggested move.");
+        }
 
         // show the next tile to be clicked if in replay mode
         if (analysisMode && replayMode) {
