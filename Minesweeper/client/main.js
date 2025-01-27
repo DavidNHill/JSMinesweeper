@@ -2848,6 +2848,10 @@ function draw(x, y, tileType) {
 }
 
 function resetTileDisplay(tile, tileType) {
+    if (board.isGameover() || canvasLocked) {
+        return;
+    }
+
     if (!tile.isCovered()) {
         for (let adjTile of board.getAdjacent(tile)) {
             if (adjTile.isCovered() && !adjTile.isFlagged()) {
@@ -2968,6 +2972,16 @@ function mouseUpEvent(e) {
         dragging = false;
 
         if (!analysisMode) {
+            if (board.isGameover()) {
+                console.log("The game is over - no action to take");
+                return;
+            }
+        
+            if (canvasLocked) {
+                console.log("The canvas is logically locked - this happens while the previous click is being processed");
+                return;
+            }
+
             let message;
 
             const tile = hoverTile;
