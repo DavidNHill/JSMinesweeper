@@ -1573,7 +1573,7 @@ async function changeTileSize(analyse) {
 
     renderTiles(board.tiles); // draw the board
 
-    if (!board.isGameover() && !analysisMode && (showHintsCheckBox.checked || showProbabilitiesCheckbox.checked)) {
+    if (!board.isGameover() && !analysisMode && analyse && (showHintsCheckBox.checked || showProbabilitiesCheckbox.checked)) {
         await doAnalysis(false);
     } else {
         renderHints([]);
