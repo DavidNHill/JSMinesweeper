@@ -2964,12 +2964,12 @@ function on_click(event) {
                 return;
             }
 
-            if (!board.isStarted()) {
-                console.log("Can't flag until the game has started!");
-                return;
-            } else {
+            // if (!board.isStarted()) {
+            //     console.log("Can't flag until the game has started!");
+            //     return;
+            // } else {
                 message = { "header": board.getMessageHeader(), "actions": [{ "index": board.xy_to_index(col, row), "action": 2 }] };
-            }
+            // }
 
         } else {
             console.log("Mouse button " + button + " ignored");

@@ -825,7 +825,11 @@ class ServerGame {
 				
 				for (let adjTile of this.getAdjacent(tile)) {
 					
-					if (adjTile.isCovered() && !adjTile.isFlagged()) {  // if not covered and not a flag
+					if (adjTile.isCovered()) {  // if not covered
+						if (adjTile.isFlagged()) {
+							adjTile.toggleFlag();
+							reply.tiles.push({"action" : 2, "index" : adjTile.getIndex(), "flag" : tile.isFlagged()});
+						}
 						adjTile.setNotCovered();  // it will be uncovered in a bit
 						if (adjTile.is3BV) {
 							this.cleared3BV++;
