@@ -790,11 +790,7 @@ function setPageTitle() {
 }
 
 // render an array of tiles to the canvas
-function renderHints(hints, otherActions, drawOverlay) {
-
-    if (drawOverlay == null) {
-        drawOverlay = showProbabilitiesCheckbox.checked;
-    }
+function renderHints(hints, otherActions, manual) {
 
     //console.log(hints.length + " hints to render");
     //ctxHints.clearRect(0, 0, canvasHints.width, canvasHints.height);
@@ -862,7 +858,7 @@ function renderHints(hints, otherActions, drawOverlay) {
     }
 
      // put percentage over the tile 
-    if (drawOverlay) {
+    if (manual || showProbabilitiesCheckbox.checked) {
 
         const fontSize = Math.max(6, Math.floor(TILE_SIZE * 0.50));
         ctxHints.font = `700 ${fontSize}px "Open Sans", sans-serif`;
@@ -870,7 +866,7 @@ function renderHints(hints, otherActions, drawOverlay) {
         for (let tile of board.tiles) {
             if (tile.getHasHint() && tile.isCovered() && !tile.isFlagged() && tile.probability != null) {
                 if (!tile.colored || (tile.probability != 1 && tile.probability != 0)) {  // show the percentage unless we've already colour coded it
-                    if (tile.colored || !tile.isSolverFoundBomb() && !tile.onEdge) {
+                    if (tile.colored || !tile.isSolverFoundBomb() && !tile.onEdge || !manual && !showHintsCheckBox.checked) {
                         ctxHints.fillStyle = "rgb(136, 136, 136)";
                     } else if (tile.probability < 0.15) {
                         ctxHints.fillStyle = "rgb(221, 0, 0)";
@@ -2326,9 +2322,9 @@ async function doAnalysis(manual) {
         justPressedAnalyse = manual;
 
         if (manual || showHintsCheckBox.checked) {
-            window.requestAnimationFrame(() => renderHints(hints, solve.other, manual || showProbabilitiesCheckbox.checked));
+            window.requestAnimationFrame(() => renderHints(hints, solve.other, manual));
         } else {
-            window.requestAnimationFrame(() => renderHints([], [], manual || showProbabilitiesCheckbox.checked));
+            window.requestAnimationFrame(() => renderHints([], [], manual));
             showMessage("Press the 'Analyse' button to see the solver's suggested move.");
         }
 
@@ -2340,7 +2336,7 @@ async function doAnalysis(manual) {
  
     } else {
         showMessage("The board is in an invalid state");
-        window.requestAnimationFrame(() => renderHints([], [], manual || showProbabilitiesCheckbox.checked));
+        window.requestAnimationFrame(() => renderHints([], [], manual));
     }
 
     // by delaying re-enabling we absorb any secondary clicking of the button / hot key
