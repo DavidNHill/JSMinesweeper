@@ -214,7 +214,7 @@ class BruteForceAnalysis {
                 alive.zeroSolutions = valueCount[0];
                 living.push(alive);
             } else {
-                console.log(BruteForceGlobal.allTiles[i].asText() + " is dead with value " + minValue);
+                this.writeToConsole(BruteForceGlobal.allTiles[i].asText() + " is dead with value " + minValue);
                 this.deadTiles.push(BruteForceGlobal.allTiles[i]);   // store the dead tiles
             }
 
@@ -242,7 +242,7 @@ class BruteForceAnalysis {
         //solver.display("first best move is " + loc.display());
         const prob = 1 - (bestLiving.mineCount / this.currentNode.getSolutionSize());
 
-        console.log("mines = " + bestLiving.mineCount + " solutions = " + this.currentNode.getSolutionSize());
+        this.writeToConsole("mines = " + bestLiving.mineCount + " solutions = " + this.currentNode.getSolutionSize());
         for (let i = 0; i < bestLiving.children.length; i++) {
             if (bestLiving.children[i] == null) {
                 //solver.display("Value of " + i + " is not possible");
@@ -255,7 +255,7 @@ class BruteForceAnalysis {
             } else {
                 probText = bestLiving.children[i].getProbability();
             }
-            console.log("Value of " + i + " leaves " + bestLiving.children[i].getSolutionSize() + " solutions and winning probability " + probText + " (work size " + bestLiving.children[i].work + ")");
+            this.writeToConsole("Value of " + i + " leaves " + bestLiving.children[i].getSolutionSize() + " solutions and winning probability " + probText + " (work size " + bestLiving.children[i].work + ")");
         }
 
         const action = new Action(loc.getX(), loc.getY(), prob, ACTION_CLEAR);
