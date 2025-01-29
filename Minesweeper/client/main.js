@@ -2505,17 +2505,17 @@ function followCursor(e) {
     const tooltipWidth = tooltip.offsetWidth;
 
     if (isExpanded) {
-        if (2 * TILE_SIZE + e.clientX + tooltipWidth >= screenWidth) {
-            tooltip.style.left = (e.clientX - 2 * TILE_SIZE - tooltipWidth - 12) + 'px';
+        if (TILE_SIZE / 2 + e.clientX + tooltipWidth >= screenWidth) {
+            tooltip.style.left = (e.clientX - TILE_SIZE / 2 - tooltipWidth - 12) + 'px';
         } else {
-            tooltip.style.left = (2 * TILE_SIZE + e.clientX - 12) + 'px';
+            tooltip.style.left = (TILE_SIZE / 2 + e.clientX - 12) + 'px';
         }
         tooltip.style.top = (e.clientY - tooltip.offsetHeight / 2 - 5) + 'px';
     } else {
-        if (2 * TILE_SIZE + e.clientX + tooltipWidth >= screenWidth) {
-            tooltip.style.left = (e.clientX - 2 * TILE_SIZE - tooltipWidth - 182) + 'px';
+        if (TILE_SIZE / 2 + e.clientX + tooltipWidth >= screenWidth) {
+            tooltip.style.left = (e.clientX - TILE_SIZE / 2 - tooltipWidth - 182) + 'px';
         } else {
-            tooltip.style.left = (2 * TILE_SIZE + e.clientX - 182) + 'px';
+            tooltip.style.left = (TILE_SIZE / 2 + e.clientX - 182) + 'px';
         }
         tooltip.style.top = (e.clientY - tooltip.offsetHeight / 2 - 70) + 'px';
     }
