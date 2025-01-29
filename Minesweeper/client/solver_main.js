@@ -20,6 +20,7 @@ const PLAY_STYLE_NOFLAGS_EFFICIENCY = 4;
 class SolverGlobal {
 
     static PRUNE_GUESSES = true;                      // Determines whether calculations continue after the tile can no longer be the best
+    static EARLY_FIFTY_FIFTY_CHECKING = true;         // Determines whether 50/50 checking is done when there are safe tiles
     static CALCULATE_LONG_TERM_SAFETY = true;         // Switches 50/50 influence processing on or off, also most pseudo-50/50 detection
 
 }
@@ -241,7 +242,7 @@ async function solver(board, options) {
 
         // add any trivial moves we've found
         if (options.fullProbability || options.playStyle == PLAY_STYLE_EFFICIENCY || options.playStyle == PLAY_STYLE_NOFLAGS_EFFICIENCY) {
-            console.log("Skipping trivial analysis since Probability Engine analysis is required")
+            writeToConsole("Skipping trivial analysis since Probability Engine analysis is required")
         } else {
             result.push(...trivial_actions(board, witnesses));
         }
@@ -375,7 +376,62 @@ async function solver(board, options) {
                 totalSafe++;
             }
             showMessage("The solver has found " + totalSafe + " safe files." + formatSolutions(pe.finalSolutionsCount));
-            return new EfficiencyHelper(board, witnesses, witnessed, result, options.playStyle, pe, allCoveredTiles).process();
+            result = new EfficiencyHelper(board, witnesses, witnessed, result, options.playStyle, pe, allCoveredTiles).process()
+
+            if (!options.noGuessingMode) {
+                // See if there are any unavoidable 2 tile 50/50 guesses 
+                if (SolverGlobal.EARLY_FIFTY_FIFTY_CHECKING && !options.hardcore && minesLeft > 1) {
+                    //const unavoidable5050a = pe.checkForUnavoidable5050();
+                    let unavoidable5050a;
+                    if (options.playStyle == PLAY_STYLE_EFFICIENCY || options.playStyle == PLAY_STYLE_NOFLAGS_EFFICIENCY) {
+                        unavoidable5050a = pe.checkForUnavoidable5050();
+                    } else {
+                        unavoidable5050a = pe.checkForUnavoidable5050OrPseudo();
+                    }
+
+                    if (unavoidable5050a != null) {
+
+                        const actions = [];
+                        for (const tile of unavoidable5050a) {
+                            // Check if the pseudo 50/50 isn't resolved by the local clears
+                            if (tile.probability != 0 && tile.probability != 1) {
+                                actions.push(new Action(tile.getX(), tile.getY(), tile.probability, ACTION_CLEAR));
+                            }
+                        }
+
+                        if (actions.length != 0) {
+                            const returnActions = tieBreak(pe, actions, null, null, false);
+
+                            const recommended = returnActions[0];
+                            result.unshift(...returnActions);
+                            if (recommended.prob == 0.5) {
+                                showMessage(recommended.asText() + " is an unavoidable 50/50 guess." + formatSolutions(pe.finalSolutionsCount));
+                            } else {
+                                showMessage(recommended.asText() + " is an unavoidable 50/50 guess, or safe." + formatSolutions(pe.finalSolutionsCount));
+                            }
+
+                            // combine the dead tiles from the probability engine and the unavoidable 5050s
+                            for (let deadTile of pe.deadTiles) {
+                                let found = false;
+                                for (let returnAction of returnActions) {
+                                    if (deadTile.isEqual(returnAction)) {
+                                        found = true;
+                                        break;
+                                    }
+                                }
+                                if (!found) {
+                                    deadTiles.push(deadTile);
+                                }
+                            }
+
+                            return addDeadTiles(result, deadTiles, pe.minesFound);
+                        }
+                    }
+                }
+                result = addDeadTiles(result, pe.getDeadTiles(), pe.minesFound);
+            }
+
+            return result;
         } 
 
 
@@ -693,7 +749,7 @@ async function solver(board, options) {
 
         // identify the dead tiles
         for (let tile of deadTiles) {   // show all dead tiles 
-            if (tile.probability != 0) {
+            if (tile.probability != 0 && tile.probability != 1) {
                 const action = new Action(tile.getX(), tile.getY(), tile.probability);
                 action.dead = true;
                 result.push(action);

@@ -37,7 +37,7 @@
                 <label><input type="checkbox" class="checkbox" id="gameTypeZero" /> <span>Opening on start</span></label>
                 <label><input type="checkbox" class="checkbox" id="noGuessMode" /> <span>No Guess</span></label>
                 <label><input type="checkbox" class="checkbox" id="fastPlay" onclick="if (this.checked) startSolver()" /> <span>Fast mode</span></label>
-                <label><input type="checkbox" class="checkbox" id="hardcore" /> <span>Hard Core</span></label>
+                <label><input type="checkbox" class="checkbox" id="hardcore" onclick="updateHints()" /> <span>Hard Core</span></label>
             </div>
         </div>
 
@@ -224,6 +224,7 @@
 
             <div style="margin-top: 1em; margin-left: 1em;" class="checkboxes">
                 <label style="padding-top: 0px;">Functionality</label>
+                <label><input type="checkbox" class="checkbox" id="early5050" checked /> <span>Early 50/50 checking</span></label>
                 <label><input type="checkbox" class="checkbox" id="useLTR" checked /> <span>Consider long term risk</span></label>
             </div>
 
