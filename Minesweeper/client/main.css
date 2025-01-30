@@ -23,7 +23,7 @@ body {
 }
 
 body.dark-mode {
-    background: #121212;
+    background: #333333;
     color: #ffffff;
     border-color: #555555;
 }
