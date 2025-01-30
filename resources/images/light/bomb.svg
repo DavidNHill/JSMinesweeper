@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Creator: CorelDRAW -->
+<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" width="25mm" height="25mm" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd"
+viewBox="0 0 1.06553 1.06553"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+ <defs>
+  <style type="text/css">
+   <![CDATA[
+    .str0 {stroke:black;stroke-width:0.00324773}
+    .fil2 {fill:black}
+    .fil4 {fill:white}
+    .fil0 {fill:gray}
+    .fil1 {fill:#c6c6c6}
+    .fil3 {fill:url(#id0)}
+   ]]>
+  </style>
+  <radialGradient id="id0" gradientUnits="userSpaceOnUse" cx="0.504771" cy="0.511833" r="0.154587" fx="0.504771" fy="0.511833">
+   <stop offset="0" style="stop-color:white"/>
+   <stop offset="0.129412" style="stop-color:#E5E5E1"/>
+   <stop offset="0.290196" style="stop-color:#CCC8C8"/>
+   <stop offset="0.439216" style="stop-color:#B2B4B4"/>
+   <stop offset="0.74902" style="stop-color:#464D43"/>
+   <stop offset="1" style="stop-color:black"/>
+  </radialGradient>
+ </defs>
+ <g id="Layer_x0020_1">
+  <metadata id="CorelCorpID_0Corel-Layer"/>
+  <rect class="fil0" width="1.06553" height="1.06553"/>
+  <rect class="fil1" x="0.0650459" y="0.0650459" width="1.00048" height="1.00048"/>
+  <polygon class="fil2 str0" points="0.131584,0.593022 0.125187,0.565476 0.131584,0.537551 0.537551,0.537551 0.537551,0.131584 0.565118,0.126214 0.593022,0.131584 0.593022,0.537551 0.998993,0.537551 1.00304,0.565412 0.998993,0.593022 0.593022,0.593022 0.593022,0.998993 0.566636,1.00379 0.537551,0.998993 0.537551,0.593022 "/>
+  <circle class="fil2 str0" cx="0.347038" cy="0.344118" r="0.0439861"/>
+  <polygon class="fil2 str0" points="0.298578,0.86844 0.274783,0.854917 0.262133,0.831995 0.528843,0.565289 0.262133,0.298583 0.277417,0.275576 0.298578,0.262137 0.565285,0.528843 0.831995,0.262133 0.855045,0.27584 0.86844,0.298578 0.60173,0.565289 0.86844,0.831999 0.855923,0.855726 0.831995,0.868445 0.565285,0.601734 "/>
+  <circle class="fil2 str0" cx="0.567575" cy="0.256911" r="0.0439861"/>
+  <circle class="fil3" cx="0.565289" cy="0.560246" r="0.302585"/>
+  <circle class="fil2 str0" cx="0.774987" cy="0.355903" r="0.0439861"/>
+  <circle class="fil2 str0" cx="0.354109" cy="0.774903" r="0.0439861"/>
+  <circle class="fil2 str0" cx="0.774987" cy="0.774903" r="0.0439861"/>
+  <circle class="fil4" cx="0.512012" cy="0.521802" r="0.0407842"/>
+ </g>
+</svg>

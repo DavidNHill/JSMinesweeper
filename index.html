@@ -5,21 +5,22 @@
     <meta charset="ISO-8859-1">
     <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, shrink-to-fit=yes">
     <link rel="stylesheet" href="Minesweeper/client/main.css">
-    <link rel="icon" type="image/png" href="resources/images/flagged.png" />
+    <link rel="icon" type="image/svg" href="resources/images/light/flagged.svg" />
     <title>Minesweeper solver</title>
 </head>
 <!--    -->
-<body style="position: absolute; left:0px; right:0px; top:0px; bottom:0px; zoom: 1.0;" onresize="browserResized()" onload="load_images()">
+<body style="position: absolute; left:0px; right:0px; top:0px; bottom:0px; zoom: 1.0;" onresize="browserResized()" onload="load_images(startup)">
 
     <!-- Title at the top -->
     <h1 id="headerPanel" style="position: absolute; left: 0px; top: 0px; height: 50px; right: 0px; overflow-y: auto;">
-        <img src="resources/images/bomb.png" style="width: 48px; vertical-align: middle;" onclick="propertiesOpen()"/>
-        <!-- button type="button" style="zoom: 0.9; vertical-align: middle;" id="settingsButton" onclick="propertiesOpen()"><img src="resources/images/bomb.png" style="width: 30px;" /></button -->
+        <img src="resources/images/light/bomb.svg" id="propertiesButton" style="width: 48px; vertical-align: middle;" onclick="propertiesOpen()"/>
+        <!-- button type="button" style="zoom: 0.9; vertical-align: middle;" id="settingsButton" onclick="propertiesOpen()"><img src="resources/images/light/bomb.svg" style="width: 30px;" /></button -->
         <button type="button" style="zoom: 1; vertical-align: middle; top: 5px;" id="switchButton" onclick="setAnalysis()">Switch to Analyser</button>
         <label id="title" style="font-size: 36px; vertical-align: middle;">Minesweeper player</label>
         <label style="float: right; padding-right: 10px;">
             <a href="https://github.com/DavidNHill/JSMinesweeper#readme" target="_blank"><i>help</i></a>
         </label>
+        <img style="width: 36px; vertical-align: middle" id="darkModeToggle" src="resources/images/dark.svg" alt="Toggle Dark Mode" style="cursor: pointer;" onclick="toggleDarkMode()" />
     </h1>
 
     <!-- control panel on the left -->
@@ -147,8 +148,8 @@
             <div id="display" style="display: flex; flex-direction: row; height: 50px;">
                 <div>
                     <canvas class="led" id="myMinesLeft" style="position: relative; left: 3px; top:3px; width: 60px; height: 36px" oncontextmenu="return false"></canvas>
-                    <input type="image" src='resources/images/flaggedWrong_thin.png' id="leftClickFlag" onclick="doToggleFlag()" style="position: relative; left: 5px; top: 2px; width: 40px; height: 40px;" />
-                    <input type="image" src='resources/images/face.svg' id="newGameSmiley" onclick="apply()" style="position: relative; left: 5px; top: 2px; width: 40px; height: 40px;" />
+                    <input type="image" src='resources/images/light/flag_grey.svg' id="leftClickFlag" onclick="doToggleFlag()" style="position: relative; left: 5px; top: 2px; width: 40px; height: 40px;" />
+                    <input type="image" src='resources/images/light/face.svg' id="newGameSmiley" onclick="apply()" style="position: relative; left: 5px; top: 2px; width: 40px; height: 40px;" />
                 </div>
                 <div style="flex-grow: 1;">
                     <button class="small" type="button" style="position: relative; font-size: 22px; float: right; top: 6px; right: 6px; " id="toggleScreen" onclick="doToggleScreen()">+</button>
