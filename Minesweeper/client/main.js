@@ -3088,7 +3088,9 @@ async function sendActionsMessage(message) {
     }
 
     if (board.isGameover() && !board.won && autoRetryCheckBox.checked && !useSeed.checked) {
-        apply();
+        renderTiles(tiles);
+        renderHints([]);
+        setTimeout(apply, 1000);
         return;
     }
 
