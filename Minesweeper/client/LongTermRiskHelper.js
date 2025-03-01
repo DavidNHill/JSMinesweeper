@@ -595,7 +595,7 @@ class LongTermRiskHelper {
 			}
 
 			// if the location is already a mine then don't return the location
-			if (loc.isSolverFoundBomb()) {
+			if (loc.isSolverFoundBomb() || this.currentPe.isNewMine(loc)) {
 				continue;
 			}
 

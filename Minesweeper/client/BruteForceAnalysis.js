@@ -117,12 +117,18 @@ class BruteForceAnalysis {
         if (top.bestLiving != null) {  //  processing possible
             this.bestTile = BruteForceGlobal.allTiles[top.bestLiving.index];
 
-        } else {  // all dead  - so just pick the first
-            this.bestTile = BruteForceGlobal.allTiles[0];
+        } else {  // all dead  - so just pick the first tile which isn't a mine
+            for (const tile of BruteForceGlobal.allTiles) {
+                if (tile.probability != 0) {
+                    this.bestTile = tile;
+                    break;
+                }
+            }
+            //this.bestTile = BruteForceGlobal.allTiles[0];
         }
  
 
-        if (BruteForceGlobal.processCount < BruteForceGlobal.BRUTE_FORCE_ANALYSIS_MAX_NODES) {
+        if (BruteForceGlobal.processCount < BruteForceGlobal.BRUTE_FORCE_ANALYSIS_MAX_NODES && this.bestTile != null) {
             this.winChance = best / BruteForceGlobal.allSolutions.size() ;
             this.completed = true;
             if (true) {

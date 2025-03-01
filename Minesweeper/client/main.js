@@ -345,7 +345,7 @@ async function startup() {
     }
 
     //bulkRun(21, 12500, false);  // seed '21' Played 12500 won 5192
-    //bulkRun(321, 10000, false);  // seed 321 played 10000 won 4142
+    //bulkRun(321, 10000, false);  // seed 321 played 10000 won 4122   22/2/25
     //bulkRun(0, 1000, false);  // classic: seed '0' Won 424/1000 (42.40%)
     //bulkRun(0, 1000, true);  // modern: seed '0' Won 546/1000 (54.60%)
 
@@ -1035,7 +1035,7 @@ async function bulkRun(runSeed, size, modern) {
 
         played++;
 
-        const gameSeed = rng() * Number.MAX_SAFE_INTEGER;
+        const gameSeed = Math.round(rng() * Number.MAX_SAFE_INTEGER);
 
         const game = new ServerGame(0, 30, 16, 99, startIndex, gameSeed, gameType);
 
@@ -1072,6 +1072,11 @@ async function bulkRun(runSeed, size, modern) {
                 } else {   // otherwise we're trying to clear
 
                     if (i == 0 || action.prob == 1) {
+
+                        if (action.prob == 0) {
+                            console.error("Seed: " + gameSeed + " CLEAR request received with zero safety!")
+                        }
+
                         tile = game.getTile(board.xy_to_index(action.x, action.y));
 
                         revealedTiles = game.clickTile(tile);
@@ -1095,8 +1100,12 @@ async function bulkRun(runSeed, size, modern) {
             won++;
         }
 
-        const winPercentage = (won / played * 100).toFixed(2);
-        console.log("Won " + won + "/" + played + " (" + winPercentage + "%)");
+        const winRate = won / played;
+        const winPercentage =  (winRate * 100).toFixed(2);
+        const err = Math.sqrt(winRate * (1 - winRate) / played) * 1.9599;
+        const errPercentage = (err * 100).toFixed(2);
+
+        console.log("Seed " + gameSeed + " result " + revealedTiles.header.status + ", Total won " + won + "/" + played + " (" + winPercentage + "% +/- " + errPercentage + "%)");
 
     }
 
@@ -2745,7 +2754,7 @@ function analysis_toggle_flag(tile) {
         tile.foundBomb = false;
     } else {
         delta = 1;
-        tile.foundBomb = true;  // in analysis mode we believe the flags are mines
+        tile.foundBomb = document.getElementById("flagIsMine").checked;;  // in analysis mode we believe the flags are mines
     }
 
     // if we have locked the mine count then adjust the bombs left 
@@ -2772,14 +2781,22 @@ function analysis_toggle_flag(tile) {
         const adjTiles = board.getAdjacent(tile);
         for (let i = 0; i < adjTiles.length; i++) {
             const adjTile = adjTiles[i];
-            const adjFlagCount = board.adjacentFlagsPlaced(adjTile);
-            if (adjTile.getValue() == adjFlagCount) {
-                adjTile.setValueOnly(adjFlagCount + delta);
+
+            const maxValue = board.getAdjacent(adjTile).length;
+
+            //const adjFlagCount = board.adjacentFlagsPlaced(adjTile);
+            //if (adjTile.getValue() == adjFlagCount) {
+            //adjTile.setValueOnly(adjFlagCount + delta);
+
+            // check the tiles value is between zero and # of adjacent tiles
+            if (adjTile.getValue() + delta >= 0 && adjTile.getValue() + delta <= maxValue) {
+                adjTile.setValueOnly(adjTile.getValue() + delta);
                 tiles.push(adjTile);
             }
+
+            //}
         }
     }
-
 
     tile.toggleFlag();
     tiles.push(tile);

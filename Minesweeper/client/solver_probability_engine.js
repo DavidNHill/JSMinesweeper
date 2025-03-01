@@ -226,6 +226,8 @@ class ProbabilityEngine {
 
     checkForUnavoidable5050() {
 
+        this.writeToConsole("Checking for unavoidable 50/50.");
+
         const links = [];
 
         for (let i = 0; i < this.prunedWitnesses.length; i++) {
@@ -395,6 +397,8 @@ class ProbabilityEngine {
 
     checkForUnavoidable5050OrPseudo() {
 
+        this.writeToConsole("Checking for unavoidable 50/50 or pseudo 50/50.");
+
         const links = [];
         const pseudoLinks = [];
 
@@ -411,12 +415,16 @@ class ProbabilityEngine {
                     link.tile1 = witness.tiles[0];
                     link.tile2 = witness.tiles[1];
 
+                    //this.writeToConsole("Tiles " + link.tile1.asText() + " and " + link.tile2.asText() + " form a simple link");
+
                     this.assessLink(link);
                     links.push(link);
 
                 } else {
                     const rooted = this.findRootedLinks(witness);
                     if (rooted.length == 0) {
+                        //this.writeToConsole("Witness " + witness.tile.asText() + " is a possible pseudo connection");
+
                         pseudoLinks.push(witness);
                     }
 
@@ -444,9 +452,10 @@ class ProbabilityEngine {
         //let area5050 = [];
         const chains = [];
 
-        // try and connect 2 or links together to form an unavoidable 50/50
+        // try and connect 2 or more links together to form an unavoidable 50/50
         for (let link of links) {
-            if (!link.processed && (!link.closed2 || !link.closed1)) {
+            //if (!link.processed && (!link.closed2 && link.closed1 || !link.closed1 && link.closed2)) {  // one end open and one closed
+            if (!link.processed && (!link.closed1 || !link.closed2)) {  // at least one end open
 
                 const chain = new Chain();
                 chain.whole5050.push(link.tile1);
@@ -492,6 +501,9 @@ class ProbabilityEngine {
                         if (!extension.processed && !(chain.pseudo && extension.pseudo)) {  // can't add another pseudo link to an already pseudo chain
 
                             if (extension.tile1.isEqual(chain.openTile)) {
+
+                                //this.writeToConsole("Tile " + extension.tile1.asText() + " extends the current chain");
+
                                 extension.processed = true;
                                 noMatch = false;
 
@@ -544,6 +556,9 @@ class ProbabilityEngine {
                                 break;
                             }
                             if (extension.tile2.isEqual(chain.openTile)) {
+
+                                //this.writeToConsole("Tile " + extension.tile2.asText() + " extends the current chain");
+
                                 extension.processed = true;
                                 noMatch = false;
 
@@ -602,9 +617,29 @@ class ProbabilityEngine {
 
                     }
 
+                    // if we didn't match open tile 1 but open tile 2 is still unprocessed then go back and see if we can extend that.
+                    if (noMatch && chain.openTile2 != null && !chain.secondPass) {
+
+                        //this.writeToConsole("Tile " + chain.openTile2.asText() + " will now be processed");
+
+                        // swap them over
+                        const temp = chain.openTile;
+                        chain.openTile = chain.openTile2;
+                        chain.openTile2 = temp;
+
+                        chain.secondPass = true;
+                        noMatch = false;
+                    }
+
                 }
 
                 if (noMatch && chain.openTile2 == null) {
+                    let openTile1 = "null";
+                    if (chain.openTile != null) {
+                        openTile1 = chain.openTile.asText();
+                    }
+
+                    this.writeToConsole("Tile " + openTile1 + " is the open end of a chain consisting of " + (chain.whole5050.length) + " tiles");
                     chains.push(chain);
                 }
 
@@ -816,7 +851,17 @@ class ProbabilityEngine {
 
     }
 
+    isNewMine(tile) {
 
+        for (let mine of this.minesFound) {
+            if (mine.isEqual(tile)) {
+                return true;
+            }
+        }
+
+        return false;
+
+    }
 
     noTrouble(link, area) {
 
@@ -1642,6 +1687,7 @@ class ProbabilityEngine {
         const edgeWitnesses = new Set();
 
         let everything = true;
+        let allMines = true;
 
         // load each tile on this edge into a set
         for (let i = 0; i < this.mask.length; i++) {
@@ -2414,6 +2460,8 @@ class Chain {
 
         this.openTile = null;
         this.openTile2 = null;
+
+        this.secondPass = false;
         this.pseudo = false;
 
         this.trouble = [];

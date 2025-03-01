@@ -234,8 +234,20 @@ async function solver(board, options) {
                 tile.setProbability(1);
                 result.push(new Action(tile.getX(), tile.getY(), 1, ACTION_CLEAR))
             }
-            showMessage("No mines left to find all remaining tiles are safe");
+            showMessage("No mines left to find, all the remaining tiles are safe");
             return new EfficiencyHelper(board, witnesses, witnessed, result, options.playStyle, null, allCoveredTiles).process();
+        }
+
+        // there are no safe tiles left to find everything is a mine
+        if (minesLeft == squaresLeft) {
+            for (let i = 0; i < allCoveredTiles.length; i++) {
+                const tile = allCoveredTiles[i];
+
+                tile.setProbability(0);
+                result.push(new Action(tile.getX(), tile.getY(), 0, ACTION_FLAG))
+            }
+            showMessage("No safe tiles left to find, all the remaining tiles are mines");
+            return result;
         }
 
         const oldMineCount = result.length;
@@ -312,6 +324,34 @@ async function solver(board, options) {
                     tile.setProbability(pe.offEdgeProbability);
                 }
             }
+
+            // all tiles are either dead or mines. At least one tile should not be a mine, or the game is finished.  
+            if (pe.bestProbability == 0) {
+
+                writeToConsole("All tiles are either dead or mines");
+
+                // find the first non mine dead tile
+                for (let deadTile of pe.deadTiles) {
+                    if (deadTile.probability != 0) {
+                        result.push(new Action(deadTile.getX(), deadTile.getY(), deadTile.probability, ACTION_CLEAR));
+                        showMessage("All tiles are dead, try tile " + deadTile.asText() + "." + formatSolutions(pe.finalSolutionsCount));
+                        break;
+                     }
+                }
+
+                if (result.length == 0) {
+                    showMessage("Only mines remain." + formatSolutions(pe.finalSolutionsCount));
+                }
+
+                // pass back all the discovered mines
+                for (let tile of pe.minesFound) {   // place each found flag
+                    const action = new Action(tile.getX(), tile.getY(), 0, ACTION_FLAG);
+                    result.push(action);
+                }
+
+                return addDeadTiles(result, pe.deadTiles, pe.minesFound);
+            }
+
         }
 
         // if the tiles off the edge are definitely safe then clear them all
@@ -522,7 +562,9 @@ async function solver(board, options) {
                     showMessage("The solver has calculated tile " + nextmove.asText()  + " has a " + winChanceText + "% chance to solve the isolated edge." + formatSolutions(pe.finalSolutionsCount));
 
                 } else {  // seed 6674107430895333
-                    showMessage("The solver has calculated that all the tiles on an isolated edge are dead, try tile " + bfda.bestTile.asText() + "?" + formatSolutions(pe.finalSolutionsCount));
+                    if (bfda.bestTile != null) {
+                        showMessage("The solver has calculated that all the tiles on an isolated edge are dead, try tile " + bfda.bestTile.asText() + "?" + formatSolutions(pe.finalSolutionsCount));
+                    }
                 }
 
                 deadTiles = bfda.deadTiles;
@@ -611,7 +653,7 @@ async function solver(board, options) {
 
         // if we don't have a safe move and we have too many solutions for brute force then look for ...
         let ltr = null;
-        if (SolverGlobal.CALCULATE_LONG_TERM_SAFETY && pe.bestOnEdgeProbability != 1 && minesLeft > 1) {
+        if (SolverGlobal.CALCULATE_LONG_TERM_SAFETY && pe.bestOnEdgeProbability != 1 && minesLeft > 0) {
 
             /*
             // See if there are any unavoidable 2 tile 50/50 guesses 
@@ -650,7 +692,7 @@ async function solver(board, options) {
         }
 
         // See if there are any unavoidable 2-tile 50/50 or pseudo 50/50 guesses
-        if (pe.bestOnEdgeProbability != 1 && minesLeft > 1) {
+        if (pe.bestOnEdgeProbability != 1 && minesLeft > 0) {
             //const unavoidable5050a = pe.checkForUnavoidable5050();
             const unavoidable5050a = pe.checkForUnavoidable5050OrPseudo();
             if (unavoidable5050a != null) {
@@ -777,7 +819,7 @@ async function solver(board, options) {
             const extraTiles = ltr.getInfluencedTiles(pe.bestProbability * 0.9);
             for (let tile of extraTiles) {
                 if (alreadyIncluded.has(tile)) {
-                    //writeToConsole(tile.asText() + " is already in the list of candidates to be analysed");
+                    writeToConsole(tile.asText() + " is already in the list of candidates to be analysed");
                 } else {
                     alreadyIncluded.add(tile);
                     actions.push(new Action(tile.getX(), tile.getY(), pe.getProbability(tile), ACTION_CLEAR));
@@ -787,6 +829,8 @@ async function solver(board, options) {
             if (extraTiles.length == 0) {
                 writeToConsole("- None found");
             }
+        } else {
+            writeToConsole("Long term risk not being considered");
         }
 
 
