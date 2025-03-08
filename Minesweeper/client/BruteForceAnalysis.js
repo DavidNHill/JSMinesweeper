@@ -82,11 +82,17 @@ class BruteForceAnalysis {
             }
  
             const move = top.getLivingLocations()[i];  // move is class 'Livinglocation'
+            const tile = BruteForceGlobal.allTiles[move.index];
 
             const winningLines = top.getWinningLinesStart(move);  // calculate the number of winning lines if this move is played
 
             // if the move wasn't pruned is it a better move
             if (!move.pruned) {
+
+                // Set the win rate on the tile
+                tile.setWinRate(winningLines / BruteForceGlobal.allSolutions.size());
+
+                // see if this is the best move yet
                 if (best < winningLines || (top.bestLiving != null && best == winningLines && top.bestLiving.mineCount < move.mineCount)) {
                     best = winningLines;
                     top.bestLiving = move;
@@ -126,10 +132,11 @@ class BruteForceAnalysis {
             }
             //this.bestTile = BruteForceGlobal.allTiles[0];
         }
- 
 
         if (BruteForceGlobal.processCount < BruteForceGlobal.BRUTE_FORCE_ANALYSIS_MAX_NODES && this.bestTile != null) {
-            this.winChance = best / BruteForceGlobal.allSolutions.size() ;
+            this.winChance = best / BruteForceGlobal.allSolutions.size();
+            //this.bestTile.setWinRate(this.winChance);
+
             this.completed = true;
             if (true) {
                 this.writeToConsole("--------- Probability Tree dump start ---------");
@@ -565,6 +572,7 @@ class Node {
 
         BruteForceGlobal.processCount++;
         if (BruteForceGlobal.processCount > BruteForceGlobal.BRUTE_FORCE_ANALYSIS_MAX_NODES) {
+            move.pruned = true;
             return 0;
         }
 
