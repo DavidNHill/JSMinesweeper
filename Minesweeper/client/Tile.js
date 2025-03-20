@@ -156,7 +156,7 @@ class Tile {
 
 	setValueOnly(value) {
 		if (this.is_flagged) {
-			console.log(this.asText() + " assigning a value " + value + " to a flagged tile!");
+			console.error(this.asText() + " assigning a value " + value + " to a flagged tile!");
 		}
 
 		this.value = value;

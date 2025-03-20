@@ -30,6 +30,7 @@ const PLAY_CLIENT_SIDE = true;
 let ALWAYS_LOCK_MINE_COUNTER = false;
 
 let BINOMIAL;
+let binomialCache;
 
 // holds the images
 const images = [];
@@ -251,6 +252,7 @@ async function startup() {
     docMinesLeft.height = DIGIT_HEIGHT;
 
     BINOMIAL = new Binomial(70000, 500);
+    binomialCache = new BinomialCache(5000, 500, BINOMIAL);
 
     console.log("Binomials calculated");
 
@@ -2789,7 +2791,7 @@ function analysis_toggle_flag(tile) {
             //adjTile.setValueOnly(adjFlagCount + delta);
 
             // check the tiles value is between zero and # of adjacent tiles
-            if (adjTile.getValue() + delta >= 0 && adjTile.getValue() + delta <= maxValue) {
+            if (adjTile.getValue() + delta >= 0 && adjTile.getValue() + delta <= maxValue && !adjTile.isFlagged()) {
                 adjTile.setValueOnly(adjTile.getValue() + delta);
                 tiles.push(adjTile);
             }

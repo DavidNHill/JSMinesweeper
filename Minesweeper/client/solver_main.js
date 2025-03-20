@@ -85,14 +85,20 @@ async function solver(board, options) {
     const otherActions = [];    // this is other Actions of interest
 
     // allow the solver to bring back no moves 5 times. No moves is possible when playing no-flags 
-    while (noMoves < 5 && cleanActions.length == 0) {
+    let clearReturned = false;
+    while (noMoves < 5 && !clearReturned) {
+
+        // clear down the moves
+        cleanActions.length = 0;
+        otherActions.length = 0;
+
         noMoves++;
         const actions = await doSolve(board, options);  // look for solutions
         //console.log(actions);
 
         if (options.playStyle == PLAY_STYLE_EFFICIENCY || options.playStyle == PLAY_STYLE_NOFLAGS_EFFICIENCY) {
             cleanActions = actions;
-
+ 
             // find all the other actions which could be played
             top: for (let tile of board.tiles) {
                 if (!tile.isCovered()) {
@@ -134,6 +140,16 @@ async function solver(board, options) {
                 }
             }
         }
+
+        // only pass back the result if we have a clear or a chord.
+        // Otherwise try again with the flags we've discovered
+        // this allows pseudo and brute force to work correctly
+        for (const action of cleanActions) {
+            if (action.action == ACTION_CLEAR || action.action == ACTION_CHORD) {
+                clearReturned = true;
+            }
+        }
+
     }
 
     const reply = {};
@@ -336,7 +352,7 @@ async function solver(board, options) {
                         result.push(new Action(deadTile.getX(), deadTile.getY(), deadTile.probability, ACTION_CLEAR));
                         showMessage("All tiles are dead, try tile " + deadTile.asText() + "." + formatSolutions(pe.finalSolutionsCount));
                         break;
-                     }
+                    }
                 }
 
                 if (result.length == 0) {
@@ -415,7 +431,7 @@ async function solver(board, options) {
                 result.push(action);
                 totalSafe++;
             }
-            showMessage("The solver has found " + totalSafe + " safe files." + formatSolutions(pe.finalSolutionsCount));
+            showMessage("The solver has found " + totalSafe + " safe tiles." + formatSolutions(pe.finalSolutionsCount));
             result = new EfficiencyHelper(board, witnesses, witnessed, result, options.playStyle, pe, allCoveredTiles).process()
 
             if (!options.noGuessingMode) {
@@ -482,6 +498,12 @@ async function solver(board, options) {
                 const action = new Action(tile.getX(), tile.getY(), 0, ACTION_FLAG);
                 result.push(action);
             //}
+        }
+
+        // if we've found some mines but not any safe tiles then return what we know
+        if (pe.bestProbability < 1 && pe.minesFound.length > 0) {
+            writeToConsole("Returning mines only result");
+            return addDeadTiles(result, pe.deadTiles, pe.minesFound);
         }
 
         // this is part of the no-guessing board creation logic
@@ -998,7 +1020,7 @@ async function solver(board, options) {
                     }
                 }
 
-            // if the tile has n remaining covered squares and needs n more flags then all the adjacent files are flags
+            // if the tile has n remaining covered squares and needs n more flags then all the adjacent tiles are flags
             } else if (tile.getValue() == flags + covered && covered > 0) {
                 for (let j = 0; j < adjTiles.length; j++) {
                     const adjTile = adjTiles[j];
@@ -1755,9 +1777,11 @@ function formatSolutions(count) {
 }
 
 
+
 function combination(mines, squares) {
 
-    return BINOMIAL.generate(mines, squares);
+    return binomialCache.getBinomial(mines, squares);
+    //return BINOMIAL.generate(mines, squares);
 
 }
 

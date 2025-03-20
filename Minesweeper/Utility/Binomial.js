@@ -1,5 +1,114 @@
 "use strict";
 
+class BinomialCache {
+
+	constructor(cacheSize, cacheFreshold, binomialEngine) {
+		this.cacheSize = cacheSize;
+		this.cacheFreshold = cacheFreshold;
+		this.binomialEngine = binomialEngine;
+		this.start = -1;
+		this.useCount = 0;
+		this.cacheRemoval = cacheSize / 2;
+		this.cache = [];
+
+		this.cacheHits = 0;
+		this.cacheStores = 0;
+		this.nearMiss = 0;
+		this.fullCalc = 0;
+
+		Object.seal(this); // prevent new values being created
+	}
+
+	getBinomial(k, n) {
+
+		// if below the caching freshhold just go and get the binomial coefficient
+		if (n <= this.cacheFreshold) {
+			return this.binomialEngine.generate(k, n);
+		}
+
+		this.useCount++;
+
+		let nearMissK = null;
+		if (this.start != -1) {
+			for (let i = this.start; i >= 0; i--) {
+				const entry = this.cache[i];
+				if (entry.k == k && entry.n == n) {
+					this.cacheHits++;
+					entry.lastUsed = this.useCount;
+					return entry.bco;
+				}
+				if (entry.n == n && entry.k == k + 1) {
+					nearMissK = entry;
+				}
+			}
+		}
+
+		let b;
+		if (nearMissK != null) {
+			b = nearMissK.bco * BigInt(nearMissK.k) / BigInt(nearMissK.n - nearMissK.k + 1);
+			this.nearMiss++;
+		} else {
+			b = this.binomialEngine.generate(k, n);
+			this.fullCalc++;
+		}
+
+		if (this.start == this.cacheSize - 1) {
+			this.compressCache();
+		}
+
+		this.start++;
+		const be = new BinomialEntry(k, n, b);
+		be.lastUsed = this.useCount;
+
+		this.cache.push(be);
+		this.cacheStores++;
+
+		return b;
+
+	}
+
+	compressCache() {
+
+		console.log("Compressing the binomial cache");
+
+		// sort into last used order 
+		this.cache.sort(function (a, b) { return a.lastUsed - b.lastUsed});
+
+		if (this.cache[0].lastUsed > this.cache[1].lastUsed) {
+			console.log("Sort order wrong!");
+
+		}
+		for (let i = 0; i < this.cacheSize - this.cacheRemoval; i++) {
+			this.cache[i] = this.cache[i + this.cacheRemoval];
+		}
+
+		this.start = this.start - this.cacheRemoval;
+		this.cache.length = this.start + 1;
+	}
+
+	stats() {
+		console.log("Binomial Cache ==> stores: " + this.cacheStores + ", Hits: " + this.cacheHits + ", near miss: " + this.nearMiss + ", full calc: " + this.fullCalc);
+	}
+}
+
+
+
+
+class BinomialEntry {
+
+	constructor(k, n, bco) {
+		this.k = k;
+		this.n = n;
+		this.bco = BigInt(bco);
+		this.lastUsed = 0;
+
+		Object.seal(this); // prevent new values being created
+	}
+}
+
+
+
+
 class Binomial {
 
 	constructor(max, lookup) {
