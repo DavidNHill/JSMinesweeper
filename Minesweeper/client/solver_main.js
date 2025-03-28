@@ -308,7 +308,13 @@ async function solver(board, options) {
 
         const pe = new ProbabilityEngine(board, witnesses, witnessed, squaresLeft, minesLeft, options);
 
-        pe.process();
+        if (pe.validWeb) {
+            pe.process();
+
+        } else {
+            showMessage("The probability engine is unable to run.");
+            return result;
+        }
 
         writeToConsole("Probability Engine took " + pe.duration + " milliseconds to complete");
 
@@ -1313,7 +1319,15 @@ async function solver(board, options) {
             }
         }
 
-        solutionCounter.process();
+        if (solutionCounter.validWeb) {
+            solutionCounter.process();
+        } else {
+            let msg = "Reason not given";
+            if (solutionCounter.invalidReasons.length > 0) {
+                msg = solutionCounter.invalidReasons[0];
+            }
+            writeToConsole("Unable to run Solution Counter: " + false);
+        }
 
         return solutionCounter;
 

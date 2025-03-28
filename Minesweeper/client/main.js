@@ -11,6 +11,7 @@ const DIGITS = 5;
 
 const MAX_WIDTH = 250;
 const MAX_HEIGHT = 250;
+const MAX_BINOMIAL_N = 65000;
 
 const CYCLE_DELAY = 100;  // minimum delay in milliseconds between processing cycles
 
@@ -29,7 +30,7 @@ const PLAY_CLIENT_SIDE = true;
 
 let ALWAYS_LOCK_MINE_COUNTER = false;
 
-let BINOMIAL;
+//let BINOMIAL;
 let binomialCache;
 
 // holds the images
@@ -251,7 +252,8 @@ async function startup() {
     docMinesLeft.width = DIGIT_WIDTH * DIGITS;
     docMinesLeft.height = DIGIT_HEIGHT;
 
-    BINOMIAL = new Binomial(70000, 500);
+    //const BINOMIAL = new Binomial(MAX_WIDTH * MAX_HEIGHT + 10, 500);
+    const BINOMIAL = new Binomial(MAX_BINOMIAL_N, 500);
     binomialCache = new BinomialCache(5000, 500, BINOMIAL);
 
     console.log("Binomials calculated");
@@ -1158,6 +1160,7 @@ async function playAgain() {
 }
 
 // take a .mine format string and try to create a MBF format from it
+/*
 function StringToMBF(data) {
 
     const lines = data.split("\n");
@@ -1229,6 +1232,68 @@ function StringToMBF(data) {
     return mbf;
 
 }
+*/
+
+
+// take a .mine format string and try to create an Array format from it:  Width, Height, Mines, Mine.x, mine.y, ...
+function stringToArray(data) {
+
+    const lines = data.split("\n");
+    const size = lines[0].split("x");
+
+    if (size.length != 3) {
+        console.log("Header line is invalid: " + lines[0]);
+        return null;
+    }
+
+    const width = parseInt(size[0]);
+    const height = parseInt(size[1]);
+    const mines = parseInt(size[2]);
+
+    console.log("width " + width + " height " + height + " mines " + mines);
+
+    if (width < 1 || height < 1 || mines < 1) {
+        console.log("Invalid dimensions for game");
+        return null;
+    }
+
+    if (lines.length < height + 1) {
+        console.log("Insufficient lines to hold the data: " + lines.length);
+        return null;
+    }
+
+    let array = [];
+
+    array.push(width);
+    array.push(height);
+    array.push(mines);
+
+    let minesFound = 0;
+ 
+    for (let y = 0; y < height; y++) {
+        const line = lines[y + 1];
+        console.log(line);
+        for (let x = 0; x < width; x++) {
+
+            const char = line.charAt(x);
+
+            if (char == "F" || char == "M" || char == "?") {
+                minesFound++;
+                array.push(x);
+                array.push(y);
+            }
+        }
+    }
+    if (minesFound != mines) {
+        console.log("Board has incorrect number of mines. board=" + mines + ", found=" + minesFound);
+        return null;
+    }
+
+    console.log(array);
+
+    return array;
+
+}
 
 async function newGameFromBlob(blob) {
     const mbf = await blob.arrayBuffer();
@@ -1284,6 +1349,49 @@ async function newGameFromMBF(mbf) {
  
 }
 
+async function newGameFromArray(array) {
+
+    // let the server know the game is over
+    if (board != null) {
+        callKillGame(board.getID());
+    }
+
+    const width = array[0];
+    const height = array[1];
+    const mines = array[2];
+
+    const reply = createGameFromArray(array, 0);  // this function is in MinesweeperGame.js
+
+    const id = reply.id;
+
+    let gameType;
+    if (gameTypeZero.checked) {
+        gameType = "zero";
+    } else {
+        gameType = "safe";
+    }
+
+    board = new Board(id, width, height, mines, "", gameType);
+
+    setPageTitle();
+
+    document.getElementById("canvas").style.cursor = "default";
+    canvasLocked = false;  // just in case it was still locked (after an error for example)
+
+    await changeTileSize(true);
+
+    updateMineCount(board.num_bombs);
+
+    //showMessage("Game "  + width + "x" + height + "/" + mines + " created from MBF file");
+    document.getElementById("newGameSmiley").src = 'resources/images/face.svg';
+
+    if (!analysisMode && autoPlayCheckBox.checked && acceptGuessesCheckBox.checked) {
+        await startSolver();
+    }
+
+}
+
+
 async function newBoardFromFile(file) {
 
     const fr = new FileReader();
@@ -1294,12 +1402,12 @@ async function newBoardFromFile(file) {
             await newBoardFromString(e.target.result, false, true);
             showMessage("Position loaded from file " + file.name);
         } else {
-            const mbf = StringToMBF(e.target.result);
-            if (mbf == null) {
+            const array = stringToArray(e.target.result);
+            if (array == null) {
                 showMessage("File " + file.name + " doesn't contain data for a whole board");
                 return;
             } else {
-                newGameFromMBF(mbf);
+                newGameFromArray(array);
                 showMessage("Game " + board.width + "x" + board.height + "/" + board.num_bombs + " created from mine positions extracted from file " + file.name);
             }
         }

@@ -99,6 +99,31 @@ function createGameFromMFB(blob, startIndex) {
 
 }
 
+// called from main.js
+// Array is width, height, mines, mine x, mine y, ....
+function createGameFromArray(array, startIndex) {
+
+	const width = array[0];
+	const height = array[1];
+	const mines = array[2];
+
+	gameID++; // This returns the old game id
+	const id = gameID; // This is the new game id
+
+	const game = new ServerGame(id, width, height, mines, startIndex, 0, "safe");
+
+	game.resetMinesUsingArray(array);
+	game.generateMbfUrl();
+
+	serverGames.set(id, game);
+
+	const reply = {};
+	reply.id = id;
+
+	return reply;
+
+}
+
 // a function which runs periodically to tidy stuff up
 function heartbeat() {
 	
@@ -641,6 +666,37 @@ class ServerGame {
 		this.url = this.getFormatMBF();
 
     }
+
+	resetMinesUsingArray(array) {
+
+		// reset every tile and it isn't a bomb
+		for (let i = 0; i < this.tiles.length; i++) {
+			const tile = this.tiles[i];
+			tile.reset();
+			tile.is_bomb = false;
+			tile.value = 0;
+		}
+
+		let index = 3;
+
+		// set the tiles in the mbf to mines
+		while (index < array.length) {
+			const i = array[index + 1] * this.width + array[index];
+
+			const tile = this.tiles[i];
+
+			tile.make_bomb();
+			for (let adjTile of this.getAdjacent(tile)) {
+				adjTile.value += 1;
+			}
+
+			index = index + 2;
+		}
+
+		this.value3BV = this.calculate3BV();
+		this.url = this.getFormatMBF();
+
+	}
 
 	getID() {
 		return this.id;

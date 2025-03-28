@@ -42,6 +42,11 @@ class SolutionCounter {
 
         Object.seal(this) // prevent new properties being created
 
+        if (binomialCache.getMaxN() < this.tilesOffEdge) {
+            this.validWeb = false;
+            this.invalidReasons.push("Too many floating tiles to calculate the Binomial Coefficient, max permitted is " + binomialCache.getMaxN());
+            return;
+        }
 
         // can't have less than zero mines
         if (minesLeft < 0) {

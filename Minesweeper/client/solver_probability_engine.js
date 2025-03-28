@@ -75,6 +75,11 @@ class ProbabilityEngine {
 
         Object.seal(this); // prevent new values being created
 
+        if (binomialCache.getMaxN() < this.TilesOffEdge) {
+            this.validWeb = false;
+            this.writeToConsole("Too many floating tiles to calculate the Binomial Coefficient, max permitted is " + binomialCache.getMaxN());
+            return;
+        }
 
         // can't have less than zero mines
         if (minesLeft < 0) {

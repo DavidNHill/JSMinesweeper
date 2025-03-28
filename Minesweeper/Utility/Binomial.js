@@ -86,6 +86,11 @@ class BinomialCache {
 		this.cache.length = this.start + 1;
 	}
 
+	// the largest Binomial co-efficient computable in Choose k from N
+	getMaxN() {
+		return this.binomialEngine.max;
+	}
+
 	stats() {
 		console.log("Binomial Cache ==> stores: " + this.cacheStores + ", Hits: " + this.cacheHits + ", near miss: " + this.nearMiss + ", full calc: " + this.fullCalc);
 	}
