@@ -88,7 +88,7 @@ class Board {
 	
 	getTileXY(x, y) {
 
-		if (x < 0 || x >= this.width || y < 0 || y >= height) {
+		if (x < 0 || x >= this.width || y < 0 || y >= this.height) {
 			return null;
         }
 

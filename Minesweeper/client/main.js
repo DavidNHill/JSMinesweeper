@@ -853,8 +853,10 @@ function renderHints(hints, otherActions, drawOverlay) {
                     let value;
                     if (docOverlay.value == "safety") {
                         value = tile.probability * 100;
-                    } else {
+                    } else if (docOverlay.value == "mine") {
                         value = (1 - tile.probability) * 100;
+                    } else {
+                        value = tile.zeroProbability * 100;
                     }
 
                     let value1;
@@ -2414,6 +2416,10 @@ async function doAnalysis(fullBFDA) {
         options.fullBFDA = fullBFDA;
         options.hardcore = docHardcore.checked;
 
+        if (docOverlay.value == "zero") {
+            options.calculateZeros = true;
+        }
+
         const solve = await solver(board, options);  // look for solutions
         const hints = solve.actions;
 
@@ -3197,7 +3203,7 @@ async function sendActionsMessage(message) {
             tile.setBombExploded();
             tiles.push(tile);
 
-        } else if (action == 5) {  // a which is flagged but shouldn't be
+        } else if (action == 5) {  // a tile which is flagged but shouldn't be
             tile.setBomb(false);
             tiles.push(tile);
 
@@ -3275,6 +3281,10 @@ async function handleSolver(solverStart, headerId) {
         options.fullProbability = true;
         options.hardcore = docHardcore.checked;
 
+        if (docOverlay.value == "zero") {
+            options.calculateZeros = true;
+        }
+
         let hints;
         let other;
         if (assistedPlay) {
@@ -3284,6 +3294,9 @@ async function handleSolver(solverStart, headerId) {
             const solve = await solver(board, options);  // look for solutions
             hints = solve.actions;
             other = solve.other;
+
+
+
         }
 
         const solverDuration = Date.now() - solverStart;
@@ -3315,9 +3328,6 @@ async function handleSolver(solverStart, headerId) {
                 setTimeout(function () { sendActionsMessage(message) }, wait);
 
             } else if (hints.length > 0 && acceptGuessesCheckBox.checked) { // if we are accepting guesses
-
-                //const hint = [];
-                //hint.push(hints[0]);
 
                 const message = buildMessageFromActions([hints[0]], false); // if we are guessing send only the first guess
 

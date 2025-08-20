@@ -84,6 +84,10 @@ async function solver(board, options) {
     let cleanActions = [];  // these are the actions to take
     const otherActions = [];    // this is other Actions of interest
 
+    //if (options.calculateZeros != null && options.calculateZeros) {
+    //    calculateValueProbability(board, 0);
+    //}
+
     // allow the solver to bring back no moves 5 times. No moves is possible when playing no-flags 
     let clearReturned = false;
     while (noMoves < 5 && !clearReturned) {
@@ -232,6 +236,12 @@ async function solver(board, options) {
         writeToConsole("mines left = " + minesLeft);
         writeToConsole("Witnesses  = " + witnesses.length);
         writeToConsole("Witnessed  = " + witnessed.length);
+
+        // if we need to calculate zeros then do so
+        if (options.calculateZeros != null && options.calculateZeros) {
+            calculateValueProbability(board, 0);
+            options.calculateZeros = false;
+        }
 
         let result = [];
 
@@ -1299,7 +1309,7 @@ async function solver(board, options) {
         // generate an array of tiles from the map
         for (let index of work) {
             const tile = board.getTile(index);
-            tile.setOnEdge(true);
+            //tile.setOnEdge(true);
             witnessed.push(tile);
         }
 
@@ -1528,6 +1538,114 @@ async function solver(board, options) {
 
     }
 
+    function calculateValueProbability(board, value) {
+
+        const start = Date.now();
+
+        const base = runProbabilityEngine(board, null);
+        if (base.finalSolutionCount == 0) {
+            console.log("Board is in an invalid state");
+            return;
+        }
+
+        // an array of probabilities for simple cases where the tile is surrounded by n-floating tiles and nothing else.
+        let simple = new Array(9).fill(-1);
+
+        for (let i = 0; i < board.tiles.length; i++) {
+            const tile = board.getTile(i);
+
+            tile.zeroProbability = 0;
+
+            // no need to analyse a bomb
+            if (tile.isSolverFoundBomb()) {
+                //console.log(tile.asText() + " is a mine");
+                continue;
+            }
+
+            // no need to analyse a reveled tile
+            if (!tile.isCovered()) {
+                //console.log(tile.asText() + " is revealed");
+                continue;
+            }
+
+            tile.hasHint = true;
+
+            // if the number of mines adjacent is > 0 then this can't be a zero
+            const adjMines = board.adjacentFoundMineCount(tile);
+            if (adjMines > 0) {
+                //console.log(tile.asText() + " is adjacent to a mine");
+                continue;
+            }
+
+            const floating = evaluateTileForValue(board, tile, base);
+            if (floating != -1 && simple[floating] != -1) {
+                tile.zeroProbability = simple[floating];
+                //console.log(tile.asText() + " has " + tile.zeroProbability + " probability being a '" + value + "' (simple)");
+
+            } else {
+                // do the work
+                tile.setValue(value);
+                const work = runProbabilityEngine(board, null);
+                tile.setCovered(true);
+
+                // if this is a valid board state
+                if (work.finalSolutionsCount > 0) {
+                    const valueProbability = divideBigInt(work.finalSolutionsCount, base.finalSolutionsCount, 6);
+                    tile.zeroProbability = valueProbability;
+
+                    //console.log(tile.asText() + " has " + tile.zeroProbability + " probability being a '" + value + "'");
+
+                    if (floating != -1) {
+                        simple[floating] = valueProbability;
+                    }
+
+                } else {
+                    //console.log(tile.asText() + " can't be a '" + value + "'");
+                }
+            }
+ 
+        }
+
+        console.log("Evaluating Zero probabilities took " + (Date.now() - start) + " milliseconds");
+
+    }
+
+    // Count how many adjacent tiles are 'floating tiles'. 
+    // If any adjacent tiles are not floating and not mines or safe then return -1
+    function evaluateTileForValue(board, tile, pe) {
+
+        if (tile.isOnEdge()) {
+            //console.log(tile.asText() + " on edge=" + tile.isOnEdge() + " = " + tile.onEdge);
+            return -1;
+        }
+
+        let floating = 0;
+
+        for (let adjTile of board.getAdjacent(tile)) {
+
+            if (adjTile.isSolverFoundBomb()) {
+                continue;
+            }
+
+            // if 100% safe still
+            if (pe.getProbability(adjTile) == 1) {
+                continue;
+            }
+
+            if (!adjTile.isOnEdge()) {
+                floating++;
+                continue;
+            }
+
+            //console.log(tile.asText() + " not mine, not safe, not flaoting");
+            return -1;
+
+        }
+
+        //console.log(tile.asText() + " floating=" + floating);
+        return floating;
+    }
+
     function runProbabilityEngine(board, notMines) {
 
         // find all the tiles which are revealed and have un-revealed / un-flagged adjacent squares
@@ -1577,7 +1695,7 @@ async function solver(board, options) {
         // generate an array of tiles from the map
         for (let index of work) {
             const tile = board.getTile(index);
-            tile.setOnEdge(true);
+            //tile.setOnEdge(true);
             witnessed.push(tile);
         }
 
