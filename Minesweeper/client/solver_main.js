@@ -180,6 +180,7 @@ async function solver(board, options) {
 
         let deadTiles = [];  // used to hold the tiles which have been determined to be dead by either the probability engine or deep analysis
 
+        const risky3BVRevealed = new Set();  // use a map to deduplicate the tiles
         const work = new Set();  // use a map to deduplicate the witnessed tiles
 
         showMessage("The solver is thinking...");
@@ -209,18 +210,25 @@ async function solver(board, options) {
             const adjTiles = board.getAdjacent(tile);
 
             let needsWork = false;
+            let adjacentToZero = false;
             for (let j = 0; j < adjTiles.length; j++) {
                 const adjTile = adjTiles[j];
                 if (adjTile.isCovered() && !adjTile.isSolverFoundBomb()) {
                     needsWork = true;
                     work.add(adjTile.index);
                 }
+                if (!adjTile.isCovered() && !adjTile.isSolverFoundBomb() && adjTile.getValue() == 0) {
+                    adjacentToZero = true;
+                }
             }
 
             if (needsWork) {  // the witness still has some unrevealed adjacent tiles
                 witnesses.push(tile);
+                if (!adjacentToZero) {  // the witness is not next to a zero, i.e. can't have been revealed by a zero being clicked
+                    //writeToConsole(tile.asText() + " is revealed and not next to a zero");
+                    risky3BVRevealed.add(tile.index);
+                }
             }
-
         }
 
         // generate an array of tiles from the map
@@ -236,12 +244,6 @@ async function solver(board, options) {
         writeToConsole("mines left = " + minesLeft);
         writeToConsole("Witnesses  = " + witnesses.length);
         writeToConsole("Witnessed  = " + witnessed.length);
-
-        // if we need to calculate zeros then do so
-        if (options.calculateZeros != null && options.calculateZeros) {
-            calculateValueProbability(board, 0);
-            options.calculateZeros = false;
-        }
 
         let result = [];
 
@@ -261,7 +263,8 @@ async function solver(board, options) {
                 result.push(new Action(tile.getX(), tile.getY(), 1, ACTION_CLEAR))
             }
             showMessage("No mines left to find, all the remaining tiles are safe");
-            return new EfficiencyHelper(board, witnesses, witnessed, result, options.playStyle, null, allCoveredTiles).process();
+            return new EfficiencyHelper(board, witnesses, witnessed, result, options.playStyle, null, allCoveredTiles, risky3BVRevealed, options).process();
+
         }
 
         // there are no safe tiles left to find everything is a mine
@@ -331,6 +334,13 @@ async function solver(board, options) {
         if (pe.finalSolutionCount == 0) {
             showMessage("The board is in an illegal state");
             return result;
+        }
+
+        // if we need to calculate zeros then do so
+        // if we are playing NF efficiency then we'll do this any way as part of that processing
+        if (options.calculateZeros != null && options.calculateZeros && options.playStyle != PLAY_STYLE_NOFLAGS_EFFICIENCY) {
+            calculateValueProbability(board, 0, pe);
+            options.calculateZeros = false;
         }
 
         // If we have a full analysis then set the probabilities on the tile tooltips
@@ -448,7 +458,7 @@ async function solver(board, options) {
                 totalSafe++;
             }
             showMessage("The solver has found " + totalSafe + " safe tiles." + formatSolutions(pe.finalSolutionsCount));
-            result = new EfficiencyHelper(board, witnesses, witnessed, result, options.playStyle, pe, allCoveredTiles).process()
+            result = new EfficiencyHelper(board, witnesses, witnessed, result, options.playStyle, pe, allCoveredTiles, risky3BVRevealed, options).process()
 
             if (!options.noGuessingMode) {
                 // See if there are any unavoidable 2 tile 50/50 guesses 
@@ -577,6 +587,16 @@ async function solver(board, options) {
             }
         }
         */
+
+        // if we are playing NF efficiency then do that processing rather than normal best guess processing
+        if (options.playStyle == PLAY_STYLE_NOFLAGS_EFFICIENCY) {
+            writeToConsole("Doing NF efficiency logic rather than best guess logic");
+            showMessage("");
+            const resultEff = new EfficiencyHelper(board, witnesses, witnessed, result, options.playStyle, pe, allCoveredTiles, risky3BVRevealed, options).process();
+            if (resultEff.length > 0) {
+                return resultEff;
+            }
+        }
 
         // if we have an isolated edge process that
         if (pe.bestProbability < 1 && pe.isolatedEdgeBruteForce != null) {
@@ -792,7 +812,8 @@ async function solver(board, options) {
                     }
                 }
  
-                result = new EfficiencyHelper(board, witnesses, witnessed, result, options.playStyle, pe, allCoveredTiles).process();
+                result = new EfficiencyHelper(board, witnesses, witnessed, result, options.playStyle, pe, allCoveredTiles, risky3BVRevealed, options).process();
+
             } else {
  
                 if (pe.duration < 50) {  // if the probability engine didn't take long then use some tie-break logic
@@ -1538,14 +1559,19 @@ async function solver(board, options) {
 
     }
 
-    function calculateValueProbability(board, value) {
+    function calculateValueProbability(board, value, pe) {
 
         const start = Date.now();
 
-        const base = runProbabilityEngine(board, null);
-        if (base.finalSolutionCount == 0) {
-            console.log("Board is in an invalid state");
-            return;
+        let base;
+        if (pe != null) {
+            base = pe;
+        } else {
+            base = runProbabilityEngine(board, null);
+            if (base.finalSolutionCount == 0) {
+                console.log("Board is in an invalid state");
+                return;
+            }
         }
 
         // an array of probabilities for simple cases where the tile is surrounded by n-floating tiles and nothing else.

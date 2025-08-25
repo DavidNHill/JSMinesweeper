@@ -353,6 +353,8 @@ async function startup() {
     //bulkRun(0, 1000, false);  // classic: seed '0' Won 424/1000 (42.40%)
     //bulkRun(0, 1000, true);  // modern: seed '0' Won 546/1000 (54.60%)
 
+    //bulkRunNFEfficiency(463461, 10000, 16, 16, 40);
+
     showMessage("Welcome to minesweeper solver dedicated to Annie");
 }
 
@@ -1114,6 +1116,124 @@ async function bulkRun(runSeed, size, modern) {
         console.log("Seed " + gameSeed + " result " + revealedTiles.header.status + ", Total won " + won + "/" + played + " (" + winPercentage + "% +/- " + errPercentage + "%)");
 
     }
+
+    console.log("Bulk run finished in " + (Date.now() - startTime) + " milliseconds")
+}
+
+async function bulkRunNFEfficiency(runSeed, size, width, height, mines) {
+
+    const options = {};
+    options.playStyle = PLAY_STYLE_NOFLAGS_EFFICIENCY;
+    options.verbose = false;
+    options.advancedGuessing = true;
+    options.fullProbability = true;
+    options.hardcore = false;
+
+    const startTime = Date.now();
+
+    let played = 0;
+    let won = 0;
+    let won100 = 0;
+
+    const rng = JSF(runSeed);  // create an RNG based on the seed
+
+    let startIndex = 0;
+    let gameType = "safe";
+
+    while (played < size) {
+
+        played++;
+
+        const gameSeed = Math.round(rng() * Number.MAX_SAFE_INTEGER);
+
+        const game = new ServerGame(0, width, height, mines, startIndex, gameSeed, gameType);
+
+        const board = new Board(0, width, height, mines, gameSeed, gameType);
+
+        let tile = game.getTile(startIndex);
+
+        let revealedTiles = game.clickTile(tile);
+        applyResults(board, revealedTiles);  // this is in MinesweeperGame.js
+
+        let loopCheck = 0;
+        while (revealedTiles.header.status == IN_PLAY) {
+
+            loopCheck++;
+
+            if (loopCheck > 10000) {
+                break;
+            }
+
+            const reply = await solver(board, options);  // look for solutions
+
+            const actions = reply.actions;
+
+            for (let i = 0; i < actions.length; i++) {
+
+                const action = actions[i];
+
+                if (action.action == ACTION_CHORD) {
+                    console.log("Got a chord request!");
+
+                } else if (action.action == ACTION_FLAG) {   // zero safe probability == mine
+                    console.log("Got a flag request!");
+
+                } else {   // otherwise we're trying to clear
+
+                    if (i == 0 || action.prob == 1) {
+
+                        if (action.prob == 0) {
+                            console.error("Seed: " + gameSeed + " CLEAR request received with zero safety!")
+                        }
+
+                        tile = game.getTile(board.xy_to_index(action.x, action.y));
+
+                        revealedTiles = game.clickTile(tile);
+                        //console.log(action.asText() + " clicked");
+
+                        if (revealedTiles.header.status != IN_PLAY) {  // if won or lost nothing more to do
+                            break;
+                        }
+
+                        applyResults(board, revealedTiles);
+                    }
+
+                    if (action.prob != 1) {  // do no more actions after a guess
+                        break;
+                    }
+                }
+            }
+
+        }
+
+        if (revealedTiles.header.status == WON) {
+            won++;
+
+            const value3BV = game.value3BV;
+            const actionsMade = game.actions;
+            console.log("Seed " + gameSeed + " won ==> 3bv " + game.value3BV + ", actions " + game.actions);
+            if (actionsMade == value3BV) {
+                won100++;
+            }
+        }
+
+        if (played % 50 == 0) {
+            const winRate = won / played;
+            const winPercentage = (winRate * 100).toFixed(2);
+            const err = Math.sqrt(winRate * (1 - winRate) / played) * 1.9599;
+            const errPercentage = (err * 100).toFixed(2);
+
+            console.log("Seed " + gameSeed + " result " + revealedTiles.header.status + ", Total won " + won + "/" + played + " (" + winPercentage + "% +/- " + errPercentage + "%)");
+            console.log("Seed " + gameSeed + " result " + revealedTiles.header.status + ", Total won 100% " + won100 + "/" + played + " (" + winPercentage + "% +/- " + errPercentage + "%)");
+        }
+    }
+
+    const winRate = won / played;
+    const winPercentage = (winRate * 100).toFixed(2);
+    const err = Math.sqrt(winRate * (1 - winRate) / played) * 1.9599;
+    const errPercentage = (err * 100).toFixed(2);
+    console.log("Total won " + won + "/" + played + " (" + winPercentage + "% +/- " + errPercentage + "%)");
+    console.log("Total won 100% " + won100 + "/" + played + " (" + winPercentage + "% +/- " + errPercentage + "%)");
 
     console.log("Bulk run finished in " + (Date.now() - startTime) + " milliseconds")
 }

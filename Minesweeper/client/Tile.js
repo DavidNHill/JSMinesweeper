@@ -30,6 +30,7 @@ class Tile {
 		this.winRateText = "";  
 
 		this.zeroProbability = 0;
+		this.zeroPoison = false;
 
 		// is there an mine adjacent to this tile?  Set as part of the No flag efficiency logic
 		this.adjacentMine = false;
@@ -135,6 +136,7 @@ class Tile {
 		this.probability = -1;
 		this.winRate = 0;
 		this.winRateText = "";
+		this.zeroPoison = false;
     }
 
 	setOnEdge() {

@@ -7,7 +7,7 @@ class EfficiencyHelper {
 
     static IGNORE_ZERO_THRESHOLD = 0.375;   // ignore a zero when the chance it happens is less than this
  
-    constructor(board, witnesses, witnessed, actions, playStyle, pe, coveredTiles) {
+    constructor(board, witnesses, witnessed, actions, playStyle, pe, coveredTiles, risky3BVRevealed, options) {
 
         this.board = board;
         this.actions = actions;
@@ -16,6 +16,10 @@ class EfficiencyHelper {
         this.playStyle = playStyle;
         this.pe = pe;
         this.coveredTiles = coveredTiles;
+        this.options = options;
+
+        // this is a set() of tile indexes
+        this.risky3BVRevealed = risky3BVRevealed;
 
     }
 
@@ -23,7 +27,8 @@ class EfficiencyHelper {
 
         // try the No flag efficiency strategy
         if (this.playStyle == PLAY_STYLE_NOFLAGS_EFFICIENCY) {
-            return this.processNF(false);
+            return this.processImprovedNF();
+            //return this.processNF(false);
         }
 
         if (this.playStyle != PLAY_STYLE_EFFICIENCY || this.actions.length == 0) {
@@ -699,7 +704,311 @@ class EfficiencyHelper {
 
     }
 
+
+    //
+    // Improved NF efficiency logic
+    //
+    processImprovedNF() {
+
+        const start = Date.now();
+
+        const base = this.pe;
+
+        let tsc;
+        if (base == null) {
+            tsc = BigInt(1);
+        } else {
+            tsc = base.finalSolutionsCount;
+        }
+        const solutionsCount = tsc;
+
+        const value = 0;
+
+        // check that at least 1 tile can be a zero
+        let openingNotPossible = true;
+
+        // an array of probabilities for simple cases where the tile is surrounded by n-floating tiles and nothing else.
+        let simple = new Array(9).fill(-1);
+
+        for (let i = 0; i < this.board.tiles.length; i++) {
+            const tile = this.board.getTile(i);
+
+            tile.zeroProbability = 0;
+            tile.zeroPoison = false;
+
+            // no need to analyse a bomb
+            if (tile.isSolverFoundBomb()) {
+                //console.log(tile.asText() + " is a mine");
+                continue;
+            }
+
+            // no need to analyse a revealed tile
+            if (!tile.isCovered()) {
+                //console.log(tile.asText() + " is revealed");
+                continue;
+            }
+
+            tile.hasHint = true;
+
+            // if the number of mines adjacent is > 0 then this can't be a zero
+            const adjMines = this.board.adjacentFoundMineCount(tile);
+            if (adjMines > 0) {
+                //console.log(tile.asText() + " is adjacent to a mine");
+                tile.setValueProbability(0, tile.zeroProbability);
+                continue;
+            }
+
+            const floating = this.evaluateTileForValue(this.board, tile, base);
+            if (floating != -1 && simple[floating] != -1) {
+                tile.zeroProbability = simple[floating];
+
+            } else {
+                // do the work
+                tile.setValue(value);
+                const work = solver.countSolutions(this.board);
+                tile.setCovered(true);
+
+                // if this is a valid board state
+                if (work.finalSolutionsCount > 0) {
+                    const valueProbability = divideBigInt(work.finalSolutionsCount, solutionsCount, 6);
+                    tile.zeroProbability = valueProbability;
+
+                    if (floating != -1) {
+                        simple[floating] = valueProbability;
+                    }
+
+                } else {
+
+                    //console.log(tile.asText() + " can't be a '" + value + "'");
+                }
+            }
+
+            // a zero is possible
+            if (tile.zeroProbability > 0) {
+                openingNotPossible = false;
+            }
+
+
+            // if the tile is adjacent to a risky revealed tile then this tile is zero% poison.
+            // i.e. it opens a zero next to a 3BV risky tile, or creates another 3BV risky tile.
+            if (tile.zeroProbability != 0 && tile.zeroProbability != 1) {
+                for (let adjTile of board.getAdjacent(tile)) {
+                    if (this.risky3BVRevealed.has(adjTile.index)) {
+                        this.writeToConsole(tile.asText() + " is 3BV poison");
+                        tile.zeroPoison = true;
+                        break;
+                    }
+                }
+            }
+
+            tile.setValueProbability(0, tile.zeroProbability);
+
+        }
+
+        this.writeToConsole("Evaluating Zero probabilities took " + (Date.now() - start) + " milliseconds");
+
+        if (openingNotPossible) {
+            this.writeToConsole("No opening is possible, so reverting to best play");
+            return this.removeFlagging(this.actions);;
+        }
+
+        // how much the zero % is inflated to make a zero more attractive
+        const ZERO_WEIGHT = 0.6;
+
+        // the amount a poison zero is allowed to contibute to the 3bv safety contribution
+        const POISON_RATIO = 0.75;
+
+        // find the tile with highest 3BV safety
+        let safe3BV = [];
+        let best3BVSafety = 0;
+        let bestZeroProbability = 0;
+        let bestTile = null;
+
+        let bestScore = 0;
+
+        for (let i = 0; i < this.board.tiles.length; i++) {
+
+            const tile = this.board.getTile(i);
+
+            // no need to analyse a bomb
+            if (tile.isSolverFoundBomb()) {
+                continue;
+            }
+
+            // no need to analyse a reveled tile
+            if (!tile.isCovered()) {
+                 continue;
+            }
+
+            // don't consider dead tiles unless 100% safe
+            if (tile.probability != 1 && base.isDead(tile)) {
+                continue;
+            }
+
+            const tileSafety = tile.probability;
+
+            // 3BV safety can never be larger than normal safety + the zero bonus
+            if (tileSafety + tile.zeroProbability * ZERO_WEIGHT < best3BVSafety) {
+                continue;
+            }
+
+            const adjTiles = this.board.getAdjacent(tile);
+            let safety3BV = tileSafety;
+
+            //console.log(tile.asText() + " has Zero probability of " + tile.zeroProbability);
+            // could be a zero, how 3BV safe is it?
+            if (tile.zeroProbability > 0) {
+                for (let adjTile1 of adjTiles) {
+
+                    // is covered and not 100% safe. Can't be a mine or we would have Zero % > 0
+                    if (adjTile1.isCovered() && adjTile1.probability != 1) {
+                        for (let adjTile2 of adjTiles) {
+                            if (!adjTile2.isEqual(adjTile1) && !adjTile2.isAdjacent(adjTile1)) {
+                                let zeroProb;
+                                if (adjTile2.zeroPoison) {
+                                    zeroProb = adjTile2.zeroProbability * POISON_RATIO;
+                                } else {
+                                    zeroProb = adjTile2.zeroProbability;
+                                }
+                                safety3BV = safety3BV - zeroProb * (1 - adjTile1.probability);
+                            } else {
+                                //console.log("Ignore " + adjTile1.asText() + " and " + adjTile2.asText());
+                            }
+                        }
+                    }
+                }
+
+            } else {  // can't be a zero, how 3bv safe is it?
+                for (let adjTile1 of adjTiles) {
+
+                    // is covered and not a mine
+                    if (adjTile1.isCovered() && adjTile1.probability != 0) {
+                        let zeroProb;
+                        if (adjTile1.zeroPoison) {
+                            zeroProb = adjTile1.zeroProbability * POISON_RATIO;
+                        } else {
+                            zeroProb = adjTile1.zeroProbability;
+                        }
+
+                        safety3BV = safety3BV - zeroProb;
+                    }
+                }
+            }
+
+            //console.log(tile.asText() + " has estimated 3BV safety of " + safety3BV);
+
+            // store all the 100% safe 3BV
+            if (safety3BV == 1 && !tile.zeroPoison) {
+                safe3BV.push(tile);
+            }
+
+            const score = safety3BV + tile.zeroProbability * ZERO_WEIGHT;
+            let better = false;
+            if (bestTile == null || bestTile.zeroPoison && !tile.zeroPoison) {
+                better = true;
+
+            } else if (!bestTile.zeroPoison && tile.zeroPoison) {
+                better = false;
+
+            } else if (score > bestScore || (score == bestScore && tile.zeroProbability > bestZeroProbability)) {
+                better = true;
+
+            } else {
+                better = false;
+            }
+
+            if (better) {
+                this.writeToConsole(tile.asText() + " has estimated 3BV safety of " + safety3BV + " and Zero probability " + tile.zeroProbability + ", score=" + score);
+                bestTile = tile;
+                best3BVSafety = safety3BV;
+                bestZeroProbability = tile.zeroProbability;
+                bestScore = score;
+                this.writeToConsole(tile.asText() + " is now the recommended tile");
+            }
+
+        }
+
+        if (safe3BV.length > 0) {
+            let result = [];
+            showMessage("Found " + safe3BV.length + " 3BV safe tiles");
+            for (let tile of safe3BV) {
+                result.push(new Action(tile.getX(), tile.getY(), tile.probability, ACTION_CLEAR))
+            }
+
+            return result;
+
+        } else if (bestTile != null) {
+            return [new Action(bestTile.getX(), bestTile.getY(), bestTile.probability, ACTION_CLEAR)];  // send the best tile
+        } else {
+            return this.removeFlagging(this.actions);  // return the actions
+        }
+
+    }
+
+    // Count how many adjacent tiles are 'floating tiles'. 
+    // If any adjacent tiles are not floating and not mines or safe then return -1
+    evaluateTileForValue(board, tile, pe) {
+
+        if (tile.isOnEdge()) {
+            //console.log(tile.asText() + " on edge=" + tile.isOnEdge() + " = " + tile.onEdge);
+            return -1;
+        }
+
+        let floating = 0;
+
+        for (let adjTile of board.getAdjacent(tile)) {
+
+            if (adjTile.isSolverFoundBomb()) {
+                continue;
+            }
+
+            // if 100% safe still
+            if (adjTile.probability == 1) {
+                continue;
+            }
+
+            if (!adjTile.isOnEdge()) {
+                floating++;
+                continue;
+            }
+
+            //console.log(tile.asText() + " not mine, not safe, not floating");
+            return -1;
+
+        }
+
+        //console.log(tile.asText() + " floating=" + floating);
+        return floating;
+    }
+
+    removeFlagging(actions) {
+
+        const result = [];
+        for (let action of actions) {
+            if (action.action == ACTION_CLEAR) {
+                result.push(action);
+            }
+        }
+
+        return result;
+
+    }
+
+
+    writeToConsole(text, always) {
+
+        if (always == null) {
+            always = false;
+        }
+
+        if (this.options != null && this.options.verbose || always) {
+            console.log(text);
+        }
+
+    }
 }
+
+
 
 // information about the boxes surrounding a dead candidate
 class ChordLocation {
