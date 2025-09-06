@@ -31,7 +31,7 @@ class EfficiencyHelper {
             //return this.processNF(false);
         }
 
-        if (this.playStyle != PLAY_STYLE_EFFICIENCY || this.actions.length == 0) {
+        if (this.playStyle != PLAY_STYLE_EFFICIENCY && this.playStyle != PLAY_STYLE_RISKY_EFFICIENCY || this.actions.length == 0) {
             return this.actions;
         }
 
@@ -145,11 +145,21 @@ class EfficiencyHelper {
                 highest = BigInt(0);
             }
 
-            for (let act of this.actions) {
-            //for (let act of this.coveredTiles) {  // swap this for risky efficiency
-            
+            let actions;
+            if (this.playStyle == PLAY_STYLE_EFFICIENCY) {
+                actions = this.actions;
+            } else {
+                actions = [];
+                for (let tile of this.coveredTiles) {
+                    if (!tile.isSolverFoundBomb()) {
+                        actions.push(new Action(tile.x, tile.y, tile.probability, ACTION_CLEAR));
+                    }
+                }
+            }
+
+            for (let act of actions) {
+
                 if (act.action == ACTION_CLEAR) {
-                //if (!act.isSolverFoundBomb()) {   // swap this for risky efficiency
 
                     // this is the default move;
                     if (firstClear == null) {
