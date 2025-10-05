@@ -435,6 +435,7 @@ function propertiesClose() {
     propertiesPanel.style.display = "none";
 
     BruteForceGlobal.PRUNE_BF_ANALYSIS = document.getElementById("pruneBruteForce").checked;
+    BruteForceGlobal.INCLUDE_DEAD_TOP_TILES = document.getElementById("includeDeadTilesBf").checked;
 
     SolverGlobal.EARLY_FIFTY_FIFTY_CHECKING = document.getElementById("early5050").checked;
     SolverGlobal.CALCULATE_LONG_TERM_SAFETY = document.getElementById("useLTR").checked;
@@ -463,6 +464,7 @@ function propertiesOpen() {
     document.getElementById("saveSettings").checked = (localStorage.getItem("settings") != null);
 
     document.getElementById("pruneBruteForce").checked = BruteForceGlobal.PRUNE_BF_ANALYSIS;
+    document.getElementById("includeDeadTilesBf").checked = BruteForceGlobal.INCLUDE_DEAD_TOP_TILES;
 
     document.getElementById("early5050").checked = SolverGlobal.EARLY_FIFTY_FIFTY_CHECKING;
     document.getElementById("useLTR").checked = SolverGlobal.CALCULATE_LONG_TERM_SAFETY;
@@ -491,6 +493,7 @@ function saveSettings() {
     settings.version = SETTINGS_VERSION;
     settings.pruneBruteForce = BruteForceGlobal.PRUNE_BF_ANALYSIS;
     settings.pruneGuesses = SolverGlobal.PRUNE_GUESSES;
+    settings.includeDeadTilesBf = BruteForceGlobal.INCLUDE_DEAD_TOP_TILES;
     settings.early5050 = SolverGlobal.EARLY_FIFTY_FIFTY_CHECKING;
     settings.useLTR = SolverGlobal.CALCULATE_LONG_TERM_SAFETY;
 
@@ -513,13 +516,16 @@ function loadSettings() {
 
     const settings = JSON.parse(settingsX);
 
-
     if (settings.pruneBruteForce != null) {
         BruteForceGlobal.PRUNE_BF_ANALYSIS = settings.pruneBruteForce;
     }
 
     if (settings.pruneGuesses != null) {
         SolverGlobal.PRUNE_GUESSES = settings.pruneGuesses;
+    }
+
+    if (settings.includeDeadTilesBf != null) {
+        BruteForceGlobal.INCLUDE_DEAD_TOP_TILES = settings.includeDeadTilesBf;
     }
 
     if (settings.early5050 != null) {
@@ -1137,8 +1143,16 @@ async function bulkRunNFEfficiency(runSeed, size, width, height, mines) {
 
     const rng = JSF(runSeed);  // create an RNG based on the seed
 
-    let startIndex = 0;
+    let topLeft = 0;
+    let topRight = width - 1;
+    let bottomLeft = width * (height - 1);
+    let bottomRight = width * height - 1;
+
     let gameType = "safe";
+
+    let startStrategy;
+    //startStrategy = [topLeft, topRight, bottomLeft, bottomRight];
+    startStrategy = [topLeft];
 
     while (played < size) {
 
@@ -1146,14 +1160,21 @@ async function bulkRunNFEfficiency(runSeed, size, width, height, mines) {
 
         const gameSeed = Math.round(rng() * Number.MAX_SAFE_INTEGER);
 
-        const game = new ServerGame(0, width, height, mines, startIndex, gameSeed, gameType);
+        const game = new ServerGame(0, width, height, mines, startStrategy[0], gameSeed, gameType);
 
         const board = new Board(0, width, height, mines, gameSeed, gameType);
 
-        let tile = game.getTile(startIndex);
+        // play the opening strategy
+        let revealedTiles;
+        for (let index of startStrategy) {
+            let tile = game.getTile(index);
+            revealedTiles = game.clickTile(tile);
+            applyResults(board, revealedTiles);  // this is in MinesweeperGame.js
 
-        let revealedTiles = game.clickTile(tile);
-        applyResults(board, revealedTiles);  // this is in MinesweeperGame.js
+            if (revealedTiles.header.status != IN_PLAY) {  // if won or lost nothing more to do
+                break;
+            }
+        }
 
         let loopCheck = 0;
         while (revealedTiles.header.status == IN_PLAY) {
@@ -1186,7 +1207,7 @@ async function bulkRunNFEfficiency(runSeed, size, width, height, mines) {
                             console.error("Seed: " + gameSeed + " CLEAR request received with zero safety!")
                         }
 
-                        tile = game.getTile(board.xy_to_index(action.x, action.y));
+                        let tile = game.getTile(board.xy_to_index(action.x, action.y));
 
                         revealedTiles = game.clickTile(tile);
                         //console.log(action.asText() + " clicked");
@@ -1224,18 +1245,22 @@ async function bulkRunNFEfficiency(runSeed, size, width, height, mines) {
             const errPercentage = (err * 100).toFixed(2);
 
             console.log("Seed " + gameSeed + " result " + revealedTiles.header.status + ", Total won " + won + "/" + played + " (" + winPercentage + "% +/- " + errPercentage + "%)");
-            console.log("Seed " + gameSeed + " result " + revealedTiles.header.status + ", Total won 100% " + won100 + "/" + played + " (" + winPercentage + "% +/- " + errPercentage + "%)");
+            console.log("Seed " + gameSeed + " result " + revealedTiles.header.status + ", Total won 100% " + won100 + "/" + played);
         }
     }
 
-    const winRate = won / played;
+    resultLine(won, played, "Total won");
+    resultLine(won100, played, "Total won 100%");
+
+    console.log("Bulk run finished in " + (Date.now() - startTime) + " milliseconds")
+}
+
+function resultLine(wins, played, text) {
+    const winRate = wins / played;
     const winPercentage = (winRate * 100).toFixed(2);
     const err = Math.sqrt(winRate * (1 - winRate) / played) * 1.9599;
     const errPercentage = (err * 100).toFixed(2);
-    console.log("Total won " + won + "/" + played + " (" + winPercentage + "% +/- " + errPercentage + "%)");
-    console.log("Total won 100% " + won100 + "/" + played + " (" + winPercentage + "% +/- " + errPercentage + "%)");
-
-    console.log("Bulk run finished in " + (Date.now() - startTime) + " milliseconds")
+    console.log(text + " " + wins + "/" + played + " (" + winPercentage + "% +/- " + errPercentage + "%)");
 }
 
 async function playAgain() {

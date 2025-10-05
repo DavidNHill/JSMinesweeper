@@ -898,7 +898,8 @@ class EfficiencyHelper {
             //console.log(tile.asText() + " has estimated 3BV safety of " + safety3BV);
 
             // store all the 100% safe 3BV
-            if (safety3BV == 1 && !tile.zeroPoison) {
+            //if (safety3BV == 1 && !tile.zeroPoison) {
+            if (safety3BV == 1) {
                 safe3BV.push(tile);
             }
 

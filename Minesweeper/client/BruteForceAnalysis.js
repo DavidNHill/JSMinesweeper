@@ -9,7 +9,8 @@ class BruteForceGlobal {
     static ANALYSIS_BFDA_THRESHOLD = 5000;               // number of solutions for the Brute force analysis to start when pressing "analyse"
     static BRUTE_FORCE_ANALYSIS_MAX_NODES = 100000000;   // Max number of nodes processed during brute force before we stop
     static BRUTE_FORCE_CYCLES_THRESHOLD = 75000000;      // Max number of cycles used to try and find the remaining solutions 
-    static PRUNE_BF_ANALYSIS = true;                     // Performance. Change to false to see the exact win rate for every living tile.
+    static PRUNE_BF_ANALYSIS = true;                     // Performance. Change to false to see the exact win rate for every living tile. Only stops prunning at the top node.
+    static INCLUDE_DEAD_TOP_TILES = false;               // Performance. Include top tiles which are dead.  Dead tiles at non-top locations in the tree are still ignored.
     static BRUTE_FORCE_ANALYSIS_TREE_DEPTH = 4;          // Depth of tree kept and displayed in the console after a successful brute force
 
     static INDENT = "................................................................................";
@@ -217,7 +218,7 @@ class BruteForceAnalysis {
                     }
                 }
             }
-            if (count > 1) {
+            if (count > 1 || BruteForceGlobal.INCLUDE_DEAD_TOP_TILES) {
                 const alive = new LivingLocation(i);   // alive is class 'LivingLocation'
                 alive.mineCount = mines;
                 alive.count = count;
@@ -226,7 +227,9 @@ class BruteForceAnalysis {
                 alive.maxSolutions = maxSolutions;
                 alive.zeroSolutions = valueCount[0];
                 living.push(alive);
-            } else {
+            }
+
+            if (count == 1) {
                 this.writeToConsole(BruteForceGlobal.allTiles[i].asText() + " is dead with value " + minValue);
                 this.deadTiles.push(BruteForceGlobal.allTiles[i]);   // store the dead tiles
             }
@@ -550,7 +553,13 @@ class Node {
             return this.getSolutionSize() - move.mineCount;
         }
 
-        var winningLines = this.getWinningLines(1, move, this.winningLines);
+        var winningLines;
+        if (BruteForceGlobal.PRUNE_BF_ANALYSIS) { // when pruning pass the current best winning lines
+            winningLines = this.getWinningLines(1, move, this.winningLines);           
+
+        } else {  // when not pruning passing zero forces the move to be calculated.  Branches below the first move are still pruned.
+            winningLines = this.getWinningLines(1, move, 0);
+        }
 
         if (winningLines > this.winningLines) {
             this.winningLines = winningLines;
@@ -579,7 +588,7 @@ class Node {
         let notMines = this.getSolutionSize() - move.mineCount;   // number of solutions (at this node) which don't have a mine at this location 
 
         // if the max possible winning lines is less than the current cutoff then no point doing the analysis
-        if (BruteForceGlobal.PRUNE_BF_ANALYSIS && (result + notMines <= cutoff)) {
+        if (result + notMines <= cutoff) {
             move.pruned = true;
             return result + notMines;
         }
@@ -658,7 +667,7 @@ class Node {
             notMines = notMines - child.getSolutionSize();  // reduce the number of not mines
 
             // if the max possible winning lines is less than the current cutoff then no point doing the analysis
-            if (BruteForceGlobal.PRUNE_BF_ANALYSIS && (result + notMines <= cutoff)) {
+            if (result + notMines <= cutoff) {
                 move.pruned = true;
                 return result + notMines;
             }
