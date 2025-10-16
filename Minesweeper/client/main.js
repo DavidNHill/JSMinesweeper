@@ -108,6 +108,7 @@ let isExpanded = false;
 let originalLeftBoard = 185;
 let originalTopHeight = 60
 let originalLeftMessage = 185;
+let tooltipOnLeft = false;
 
 let hasTouchScreen = false;
 let supportsInputDeviceCapabilities = false;
@@ -2747,18 +2748,24 @@ function followCursor(e) {
     const screenWidth = window.innerWidth;
     const tooltipWidth = tooltip.offsetWidth;
 
+    if (tooltipOnLeft) {
+        tooltipOnLeft = e.clientX - 2 * TILE_SIZE - tooltipWidth >= 0;
+    } else {
+        tooltipOnLeft = e.clientX + 2 * TILE_SIZE + tooltipWidth >= screenWidth;
+    }
+
     if (isExpanded) {
-        if (TILE_SIZE / 2 + e.clientX + tooltipWidth >= screenWidth) {
-            tooltip.style.left = (e.clientX - TILE_SIZE / 2 - tooltipWidth - 12) + 'px';
+        if (tooltipOnLeft) {
+            tooltip.style.left = (e.clientX - 2 * TILE_SIZE - 12 - tooltipWidth) + 'px';
         } else {
-            tooltip.style.left = (TILE_SIZE / 2 + e.clientX - 12) + 'px';
+            tooltip.style.left = (e.clientX + 2 * TILE_SIZE - 12) + 'px';
         }
         tooltip.style.top = (e.clientY - tooltip.offsetHeight / 2 - 5) + 'px';
     } else {
-        if (TILE_SIZE / 2 + e.clientX + tooltipWidth >= screenWidth) {
-            tooltip.style.left = (e.clientX - TILE_SIZE / 2 - tooltipWidth - 182) + 'px';
+        if (tooltipOnLeft) {
+            tooltip.style.left = (e.clientX - 2 * TILE_SIZE - 182 - tooltipWidth) + 'px';
         } else {
-            tooltip.style.left = (TILE_SIZE / 2 + e.clientX - 182) + 'px';
+            tooltip.style.left = (e.clientX + 2 * TILE_SIZE - 182) + 'px';
         }
         tooltip.style.top = (e.clientY - tooltip.offsetHeight / 2 - 70) + 'px';
     }
