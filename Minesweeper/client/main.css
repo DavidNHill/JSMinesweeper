@@ -22,6 +22,11 @@ body {
     border-width: 5px;
 }
 
+body.dark-mode {
+    background: #333333;
+    color: #ffffff;
+    border-color: #555555;
+}
 
 h1 {
     position: sticky;
@@ -33,6 +38,11 @@ h1 {
     padding: 0px;
     border-style: outset;
     border-width: 5px;
+}
+
+body.dark-mode h1 {
+    background: #333333;
+    border-color: #555555;
 }
 
 nav {
@@ -47,6 +57,11 @@ nav {
     padding-top: 5px;
     border-style: outset;
     border-width: 5px;
+}
+
+body.dark-mode nav {
+    background: #333333;
+    border-color: #555555;
 }
 
 /* Style the list inside the menu */
@@ -67,6 +82,11 @@ div.raised {
     border-width: 5px;
 }
 
+body.dark-mode div.raised {
+    background: #333333;
+    border-color: #555555;
+}
+
 div.hidden {
     display: none;
 }
@@ -75,6 +95,10 @@ div.hidden {
 section {
     padding: 0px;
     background-color: #ccc;
+}
+
+body.dark-mode section {
+    background-color: #333333;
 }
 
 /* the section holding the canvas */
@@ -89,6 +113,10 @@ div#board {
     /* border-width: 5px; */
 }
 
+body.dark-mode div#board {
+    background-color: #333333;
+    border-color: #555555;
+}
 
 /* the section holding the number of mines */
 div#display {
@@ -102,12 +130,21 @@ div#display {
     /* border-width: 5px; */
 }
 
+body.dark-mode div#display {
+    background-color: #333333;
+    border-color: #555555;
+}
 
 /* canvases which hold LED digits */
 canvas.led {
     background-color: black;
     border-style: inset;
     border-width: 4px;
+}
+
+body.dark-mode canvas.led {
+    background-color: #222222;
+    border-color: #555555;
 }
 
 button {
@@ -117,6 +154,14 @@ button {
     border-style: outset;
     border-color: #aaa;
     border-width: 6px;
+    background-color: #ccc;
+    color: #000;
+}
+
+body.dark-mode button {
+    border-color: #555555;
+    background-color: #444444;
+    color: #fff;
 }
 
 button.small {
@@ -125,8 +170,24 @@ button.small {
 }
 
 button:hover {
-    background-color: powderblue;
+    background-color: #ccddee;
     cursor: pointer;
+}
+
+body.dark-mode button:hover {
+    background-color: #445566;
+}
+
+input, select {
+    background-color: #fff;
+    color: #000;
+    border: 1px solid #ccc;
+}
+
+body.dark-mode input, body.dark-mode select {
+    background-color: #444444;
+    color: #fff;
+    border: 1px solid #555555;
 }
 
 .radioButtons {
@@ -200,6 +261,27 @@ button:hover {
     vertical-align: middle;
 }
 
+body.dark-mode .checkboxes label span,
+body.dark-mode select,
+body.dark-mode button {
+    color: #ffffff;
+}
+
+a {
+    color: rgb(26, 13, 171);
+}
+
+a:visited {
+    color: rgb(104, 29, 168);
+}
+
+body.dark-mode a {
+    color: rgb(126, 170, 255);
+}
+
+body.dark-mode a:visited {
+    color: rgb(209, 158, 250);
+}
 
 /* Tooltip container */
 .tooltip {
@@ -223,6 +305,11 @@ button:hover {
     /* Position the tooltip text - see examples below! */
     position: absolute;
     z-index: 1;
+}
+
+body.dark-mode .tooltip .tooltiptext {
+    background-color: rgba(51, 51, 51, 0.5);
+    color: #ffffff;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -259,6 +346,11 @@ button:hover {
     box-shadow: rgba(0, 0, 0, 0.6) 10px 10px 6px;
 }
 
+body.dark-mode .modal-content {
+    background-color: #333333;
+    border-color: #555555;
+}
+
 #propertiesHeader {
     padding: 10px;
     cursor: move;
@@ -271,4 +363,7 @@ button:hover {
     border-right-width: 0px;
 }
 
+body.dark-mode #propertiesHeader {
+    border-color: #555555;
+}
 

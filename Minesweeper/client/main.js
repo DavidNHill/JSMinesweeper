@@ -34,6 +34,7 @@ let ALWAYS_LOCK_MINE_COUNTER = false;
 let binomialCache;
 
 // holds the images
+let theme = "light";
 const images = [];
 let imagesLoaded = 0;
 const led_images = [];
@@ -1295,7 +1296,7 @@ async function playAgain() {
         placeAnalysisQuery();
 
         showMessage("Replay game requested");
-        document.getElementById("newGameSmiley").src = 'resources/images/face.svg';
+        document.getElementById("newGameSmiley").src = 'resources/images/' + theme + '/face.svg';
 
         if (!analysisMode && (autoPlayCheckBox.checked || docHardcore.checked)) {
             await startSolver();
@@ -1488,7 +1489,7 @@ async function newGameFromMBF(mbf) {
     updateMineCount(board.num_bombs);
 
     //showMessage("Game "  + width + "x" + height + "/" + mines + " created from MBF file");
-    document.getElementById("newGameSmiley").src = 'resources/images/face.svg';
+    document.getElementById("newGameSmiley").src = 'resources/images/' + theme + '/face.svg';
  
     if (!analysisMode && autoPlayCheckBox.checked && acceptGuessesCheckBox.checked) {
         await startSolver();
@@ -1681,7 +1682,7 @@ async function newBoardFromString(data, inflate, analyse) {
     lockMineCount.checked = true;
     buildMode.checked = false;
 
-    document.getElementById("newGameSmiley").src = 'resources/images/face.svg';
+    document.getElementById("newGameSmiley").src = 'resources/images/' + theme + '/face.svg';
 
     if (!analysisMode && autoPlayCheckBox.checked && acceptGuessesCheckBox.checked) {
         await startSolver();
@@ -1798,7 +1799,7 @@ async function newGame(width, height, mines, seed, analyse) {
     placeAnalysisQuery();
 
     showMessage("New game requested with width " + width + ", height " + height + " and " + mines + " mines.");
-    document.getElementById("newGameSmiley").src = 'resources/images/face.svg';
+    document.getElementById("newGameSmiley").src = 'resources/images/' + theme + '/face.svg';
 
     if (!analysisMode && analyse && autoPlayCheckBox.checked && acceptGuessesCheckBox.checked) {
         await startSolver();
@@ -1810,10 +1811,10 @@ function doToggleFlag() {
     //console.log("DoToggleFlag");
 
     if (leftClickFlag) {
-        document.getElementById("leftClickFlag").src = 'resources/images/flaggedWrong_thin.png';
+        document.getElementById("leftClickFlag").src = 'resources/images/' + theme + '/flag_grey.svg';
         leftClickFlag = false;
     } else {
-        document.getElementById("leftClickFlag").src = 'resources/images/flagged.png';
+        document.getElementById("leftClickFlag").src = 'resources/images/' + theme + '/flagged.svg';
         leftClickFlag = true;
     }
 
@@ -3378,10 +3379,10 @@ async function sendActionsMessage(message) {
         let efficiency;
         if (reply.header.status == "won") {
             efficiency = (100 * value3BV / actionsMade).toFixed(2) + "%";
-            document.getElementById("newGameSmiley").src = 'resources/images/face_win.svg';
+            document.getElementById("newGameSmiley").src = 'resources/images/' + theme + '/face_win.svg';
         } else {
             efficiency = (100 * solved3BV / actionsMade).toFixed(2) + "%";
-            document.getElementById("newGameSmiley").src = 'resources/images/face_lose.svg';
+            document.getElementById("newGameSmiley").src = 'resources/images/' + theme + '/face_lose.svg';
         }
 
         showMessage("The game has been " + reply.header.status + ". 3BV: " + solved3BV + "/" + value3BV + ",  Actions: " + actionsMade + ",  Efficiency: " + efficiency);
@@ -3590,14 +3591,14 @@ function dragElement(elmnt) {
 }
 
 // load an image 
-function load_image(image_path) {
+function load_image(image_path, callback) {
     const image = new Image();
     image.addEventListener('load', function () {
 
         console.log("An image has loaded: " + image_path);
         imagesLoaded++;
         if (imagesLoaded == images.length + led_images.length) {
-            startup();
+            callback();
         }
 
     }, false);
@@ -3605,31 +3606,35 @@ function load_image(image_path) {
     return image;
 }
 
-function load_images() {
+function load_images(callback) {
 
     console.log('Loading images...');
 
+    images.length = 0;
+    led_images.length = 0;
+    imagesLoaded = 0;
+
     for (let i = 0; i <= 8; i++) {
-        const file_path = "resources/images/" + i.toString() + ".png";
-        images.push(load_image(file_path));
-        const led_path = "resources/images/led" + i.toString() + ".svg";
-        led_images.push(load_image(led_path));
+        const file_path = "resources/images/" + theme + "/" + i.toString() + ".svg";
+        images.push(load_image(file_path, callback));
+        const led_path = "resources/images/" + theme + "/led" + i.toString() + ".svg";
+        led_images.push(load_image(led_path, callback));
     }
 
-    led_images.push(load_image("resources/images/led9.svg"));
-    led_images.push(load_image("resources/images/led-.svg"));
+    led_images.push(load_image("resources/images/" + theme + "/led9.svg", callback));
+    led_images.push(load_image("resources/images/" + theme + "/led-.svg", callback));
 
-    images.push(load_image("resources/images/bomb.png"));
-    images.push(load_image("resources/images/facingDown.png"));
-    images.push(load_image("resources/images/flagged.png"));
-    images.push(load_image("resources/images/flaggedWrong.png"));
-    images.push(load_image("resources/images/exploded.png"));
-    images.push(load_image("resources/images/skull.png"));
-    images.push(load_image("resources/images/start.png"));
+    images.push(load_image("resources/images/" + theme + "/bomb.svg", callback));
+    images.push(load_image("resources/images/" + theme + "/facingDown.svg", callback));
+    images.push(load_image("resources/images/" + theme + "/flagged.svg", callback));
+    images.push(load_image("resources/images/" + theme + "/flaggedWrong.svg", callback));
+    images.push(load_image("resources/images/" + theme + "/exploded.svg", callback));
+    images.push(load_image("resources/images/" + theme + "/skull.svg", callback));
+    images.push(load_image("resources/images/" + theme + "/start.svg", callback));
 
     for (let i = -7; i <= -1; i++) {
-        const file_path = "resources/images/" + i.toString() + ".png";
-        images.push(load_image(file_path));
+        const file_path = "resources/images/" + theme + "/" + i.toString() + ".svg";
+        images.push(load_image(file_path, callback));
     }
 
     console.log(images.length + ' Images Loaded');
@@ -3659,4 +3664,32 @@ function prefixMessage(text) {
         showMessage(text);
     }
     
+}
+
+function toggleDarkMode() {
+    document.getElementById('darkModeToggle').src = 'resources/images/' + theme + '.svg';
+
+    theme = (theme == "light") ? "dark" : "light";
+
+    document.body.classList.toggle('dark-mode');
+
+    document.getElementById("propertiesButton").src = 'resources/images/' + theme + '/bomb.svg';
+
+    if (leftClickFlag) {
+        document.getElementById("leftClickFlag").src = 'resources/images/' + theme + '/flagged.svg';
+    } else {
+        document.getElementById("leftClickFlag").src = 'resources/images/' + theme + '/flag_grey.svg';
+    }
+
+    if (!board.isGameover()) {
+        document.getElementById("newGameSmiley").src = 'resources/images/' + theme + '/face.svg';
+    } else if (board.won) {
+        document.getElementById("newGameSmiley").src = 'resources/images/' + theme + '/face_win.svg';
+    } else {
+        document.getElementById("newGameSmiley").src = 'resources/images/' + theme + '/face_lose.svg';
+    }
+
+    images.length = 0;
+    led_images.length = 0;
+    load_images(() => changeTileSize(true));
 }
