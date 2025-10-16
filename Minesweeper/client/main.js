@@ -65,6 +65,7 @@ const tooltip = document.getElementById('tooltip');
 const reductionCheckBox = document.getElementById("reduction");
 const autoPlayCheckBox = document.getElementById("autoplay");
 const showHintsCheckBox = document.getElementById("showhints");
+const showProbabilitiesCheckbox = document.getElementById("showprobabilities");
 const acceptGuessesCheckBox = document.getElementById("acceptguesses");
 const seedText = document.getElementById("seed");
 const gameTypeSafe = document.getElementById("gameTypeSafe");
@@ -451,10 +452,11 @@ function propertiesClose() {
         localStorage.removeItem("settings");
     }
 
-    if (!analysisMode && showHintsCheckBox.checked) {
+    if (!board.isGameover() && !analysisMode && (showHintsCheckBox.checked || showProbabilitiesCheckbox.checked)) {
         doAnalysis(false)
     } else {
         renderHints([]);
+        justPressedAnalyse = false;
     }
 
 }
@@ -800,18 +802,18 @@ function setPageTitle() {
 }
 
 // render an array of tiles to the canvas
-function renderHints(hints, otherActions, drawOverlay) {
-
-    if (drawOverlay == null) {
-        drawOverlay = (docOverlay.value != "none")
-    }
+function renderHints(hints, otherActions, manual) {
 
     //console.log(hints.length + " hints to render");
-    //ctxHints.clearRect(0, 0, canvasHints.width, canvasHints.height);
-    ctxHints.reset();
+    ctxHints.clearRect(0, 0, canvasHints.width, canvasHints.height);
+    // ctxHints.reset(); // this is broken on Safari
 
     if (hints == null) {
         return;
+    }
+
+    for (let tile of board.tiles) {
+        tile.colored = false;
     }
 
     let firstGuess = 0;  // used to identify the first (best) guess, subsequent guesses are just for info 
@@ -821,12 +823,17 @@ function renderHints(hints, otherActions, drawOverlay) {
 
         if (hint.action == ACTION_CHORD) {
             ctxHints.fillStyle = "#00FF00";
+            firstGuess = 2;
         } else if (hint.prob == 0) {   // mine
             ctxHints.fillStyle = "#FF0000";
         } else if (hint.prob == 1) {  // safe
             ctxHints.fillStyle = "#00FF00";
+            firstGuess = 2;
         } else if (hint.dead) {  // uncertain but dead
             ctxHints.fillStyle = "black";
+            if (firstGuess == 0) {
+                firstGuess = 1;
+            }
         } else {  //uncertain
             ctxHints.fillStyle = "orange";
             if (firstGuess == 0) {
@@ -844,19 +851,42 @@ function renderHints(hints, otherActions, drawOverlay) {
             firstGuess = 2;
         }
 
+        board.getTileXY(hint.x, hint.y).colored = true;
+    }
+
+    ctxHints.globalAlpha = 1;
+
+    if (otherActions != null) {
+        // these are from the efficiency play style and are the known moves which haven't been made
+        for (let action of otherActions) {
+            if (action.action == ACTION_CLEAR) {
+                ctxHints.fillStyle = "#00FF00";
+            } else {
+                ctxHints.fillStyle = "#FF0000";
+            }
+            board.getTileXY(action.x, action.y).colored = true;
+            ctxHints.fillRect((action.x + 0.35) * TILE_SIZE, (action.y + 0.35) * TILE_SIZE, 0.3 * TILE_SIZE, 0.3 * TILE_SIZE);
+        }
     }
 
      // put percentage over the tile 
-    if (drawOverlay) {
+    if (manual || showProbabilitiesCheckbox.checked) {
 
-        const fontSize = Math.max(6, Math.floor(TILE_SIZE * 0.6));
-        ctxHints.font = `${fontSize}px serif`;
+        const fontSize = Math.max(6, Math.floor(TILE_SIZE * 0.50));
+        ctxHints.font = `700 ${fontSize}px "Open Sans", sans-serif`;
 
-        ctxHints.globalAlpha = 1;
-        ctxHints.fillStyle = "black";
         for (let tile of board.tiles) {
             if (tile.getHasHint() && tile.isCovered() && !tile.isFlagged() && tile.probability != null) {
-                if (!showHintsCheckBox.checked || (tile.probability != 1 && tile.probability != 0)) {  // show the percentage unless we've already colour coded it
+                if (!tile.colored || (tile.probability != 1 && tile.probability != 0)) {  // show the percentage unless we've already colour coded it
+                    if (tile.colored || !tile.isSolverFoundBomb() && !tile.onEdge || !manual && !showHintsCheckBox.checked) {
+                        ctxHints.fillStyle = "rgb(136, 136, 136)";
+                    } else if (tile.probability < 0.15) {
+                        ctxHints.fillStyle = "rgb(221, 0, 0)";
+                    } else if (tile.probability > 0.85) {
+                        ctxHints.fillStyle = "rgb(0, 102, 0)";
+                    } else {
+                        ctxHints.fillStyle = "rgb(170, 85, 0)";
+                    }
 
                     let value;
                     if (docOverlay.value == "safety") {
@@ -868,8 +898,10 @@ function renderHints(hints, otherActions, drawOverlay) {
                     }
 
                     let value1;
-                    if (value < 9.95) {
-                        value1 = value.toFixed(1);
+                    if (value > 0 && value < 1) {
+                        value1 = "1";
+                    } else if (value > 99 && value < 100) {
+                        value1 = "99";
                     } else {
                         value1 = value.toFixed(0);
                     }
@@ -881,22 +913,6 @@ function renderHints(hints, otherActions, drawOverlay) {
                 }
             }
         }
-    }
-
-
-    if (otherActions == null) {
-        return;
-    }
-
-    ctxHints.globalAlpha = 1;
-    // these are from the efficiency play style and are the known moves which haven't been made
-    for (let action of otherActions) {
-        if (action.action == ACTION_CLEAR) {
-            ctxHints.fillStyle = "#00FF00";
-        } else {
-            ctxHints.fillStyle = "#FF0000";
-        }
-        ctxHints.fillRect((action.x + 0.35) * TILE_SIZE, (action.y + 0.35) * TILE_SIZE, 0.3 * TILE_SIZE, 0.3 * TILE_SIZE);
     }
 
 }
@@ -1820,10 +1836,11 @@ function doToggleFlag() {
 }
 
 async function updateHints() {
-    if (!board.isGameover() && !analysisMode && showHintsCheckBox.checked) {
+    if (!board.isGameover() && !analysisMode && (showHintsCheckBox.checked || showProbabilitiesCheckbox.checked)) {
         await doAnalysis(false);
     } else {
         renderHints([]);
+        justPressedAnalyse = false;
     }
 }
 
@@ -1839,10 +1856,11 @@ async function changeTileSize(analyse) {
 
     renderTiles(board.tiles); // draw the board
 
-    if (!board.isGameover() && !analysisMode && analyse && showHintsCheckBox.checked) {
+    if (!board.isGameover() && !analysisMode && analyse && (showHintsCheckBox.checked || showProbabilitiesCheckbox.checked)) {
         await doAnalysis(false);
     } else {
         renderHints([]);
+        justPressedAnalyse = false;
     }
 
 }
@@ -2505,10 +2523,13 @@ async function sleep(msec) {
     return new Promise(resolve => setTimeout(resolve, msec));
 }
 
-async function doAnalysis(fullBFDA) {
+async function doAnalysis(manual) {
 
     if (canvasLocked) {
         console.log("Already analysing... request rejected");
+        return;
+    } else if (!manual && !showHintsCheckBox.checked && !showProbabilitiesCheckbox.checked) {
+        console.log("Analysis not required");
         return;
     } else {
         console.log("Doing analysis");
@@ -2558,7 +2579,7 @@ async function doAnalysis(fullBFDA) {
 
         options.fullProbability = true;
         options.guessPruning = guessAnalysisPruning;
-        options.fullBFDA = fullBFDA;
+        options.fullBFDA = manual;
         options.hardcore = docHardcore.checked;
 
         if (docOverlay.value == "zero") {
@@ -2568,9 +2589,14 @@ async function doAnalysis(fullBFDA) {
         const solve = await solver(board, options);  // look for solutions
         const hints = solve.actions;
 
-        justPressedAnalyse = true;
+        justPressedAnalyse = manual;
 
-        window.requestAnimationFrame(() => renderHints(hints, solve.other));
+        if (manual || showHintsCheckBox.checked) {
+            window.requestAnimationFrame(() => renderHints(hints, solve.other, manual));
+        } else {
+            window.requestAnimationFrame(() => renderHints([], [], manual));
+            showMessage("Press the 'Analyse' button to see the solver's suggested move.");
+        }
 
         // show the next tile to be clicked if in replay mode
         if (analysisMode && replayMode) {
@@ -2580,7 +2606,7 @@ async function doAnalysis(fullBFDA) {
  
     } else {
         showMessage("The board is in an invalid state");
-        window.requestAnimationFrame(() => renderHints([], []));
+        window.requestAnimationFrame(() => renderHints([], [], manual));
     }
 
     // by delaying re-enabling we absorb any secondary clicking of the button / hot key
@@ -3408,7 +3434,7 @@ async function handleSolver(solverStart, headerId) {
     }
 
     // do we want to show hints
-    if (showHintsCheckBox.checked || autoPlayCheckBox.checked || assistedPlayHints.length != 0 || docOverlay.value != "none" || docHardcore.checked) {
+    if (showHintsCheckBox.checked || autoPlayCheckBox.checked || assistedPlayHints.length != 0 || showProbabilitiesCheckbox.checked || docHardcore.checked) {
 
         document.getElementById("canvas").style.cursor = "wait";
 
