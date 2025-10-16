@@ -16,6 +16,7 @@ const PLAY_STYLE_FLAGS = 1;
 const PLAY_STYLE_NOFLAGS = 2;
 const PLAY_STYLE_EFFICIENCY = 3;
 const PLAY_STYLE_NOFLAGS_EFFICIENCY = 4;
+const PLAY_STYLE_RISKY_EFFICIENCY = 5;
 
 class SolverGlobal {
 
@@ -100,7 +101,7 @@ async function solver(board, options) {
         const actions = await doSolve(board, options);  // look for solutions
         //console.log(actions);
 
-        if (options.playStyle == PLAY_STYLE_EFFICIENCY || options.playStyle == PLAY_STYLE_NOFLAGS_EFFICIENCY) {
+        if (options.playStyle == PLAY_STYLE_EFFICIENCY || options.playStyle == PLAY_STYLE_NOFLAGS_EFFICIENCY || options.playStyle == PLAY_STYLE_RISKY_EFFICIENCY) {
             cleanActions = actions;
  
             // find all the other actions which could be played
@@ -248,7 +249,7 @@ async function solver(board, options) {
         let result = [];
 
         // if we are in flagged mode then flag any mines currently unflagged
-        if (options.playStyle != PLAY_STYLE_EFFICIENCY && options.playStyle != PLAY_STYLE_NOFLAGS_EFFICIENCY) {
+        if (options.playStyle != PLAY_STYLE_EFFICIENCY && options.playStyle != PLAY_STYLE_NOFLAGS_EFFICIENCY && options.playStyle != PLAY_STYLE_RISKY_EFFICIENCY) {
             for (let tile of unflaggedMines) {
                 result.push(new Action(tile.getX(), tile.getY(), 0, ACTION_FLAG));
             }
@@ -282,7 +283,7 @@ async function solver(board, options) {
         const oldMineCount = result.length;
 
         // add any trivial moves we've found
-        if (options.fullProbability || options.playStyle == PLAY_STYLE_EFFICIENCY || options.playStyle == PLAY_STYLE_NOFLAGS_EFFICIENCY) {
+        if (options.fullProbability || options.playStyle == PLAY_STYLE_EFFICIENCY || options.playStyle == PLAY_STYLE_NOFLAGS_EFFICIENCY || options.playStyle == PLAY_STYLE_RISKY_EFFICIENCY) {
             writeToConsole("Skipping trivial analysis since Probability Engine analysis is required")
         } else {
             result.push(...trivial_actions(board, witnesses));
