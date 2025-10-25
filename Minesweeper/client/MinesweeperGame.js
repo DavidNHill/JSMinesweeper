@@ -100,6 +100,24 @@ function createGameFromMFB(blob, startIndex) {
 }
 
 // called from main.js
+// Mines array is width, height, mines, mine x, mine y, ....
+// revealed array is tile x, tile y, tile value, ...
+// flags array is tile x, tile y, ...
+function createGameFromPosition(mines, revealed, flags, startIndex) {
+
+	const reply = createGameFromArray(mines, startIndex);
+
+	const game = getGame(reply.id);
+
+	game.placeFlagsUsingArray(flags);
+
+	game.revealTilesUsingArray(revealed);
+
+	return reply;
+
+}
+
+// called from main.js
 // Array is width, height, mines, mine x, mine y, ....
 function createGameFromArray(array, startIndex) {
 
@@ -679,7 +697,7 @@ class ServerGame {
 
 		let index = 3;
 
-		// set the tiles in the mbf to mines
+		// set the tiles in the game to be mines
 		while (index < array.length) {
 			const i = array[index + 1] * this.width + array[index];
 
@@ -693,8 +711,62 @@ class ServerGame {
 			index = index + 2;
 		}
 
+		// Declare the first tile which isn't a mine the start tile
+		for (let i = 0; i < this.tiles.length; i++) {
+			const tile = this.tiles[i];
+			if (!tile.is_bomb) {
+				this.startIndex = i;
+				break;
+			}
+		}
+
 		this.value3BV = this.calculate3BV();
 		this.url = this.getFormatMBF();
+
+	}
+
+	// place the flags on the board when the game is loaded from a partially played game
+	placeFlagsUsingArray(array) {
+
+		console.log(array);
+
+		let index = 0;
+
+		// set the tiles in the game to be flagged
+		while (index < array.length) {
+			const i = array[index + 1] * this.width + array[index];
+
+			const tile = this.tiles[i];
+
+			this.actions++;
+			tile.toggleFlag();
+
+			index = index + 2;
+		}
+
+	}
+
+	// reveal tiles on the board when the game is loaded from a partially played game
+	revealTilesUsingArray(array) {
+
+		let index = 0;
+
+		// set the tiles in the game to be revealed
+		while (index < array.length) {
+			const i = array[index + 1] * this.width + array[index];
+
+			const tile = this.tiles[i];
+
+			tile.setNotCovered();
+			this.tilesLeft--;
+
+			if (tile.is3BV) {
+				this.cleared3BV++;
+				this.actions++;
+			}
+
+			index = index + 3;
+		}
 
 	}
 

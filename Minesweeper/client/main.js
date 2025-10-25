@@ -139,6 +139,7 @@ let previousAnalysisQuery = "";
 let justPressedAnalyse = false;
 let dragging = false;  //whether we are dragging the cursor
 let dragTile;          // the last tile dragged over
+let dragButton;         // the button being pressed which dragging
 let hoverTile;         // tile the mouse last moved over
 let analysing = false;  // try and prevent the analyser running twice if pressed more than once
 
@@ -1395,11 +1396,11 @@ function stringToArray(data) {
 
     const width = parseInt(size[0]);
     const height = parseInt(size[1]);
-    const mines = parseInt(size[2]);
+    const mineCount = parseInt(size[2]);
 
-    console.log("width " + width + " height " + height + " mines " + mines);
+    console.log("width " + width + " height " + height + " mines " + mineCount);
 
-    if (width < 1 || height < 1 || mines < 1) {
+    if (width < 1 || height < 1 || mineCount < 1) {
         console.log("Invalid dimensions for game");
         return null;
     }
@@ -1409,11 +1410,13 @@ function stringToArray(data) {
         return null;
     }
 
-    let array = [];
+    let mines = [];
+    let flags = [];
+    let revealed = [];
 
-    array.push(width);
-    array.push(height);
-    array.push(mines);
+    mines.push(width);
+    mines.push(height);
+    mines.push(mineCount);
 
     let minesFound = 0;
  
@@ -1424,21 +1427,54 @@ function stringToArray(data) {
 
             const char = line.charAt(x);
 
+            if (char == "F") {
+                flags.push(x);
+                flags.push(y);
+            }
+
             if (char == "F" || char == "M" || char == "?") {
                 minesFound++;
-                array.push(x);
-                array.push(y);
-            }
+                mines.push(x);
+                mines.push(y);
+
+            } else if (char != "H") {
+                revealed.push(x);
+                revealed.push(y);
+                if (char == "0") {
+                    revealed.push(0);
+                } else if (char == "1") {
+                    revealed.push(1);
+                } else if (char == "2") {
+                    revealed.push(2);
+                } else if (char == "3") {
+                    revealed.push(3);
+                } else if (char == "4") {
+                    revealed.push(4);
+                } else if (char == "5") {
+                    revealed.push(5);
+                } else if (char == "6") {
+                    revealed.push(6);
+                } else if (char == "7") {
+                    revealed.push(7);
+                } else if (char == "8") {
+                    revealed.push(8);
+                } else {
+                    console.log("Unexpected value for revealed file at (" + x + "," + y + ") : " + char);
+                    return null;
+                }
+            } 
         }
     }
-    if (minesFound != mines) {
-        console.log("Board has incorrect number of mines. board=" + mines + ", found=" + minesFound);
+    if (minesFound != mineCount) {
+        console.log("Board has incorrect number of mines. board=" + mineCount + ", found=" + minesFound);
         return null;
     }
 
-    console.log(array);
+    console.log(mines);
+    console.log(flags);
+    console.log(revealed);
 
-    return array;
+    return [ mines, flags, revealed ];
 
 }
 
@@ -1496,18 +1532,24 @@ async function newGameFromMBF(mbf) {
  
 }
 
-async function newGameFromArray(array) {
+async function newGameFromArray(arrays) {
 
     // let the server know the game is over
     if (board != null) {
         callKillGame(board.getID());
     }
 
-    const width = array[0];
-    const height = array[1];
-    const mines = array[2];
+    const mines = arrays[0];
+    const flags = arrays[1];
+    const revealed = arrays[2];
 
-    const reply = createGameFromArray(array, 0);  // this function is in MinesweeperGame.js
+    const width = mines[0];
+    const height = mines[1];
+    const mineCount = mines[2];
+
+    //const reply = createGameFromArray(mines, 0);  // this function is in MinesweeperGame.js
+
+    const reply = createGameFromPosition(mines, revealed, flags, 0);  // this function is in MinesweeperGame.js
 
     const id = reply.id;
 
@@ -1518,7 +1560,35 @@ async function newGameFromArray(array) {
         gameType = "safe";
     }
 
-    board = new Board(id, width, height, mines, "", gameType);
+    board = new Board(id, width, height, mineCount, "", gameType);
+
+    let index = 0;
+
+    // set the tiles in the board to be flagged
+    while (index < flags.length) {
+
+        const x = flags[index];
+        const y = flags[index + 1];
+        const tile = board.getTileXY(x, y);
+
+        tile.toggleFlag();
+        board.bombs_left--;
+
+        index = index + 2;
+    }
+
+    // set the tiles in the board to be revealed
+    index = 0;
+    while (index < revealed.length) {
+
+        const x = revealed[index];
+        const y = revealed[index + 1];
+        const tile = board.getTileXY(x, y);
+
+        tile.setValue(revealed[index + 2]);  
+
+        index = index + 3;
+    }
 
     setPageTitle();
 
@@ -1527,7 +1597,7 @@ async function newGameFromArray(array) {
 
     await changeTileSize(true);
 
-    updateMineCount(board.num_bombs);
+    updateMineCount(board.bombs_left);
 
     //showMessage("Game "  + width + "x" + height + "/" + mines + " created from MBF file");
     document.getElementById("newGameSmiley").src = 'resources/images/face.svg';
@@ -1538,6 +1608,75 @@ async function newGameFromArray(array) {
 
 }
 
+async function newBoardFromBlob(blob) {
+    const mbf = await blob.arrayBuffer();
+    await newBoardFromMBF(mbf);
+    showMessage("Board " + board.width + "x" + board.height + "/" + board.num_bombs + " created from MBF file " + blob.name);
+}
+
+async function newBoardFromMBF(mbf) {
+
+    const view = new Uint8Array(mbf);
+
+    console.log(...view);
+
+    const width = view[0];
+    const height = view[1];
+    const mines = view[2] * 256 + view[3];
+
+    const zeroBoard = document.getElementById('buildZero').checked;
+
+    const newBoard = new Board(1, width, height, mines, "", "safe");
+    if (zeroBoard) {
+        newBoard.setAllZero();
+    }
+
+    let index = 4;
+
+    // set the tiles in the mbf to mines
+    while (index < view.length) {
+        const x = view[index];
+        const y = view[index + 1];
+
+        const tile = newBoard.getTileXY(x, y);
+
+        //console.log("Adding flag at " + tile.asText());
+        tile.toggleFlag();
+        newBoard.bombs_left--;
+
+        for (let adjTile of newBoard.getAdjacent(tile)) {
+            adjTile.setValueOnly(adjTile.getValue() + 1);
+        }
+
+        index = index + 2;
+    }
+
+    // switch to the board
+    board = newBoard;
+
+    document.getElementById("canvas").style.cursor = "default";
+    canvasLocked = false;  // just in case it was still locked (after an error for example)
+
+    // this redraws the board
+    await changeTileSize(false);
+
+    updateMineCount(board.bombs_left);
+
+    replayMode = false;
+    replayData = null;
+
+    setPageTitle();
+
+    lockMineCount.checked = true;
+    buildMode.checked = false;
+
+    document.getElementById("newGameSmiley").src = 'resources/images/face.svg';
+
+    if (!analysisMode && autoPlayCheckBox.checked && acceptGuessesCheckBox.checked) {
+        await startSolver();
+    }
+
+}
 
 async function newBoardFromFile(file) {
 
@@ -1549,19 +1688,16 @@ async function newBoardFromFile(file) {
             await newBoardFromString(e.target.result, false, true);
             showMessage("Position loaded from file " + file.name);
         } else {
-            const array = stringToArray(e.target.result);
-            if (array == null) {
+            const arrays = stringToArray(e.target.result);
+            if (arrays == null) {
                 showMessage("File " + file.name + " doesn't contain data for a whole board");
                 return;
             } else {
-                newGameFromArray(array);
+                newGameFromArray(arrays);
                 showMessage("Game " + board.width + "x" + board.height + "/" + board.num_bombs + " created from mine positions extracted from file " + file.name);
             }
         }
- 
-        //lockMineCount.checked = true;
-        //buildMode.checked = false;
- 
+
         checkBoard();
 
     };
@@ -1610,7 +1746,7 @@ async function newBoardFromString(data, inflate, analyse) {
             const char = line.charAt(x);
             const tile = newBoard.getTileXY(x, y);
 
-            if (char == "F" || char == "M") {
+            if (char == "F") {
                 tile.toggleFlag();
                 newBoard.bombs_left--;
                 tile.inflate = true;
@@ -2708,21 +2844,29 @@ function followCursor(e) {
     if (dragging && analysisMode) {
 
         const tile = hoverTile;
+        let render;
 
         if (!tile.isEqual(dragTile)) {
 
             dragTile = tile;  // remember the latest tile
 
             // not covered or flagged
-            if (tile.isCovered() && !tile.isFlagged()) {
-                const flagCount = board.adjacentFoundMineCount(tile);
-                tile.setValue(flagCount);
-            } else {
-                tile.setCovered(true);
+            if (dragButton == 1) {  // Left button
+                if (tile.isCovered() && !tile.isFlagged()) {
+                    const flagCount = board.adjacentFoundMineCount(tile);
+                    tile.setValue(flagCount);
+                } else {
+                    tile.setCovered(true);
+                }
+
+                render = [tile];
+
+            } else if (dragButton == 3) {  // right button
+                render = analysis_toggle_flag(tile);
             }
 
             // update the graphical board
-            window.requestAnimationFrame(() => renderTiles([tile]));
+            window.requestAnimationFrame(() => renderTiles(render));
         }
 
     }
@@ -2766,7 +2910,8 @@ function followCursor(e) {
 }
 
 function mouseUpEvent(e) {
-    if (dragging && e.which == 1) {
+    // e.which is the button being held
+    if (dragging) {
         console.log("Dragging stopped due to  mouse up event");
         dragging = false;
     }
@@ -2844,6 +2989,7 @@ function on_click(event) {
             // allow for dragging and remember the tile we just changed
             dragging = true;
             dragTile = tile;
+            dragButton = 1;
 
             if (tile.isCovered()) {
                 const flagCount = board.adjacentFoundMineCount(tile);
@@ -2858,6 +3004,10 @@ function on_click(event) {
 
             // toggle the flag and return the tiles which need to be redisplayed
             tiles = analysis_toggle_flag(tile);
+
+            dragging = true;
+            dragTile = tile;
+            dragButton = 3;
 
             console.log("Number of mines " + board.num_bombs + ",  mines left to find " + board.bombs_left);
 
@@ -3188,6 +3338,9 @@ async function dropHandler(ev) {
                     if (!analysisMode) {
                         newGameFromBlob(file);
                         break; // only process the first one
+                    } else {
+                        newBoardFromBlob(file)
+                        break;
                     }
                 } else if (file.name.endsWith(".msor")) {
                     loadReplayData(file);

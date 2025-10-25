@@ -527,8 +527,11 @@ class Board {
 				if (tile.isFlagged()) {
 					data = data + "F";
 
-				} else if (tile.isCovered() || tile.isBomb()) {
+				} else if (tile.isCovered() && !tile.isBomb()) {
 					data = data + "H";
+
+				} else if (tile.isBomb()) {
+					data = data + "?";
 
 				} else {
 					data = data + tile.getValue();
