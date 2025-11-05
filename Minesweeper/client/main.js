@@ -40,6 +40,12 @@ const led_images = [];
 
 let canvasLocked = false;   // we need to lock the canvas if we are auto playing to prevent multiple threads playing the same game
 
+class KeyBind {
+    static LEFT_CLICK_KEY = 'e';                 // Pressing this key in play mode acts the same as the left mouse button
+    static RIGHT_CLICK_KEY = 'w';                // Pressing this key in play mode acts the same as the right mouse button
+    static NEW_GAME = ' ';                       // Pressing this key in play mode when the game is completed starts a new game
+}
+
 const canvas = document.getElementById('myCanvas');
 const ctx = canvas.getContext('2d');
 
@@ -216,11 +222,6 @@ async function startup() {
 
     const start = urlParams.get('start');
 
-    //if (urlParams.has("nopruning")) {
-    //   console.log("WARNING: The Analyse button has Pruning turned off - pruning remains for all other solver calls");
-    //    guessAnalysisPruning = false;
-    //}
-
     const boardSize = urlParams.get('board');
 
     let width = 30;
@@ -275,7 +276,7 @@ async function startup() {
     docMinesLeft.addEventListener('wheel', (event) => on_mouseWheel_minesLeft(event));
 
     // add some hot key 
-    document.addEventListener('keyup', event => { keyPressedEvent(event) });
+    document.addEventListener('keydown', event => { onKeyDownEvent(event) });
 
     // make the properties div draggable
     dragElement(propertiesPanel);
@@ -2127,7 +2128,7 @@ function browserResized() {
 
 }
 
-function keyPressedEvent(e) {
+function onKeyDownEvent(e) {
 
     //console.log("Key pressed: " + e.key);
     let newValue = null;
@@ -2190,9 +2191,27 @@ function keyPressedEvent(e) {
                 replayInterrupt = true;
             }
         }
-    } else {
-        if (e.key == ' ' && board.isGameover()) {
+    } else {  // play mode
+
+        if (e.key == KeyBind.NEW_GAME && board.isGameover()) {
             apply();  // this is in the index.html file
+
+        } else if (e.key == KeyBind.RIGHT_CLICK_KEY || e.key == KeyBind.LEFT_CLICK_KEY) {
+            if (hoverTile != null) {
+                const action = {};
+                action.col = hoverTile.x;
+                action.row = hoverTile.y;
+
+                if (e.key == KeyBind.RIGHT_CLICK_KEY) {
+                    action.which = 3;
+                } else {
+                    action.which = 1;
+                }
+
+                clickAction(action);
+            }
+
+
         }
     }
 
@@ -2912,7 +2931,7 @@ function followCursor(e) {
 function mouseUpEvent(e) {
     // e.which is the button being held
     if (dragging) {
-        console.log("Dragging stopped due to  mouse up event");
+        //console.log("Dragging stopped due to  mouse up event");
         dragging = false;
     }
 }
@@ -2930,16 +2949,28 @@ function on_mouseLeave(e) {
     tooltip.style.display = "none";
 
     if (dragging) {
-        console.log("Dragging stopped due to mouse off canvas");
+        //console.log("Dragging stopped due to mouse off canvas");
         dragging = false;
     }
 
 }
 
-// stuff to do when we click on the board
+// mouse button clicked on the board
 function on_click(event) {
 
     //console.log("Click event at X=" + event.offsetX + ", Y=" + event.offsetY);
+
+    const action = {};
+    action.row = Math.floor(event.offsetY / TILE_SIZE);
+    action.col = Math.floor(event.offsetX / TILE_SIZE);
+    action.which = event.which;
+
+    clickAction(action);
+
+}
+
+// stuff to do when we click on the board
+function clickAction(action) {
 
     if (board.isGameover()) {
         console.log("The game is over - no action to take");
@@ -2956,22 +2987,22 @@ function on_click(event) {
         return;
     }
 
-    const row = Math.floor(event.offsetY / TILE_SIZE);
-    const col = Math.floor(event.offsetX / TILE_SIZE);
+    //const row = Math.floor(event.offsetY / TILE_SIZE);
+    //const col = Math.floor(event.offsetX / TILE_SIZE);
 
     //console.log("Resolved to Col=" + col + ", row=" + row);
 
     let message;
 
-    if (row >= board.height || row < 0 || col >= board.width || col < 0) {
+    if (action.row >= board.height || action.row < 0 || action.col >= board.width || action.col < 0) {
         console.log("Click outside of game boundaries!!");
         return;
 
     } else if (analysisMode) {  // analysis mode
 
-        const button = event.which
+        const button = action.which;
 
-        const tile = board.getTileXY(col, row);
+        const tile = board.getTileXY(action.col, action.row);
 
         let tiles = [];
 
@@ -3020,9 +3051,9 @@ function on_click(event) {
         window.requestAnimationFrame(() => renderTiles(tiles));
 
     } else {  // play mode
-        const button = event.which
+        const button = action.which
 
-        const tile = board.getTileXY(col, row);
+        const tile = board.getTileXY(action.col, action.row);
 
         if (button == 1 && !leftClickFlag) {   // left mouse button and not left click flag
 
@@ -3081,7 +3112,7 @@ function on_click(event) {
                     }
 
 
-                    message = { "header": board.getMessageHeader(), "actions": [{ "index": board.xy_to_index(col, row), "action": 3 }] }; //chord
+                    message = { "header": board.getMessageHeader(), "actions": [{ "index": board.xy_to_index(action.col, action.row), "action": 3 }] }; //chord
                 } else {
                     console.log("Tile is not able to be chorded - no action to take");
                     return;
@@ -3105,7 +3136,7 @@ function on_click(event) {
                     return;
                 }
 
-                message = { "header": board.getMessageHeader(), "actions": [{ "index": board.xy_to_index(col, row), "action": 1 }] }; // click
+                message = { "header": board.getMessageHeader(), "actions": [{ "index": board.xy_to_index(action.col, action.row), "action": 1 }] }; // click
             }
 
         } else if (button == 3 || leftClickFlag) {  // right mouse button or left click flag
@@ -3118,7 +3149,7 @@ function on_click(event) {
                 console.log("Can't flag until the game has started!");
                 return;
             } else {
-                message = { "header": board.getMessageHeader(), "actions": [{ "index": board.xy_to_index(col, row), "action": 2 }] };
+                message = { "header": board.getMessageHeader(), "actions": [{ "index": board.xy_to_index(action.col, action.row), "action": 2 }] };
             }
 
         } else {

@@ -8,6 +8,9 @@ class ProbabilityEngine {
 
     static SMALL_COMBINATIONS = [[1], [1, 1], [1, 2, 1], [1, 3, 3, 1], [1, 4, 6, 4, 1], [1, 5, 10, 10, 5, 1], [1, 6, 15, 20, 15, 6, 1], [1, 7, 21, 35, 35, 21, 7, 1], [1, 8, 28, 56, 70, 56, 28, 8, 1]];
 
+    static LOW_SAFETY = 0.00000001;
+    static HIGH_SAFETY = 1 - ProbabilityEngine.LOW_SAFETY;
+
 	constructor(board, allWitnesses, allWitnessed, squaresLeft, minesLeft, options) {
 
         this.board = board;
@@ -1110,7 +1113,7 @@ class ProbabilityEngine {
         // there are less ways to place the mines if we know one of the tiles doesn't contain a mine
         const modifiedTilesCount = newBox.tiles.length - newBox.emptyTiles;
 
-        const combination = SolutionCounter.SMALL_COMBINATIONS[modifiedTilesCount][mines];
+        const combination = ProbabilityEngine.SMALL_COMBINATIONS[modifiedTilesCount][mines];
         //const combination = ProbabilityEngine.SMALL_COMBINATIONS[newBox.tiles.length][mines];
         const bigCom = BigInt(combination);
 
@@ -1856,8 +1859,15 @@ class ProbabilityEngine {
                     this.boxProb[i] = 1;
                     this.emptyBoxes.push(this.boxes[i]);
 
-                } else {  // neither mine nor safe
-                    this.boxProb[i] = 1 - divideBigInt(tally[i], totalTally, 8);
+                } else {  // neither mine nor safe, but need to be careful of rounding down to zero, or up to one.
+                    const safety = 1 - divideBigInt(tally[i], totalTally, 8);
+                    if (safety == 0) {
+                        this.boxProb[i] = ProbabilityEngine.LOW_SAFETY;
+                    } else if (safety == 1) {
+                        this.boxProb[i] = ProbabilityEngine.HIGH_SAFETY;
+                    } else {
+                        this.boxProb[i] = safety;
+                    }
                 }
 
                 this.boxes[i].mineTally = tally[i]; 
