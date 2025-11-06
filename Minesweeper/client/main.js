@@ -1964,6 +1964,7 @@ async function updateHints(analyse) {
         await doAnalysis(false);
     } else {
         renderHints([]);
+        justPressedAnalyse = false;
     }
 }
 
@@ -2722,7 +2723,7 @@ async function doAnalysis(fullBFDA) {
         const solve = await solver(board, options);  // look for solutions
         const hints = solve.actions;
 
-        justPressedAnalyse = true;
+        justPressedAnalyse = fullBFDA;
 
         if (fullBFDA || showHintsCheckBox.checked) {
             window.requestAnimationFrame(() => renderHints(hints, solve.other));
