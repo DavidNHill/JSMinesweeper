@@ -870,8 +870,10 @@ function renderHints(hints, otherActions, drawOverlay) {
                     }
 
                     let value1;
-                    if (value < 9.95) {
-                        value1 = value.toFixed(1);
+                    if (value > 0 && value < 1) {
+                        value1 = "1";
+                    } else if (value > 99 && value < 100) {
+                        value1 = "99";
                     } else {
                         value1 = value.toFixed(0);
                     }
