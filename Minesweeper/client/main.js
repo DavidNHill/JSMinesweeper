@@ -805,8 +805,8 @@ function renderHints(hints, otherActions, drawOverlay) {
     }
 
     //console.log(hints.length + " hints to render");
-    //ctxHints.clearRect(0, 0, canvasHints.width, canvasHints.height);
-    ctxHints.reset();
+    ctxHints.clearRect(0, 0, canvasHints.width, canvasHints.height);
+    // ctxHints.reset(); // this is broken on Safari
 
     if (hints == null) {
         return;
