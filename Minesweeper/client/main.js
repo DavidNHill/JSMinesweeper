@@ -858,7 +858,7 @@ function renderHints(hints, otherActions, drawOverlay) {
         ctxHints.fillStyle = "black";
         for (let tile of board.tiles) {
             if (tile.getHasHint() && tile.isCovered() && !tile.isFlagged() && tile.probability != null) {
-                if (!showHintsCheckBox.checked || (tile.probability != 1 && tile.probability != 0)) {  // show the percentage unless we've already colour coded it
+                if (hints.length == 0 || (tile.probability != 1 && tile.probability != 0)) {  // show the percentage unless we've already colour coded it
 
                     let value;
                     if (docOverlay.value == "safety") {
