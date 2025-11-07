@@ -2967,8 +2967,8 @@ function mouseUpEvent(e) {
     hoverTile = board.getTileXY(col, row);
 
     // e.which is the button being held
-    if (dragging && e.which == 1) {
-        // console.log("Dragging stopped due to  mouse up event");
+    if (dragging) {
+        //console.log("Dragging stopped due to  mouse up event");
         dragging = false;
 
         if (!analysisMode) {
