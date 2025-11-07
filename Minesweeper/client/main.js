@@ -277,6 +277,7 @@ async function startup() {
 
     // add some hot key 
     document.addEventListener('keydown', event => { onKeyDownEvent(event) });
+    document.addEventListener('keyup', event => { onKeyUpEvent(event) });
 
     // make the properties div draggable
     dragElement(propertiesPanel);
@@ -2242,6 +2243,20 @@ function onKeyDownEvent(e) {
 
 }
 
+function onKeyUpEvent(e) {
+    if (!analysisMode) {
+        if (e.key == KeyBind.LEFT_CLICK_KEY) {
+            if (hoverTile != null) {
+                const action = {};
+                action.col = hoverTile.x;
+                action.row = hoverTile.y;
+                action.which = 1;
+                releaseAction(action);
+            }
+        }
+    }
+}
+
 async function replayForward(replayType) {
 
     if (replaying) {
@@ -2962,11 +2977,15 @@ function followCursor(e) {
 
 function mouseUpEvent(e) {
     // get the tile we're over
-    const row = Math.floor(e.offsetY / TILE_SIZE);
-    const col = Math.floor(e.offsetX / TILE_SIZE);
-    hoverTile = board.getTileXY(col, row);
-
+    const action = {};
+    action.row = Math.floor(e.offsetY / TILE_SIZE);
+    action.col = Math.floor(e.offsetX / TILE_SIZE);
     // e.which is the button being held
+    action.which = e.which;
+    releaseAction(action);
+}
+
+function releaseAction(action) {
     if (dragging) {
         //console.log("Dragging stopped due to  mouse up event");
         dragging = false;
@@ -3043,7 +3062,7 @@ function mouseUpEvent(e) {
                     }
 
 
-                    message = { "header": board.getMessageHeader(), "actions": [{ "index": board.xy_to_index(col, row), "action": 3 }] }; //chord
+                    message = { "header": board.getMessageHeader(), "actions": [{ "index": board.xy_to_index(action.col, action.row), "action": 3 }] }; //chord
                 } else {
                     console.log("Tile is not able to be chorded - no action to take");
                     return;
@@ -3067,7 +3086,7 @@ function mouseUpEvent(e) {
                     return;
                 }
 
-                message = { "header": board.getMessageHeader(), "actions": [{ "index": board.xy_to_index(col, row), "action": 1 }] }; // click
+                message = { "header": board.getMessageHeader(), "actions": [{ "index": board.xy_to_index(action.col, action.row), "action": 1 }] }; // click
             }
 
             // one last check before we send the message
