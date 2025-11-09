@@ -277,6 +277,7 @@ async function startup() {
 
     // add some hot key 
     document.addEventListener('keydown', event => { onKeyDownEvent(event) });
+    document.addEventListener('keyup', event => { onKeyUpEvent(event) });
 
     // make the properties div draggable
     dragElement(propertiesPanel);
@@ -2242,6 +2243,20 @@ function onKeyDownEvent(e) {
 
 }
 
+function onKeyUpEvent(e) {
+    if (!analysisMode) {
+        if (e.key == KeyBind.LEFT_CLICK_KEY) {
+            if (hoverTile != null) {
+                const action = {};
+                action.col = hoverTile.x;
+                action.row = hoverTile.y;
+                action.which = 1;
+                releaseAction(action);
+            }
+        }
+    }
+}
+
 async function replayForward(replayType) {
 
     if (replaying) {
@@ -2847,6 +2862,22 @@ function draw(x, y, tileType) {
 
 }
 
+function resetTileDisplay(tile, tileType) {
+    if (board.isGameover() || canvasLocked) {
+        return;
+    }
+
+    if (!tile.isCovered()) {
+        for (let adjTile of board.getAdjacent(tile)) {
+            if (adjTile.isCovered() && !adjTile.isFlagged()) {
+                draw(adjTile.x, adjTile.y, tileType);
+            }
+        }
+    } else if (!tile.isFlagged()) {
+        draw(tile.x, tile.y, tileType);
+    }
+}
+
 // have the tooltip follow the mouse
 function followCursor(e) {
 
@@ -2893,6 +2924,17 @@ function followCursor(e) {
             window.requestAnimationFrame(() => renderTiles(render));
         }
 
+    } else if (dragging && !analysisMode) {
+
+        const tile = hoverTile;
+
+        if (!tile.isEqual(dragTile)) {
+            resetTileDisplay(dragTile, HIDDEN);
+
+            dragTile = tile;  // remember the latest tile
+
+            resetTileDisplay(dragTile, 0);
+        }
     }
 
     // || hasTouchScreen)
@@ -2934,16 +2976,154 @@ function followCursor(e) {
 }
 
 function mouseUpEvent(e) {
+    // get the tile we're over
+    const action = {};
+    action.row = Math.floor(e.offsetY / TILE_SIZE);
+    action.col = Math.floor(e.offsetX / TILE_SIZE);
     // e.which is the button being held
+    action.which = e.which;
+    releaseAction(action);
+}
+
+function releaseAction(action) {
     if (dragging) {
         //console.log("Dragging stopped due to  mouse up event");
         dragging = false;
+
+        if (!analysisMode) {
+            if (board.isGameover()) {
+                console.log("The game is over - no action to take");
+                return;
+            }
+        
+            if (canvasLocked) {
+                console.log("The canvas is logically locked - this happens while the previous click is being processed");
+                return;
+            }
+
+            let message;
+
+            const tile = board.getTileXY(action.col, action.row);
+
+            resetTileDisplay(tile, HIDDEN);
+
+            if (tile.isFlagged()) {  // no point clicking on an tile with a flag on it
+                console.log("Tile has a flag on it - no action to take");
+                return;
+            }
+
+            if (!board.isStarted()) {
+                //message = {"id" : "new", "index" : board.xy_to_index(col, row), "action" : 1};
+                board.setStarted();
+            }
+
+            //if (!tile.isCovered()) {  // no point clicking on an already uncovered tile
+            //	console.log("Tile is already revealed - no action to take");
+            //	return;
+            //}
+
+            if (!tile.isCovered()) {  // clicking on a revealed tile is considered chording
+                if (board.canChord(tile)) {
+
+                    // check that the tiles revealed by the chord are safe
+                    if (docHardcore.checked) {
+
+                        let uncertainChords = [];
+                        let lethalChord = false;
+                        for (let adjTile of board.getAdjacent(tile)) {
+                            if (adjTile.isCovered() && !adjTile.isFlagged() && adjTile.getHasHint()) {
+                                if (adjTile.probability == 0) {  // chording onto a certain mine
+                                    lethalChord = true;
+                                    break;
+                                } else if (adjTile.probability != 1) {  // guessing by chording, outcome uncertain
+                                    uncertainChords.push(adjTile);
+                                }
+                            }
+                        }
+
+                        // if it's a lethal chord then let the game end normally
+                        if (!lethalChord && uncertainChords.length > 0 && board.hasSafeTile()) {
+                            board.setGameLost();
+
+                            //renderHints(board.getSafeTiles(), [], false);
+                            for (let uncertainTile of uncertainChords) {
+                                uncertainTile.setSkull(true);
+                                //draw(uncertainTile.x, uncertainTile.y, SKULL);
+                            }
+
+                            renderTiles(uncertainChords);
+
+                            showMessage("Hard Core: Game is lost because you guessed (by chording) when there were safe tiles!");
+                            console.log("Chord is not hardcore valid");
+
+                            return;
+                        }
+
+                    }
+
+
+                    message = { "header": board.getMessageHeader(), "actions": [{ "index": board.xy_to_index(action.col, action.row), "action": 3 }] }; //chord
+                } else {
+                    console.log("Tile is not able to be chorded - no action to take");
+                    return;
+                }
+
+            } else {
+
+                // if playing hardcore and we click a non-certain tile when there is a certain safe tile
+                // if the tile is a mine let it fail normally
+                if (docHardcore.checked && tile.getHasHint() && tile.probability != 1 && tile.probability != 0 && board.hasSafeTile()) {
+                    board.setGameLost();
+
+                    //renderHints(board.getSafeTiles(), [], false);
+                    tile.setSkull(true);
+                    renderTiles([tile]);
+
+                    //draw(tile.x, tile.y, SKULL);
+                    showMessage("Hard Core: Game is lost because you guessed when there were safe tiles!");
+                    console.log("Move is not hardcore valid");
+
+                    return;
+                }
+
+                message = { "header": board.getMessageHeader(), "actions": [{ "index": board.xy_to_index(action.col, action.row), "action": 1 }] }; // click
+            }
+
+            // one last check before we send the message
+            if (canvasLocked) {
+                console.log("The canvas is logically locked");
+                return;
+            } else {
+                canvasLocked = true;
+            }
+
+            // remove the analysis parm when playing a game
+            //setURLParms("analysis", null);
+
+            justPressedAnalyse = false;
+
+            sendActionsMessage(message);
+        }
     }
 }
 
 function on_mouseEnter(e) {
 
     tooltip.style.display = "inline-block";
+
+    // get the tile we're over
+    const row = Math.floor(e.offsetY / TILE_SIZE);
+    const col = Math.floor(e.offsetX / TILE_SIZE);
+    hoverTile = board.getTileXY(col, row);
+
+    if (!analysisMode && e.which == 1) {
+        // allow for dragging and remember the tile we just changed
+        dragging = true;
+        dragTile = hoverTile;
+        
+        resetTileDisplay(hoverTile, 0);
+
+    }
  
 }
 
@@ -2956,6 +3136,10 @@ function on_mouseLeave(e) {
     if (dragging) {
         //console.log("Dragging stopped due to mouse off canvas");
         dragging = false;
+
+        if (!analysisMode) {
+            resetTileDisplay(dragTile, HIDDEN);
+        }
     }
 
 }
@@ -3067,82 +3251,13 @@ function clickAction(action) {
                 return;
             }
 
-            if (!board.isStarted()) {
-                //message = {"id" : "new", "index" : board.xy_to_index(col, row), "action" : 1};
-                board.setStarted();
-            }
+            // allow for dragging and remember the tile we just changed
+            dragging = true;
+            dragTile = tile;
 
-            //if (!tile.isCovered()) {  // no point clicking on an already uncovered tile
-            //	console.log("Tile is already revealed - no action to take");
-            //	return;
-            //}
+            resetTileDisplay(tile, 0);
 
-            if (!tile.isCovered()) {  // clicking on a revealed tile is considered chording
-                if (board.canChord(tile)) {
-
-                    // check that the tiles revealed by the chord are safe
-                    if (docHardcore.checked) {
-
-                        let uncertainChords = [];
-                        let lethalChord = false;
-                        for (let adjTile of board.getAdjacent(tile)) {
-                            if (adjTile.isCovered() && !adjTile.isFlagged() && adjTile.getHasHint()) {
-                                if (adjTile.probability == 0) {  // chording onto a certain mine
-                                    lethalChord = true;
-                                    break;
-                                } else if (adjTile.probability != 1) {  // guessing by chording, outcome uncertain
-                                    uncertainChords.push(adjTile);
-                                }
-                            }
-                        }
-
-                        // if it's a lethal chord then let the game end normally
-                        if (!lethalChord && uncertainChords.length > 0 && board.hasSafeTile()) {
-                            board.setGameLost();
-
-                            //renderHints(board.getSafeTiles(), [], false);
-                            for (let uncertainTile of uncertainChords) {
-                                uncertainTile.setSkull(true);
-                                //draw(uncertainTile.x, uncertainTile.y, SKULL);
-                            }
-
-                            renderTiles(uncertainChords);
-
-                            showMessage("Hard Core: Game is lost because you guessed (by chording) when there were safe tiles!");
-                            console.log("Chord is not hardcore valid");
-
-                            return;
-                        }
-
-                    }
-
-
-                    message = { "header": board.getMessageHeader(), "actions": [{ "index": board.xy_to_index(action.col, action.row), "action": 3 }] }; //chord
-                } else {
-                    console.log("Tile is not able to be chorded - no action to take");
-                    return;
-                }
-
-            } else {
-
-                // if playing hardcore and we click a non-certain tile when there is a certain safe tile
-                // if the tile is a mine let it fail normally
-                if (docHardcore.checked && tile.getHasHint() && tile.probability != 1 && tile.probability != 0 && board.hasSafeTile()) {
-                    board.setGameLost();
-
-                    //renderHints(board.getSafeTiles(), [], false);
-                    tile.setSkull(true);
-                    renderTiles([tile]);
-
-                    //draw(tile.x, tile.y, SKULL);
-                    showMessage("Hard Core: Game is lost because you guessed when there were safe tiles!");
-                    console.log("Move is not hardcore valid");
-
-                    return;
-                }
-
-                message = { "header": board.getMessageHeader(), "actions": [{ "index": board.xy_to_index(action.col, action.row), "action": 1 }] }; // click
-            }
+            return;
 
         } else if (button == 3 || leftClickFlag) {  // right mouse button or left click flag
 
