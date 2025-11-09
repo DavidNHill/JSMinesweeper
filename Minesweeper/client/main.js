@@ -433,7 +433,7 @@ function fetchLocalStorage() {
 
 }
 
-function propertiesClose() {
+async function propertiesClose() {
     propertiesPanel.style.display = "none";
 
     BruteForceGlobal.PRUNE_BF_ANALYSIS = document.getElementById("pruneBruteForce").checked;
@@ -453,11 +453,7 @@ function propertiesClose() {
         localStorage.removeItem("settings");
     }
 
-    if (!analysisMode && showHintsCheckBox.checked) {
-        doAnalysis(false)
-    } else {
-        renderHints([]);
-    }
+    await updateHints(true);
 
 }
 
@@ -809,8 +805,8 @@ function renderHints(hints, otherActions, drawOverlay) {
     }
 
     //console.log(hints.length + " hints to render");
-    //ctxHints.clearRect(0, 0, canvasHints.width, canvasHints.height);
-    ctxHints.reset();
+    ctxHints.clearRect(0, 0, canvasHints.width, canvasHints.height);
+    // ctxHints.reset(); // this is broken on Safari
 
     if (hints == null) {
         return;
@@ -823,12 +819,17 @@ function renderHints(hints, otherActions, drawOverlay) {
 
         if (hint.action == ACTION_CHORD) {
             ctxHints.fillStyle = "#00FF00";
+            firstGuess = 2;
         } else if (hint.prob == 0) {   // mine
             ctxHints.fillStyle = "#FF0000";
         } else if (hint.prob == 1) {  // safe
             ctxHints.fillStyle = "#00FF00";
+            firstGuess = 2;
         } else if (hint.dead) {  // uncertain but dead
             ctxHints.fillStyle = "black";
+            if (firstGuess == 0) {
+                firstGuess = 1;
+            }
         } else {  //uncertain
             ctxHints.fillStyle = "orange";
             if (firstGuess == 0) {
@@ -858,7 +859,7 @@ function renderHints(hints, otherActions, drawOverlay) {
         ctxHints.fillStyle = "black";
         for (let tile of board.tiles) {
             if (tile.getHasHint() && tile.isCovered() && !tile.isFlagged() && tile.probability != null) {
-                if (!showHintsCheckBox.checked || (tile.probability != 1 && tile.probability != 0)) {  // show the percentage unless we've already colour coded it
+                if (hints.length == 0 || (tile.probability != 1 && tile.probability != 0)) {  // show the percentage unless we've already colour coded it
 
                     let value;
                     if (docOverlay.value == "safety") {
@@ -870,8 +871,10 @@ function renderHints(hints, otherActions, drawOverlay) {
                     }
 
                     let value1;
-                    if (value < 9.95) {
-                        value1 = value.toFixed(1);
+                    if (value > 0 && value < 1) {
+                        value1 = "1";
+                    } else if (value > 99 && value < 100) {
+                        value1 = "99";
                     } else {
                         value1 = value.toFixed(0);
                     }
@@ -1956,11 +1959,12 @@ function doToggleFlag() {
 
 }
 
-async function updateHints() {
-    if (!board.isGameover() && !analysisMode && showHintsCheckBox.checked) {
+async function updateHints(analyse) {
+    if (!board.isGameover() && !analysisMode && analyse && (showHintsCheckBox.checked || docOverlay.value != "none")) {
         await doAnalysis(false);
     } else {
         renderHints([]);
+        justPressedAnalyse = false;
     }
 }
 
@@ -1976,11 +1980,7 @@ async function changeTileSize(analyse) {
 
     renderTiles(board.tiles); // draw the board
 
-    if (!board.isGameover() && !analysisMode && analyse && showHintsCheckBox.checked) {
-        await doAnalysis(false);
-    } else {
-        renderHints([]);
-    }
+    await updateHints(analyse);
 
 }
 
@@ -2723,9 +2723,14 @@ async function doAnalysis(fullBFDA) {
         const solve = await solver(board, options);  // look for solutions
         const hints = solve.actions;
 
-        justPressedAnalyse = true;
+        justPressedAnalyse = fullBFDA;
 
-        window.requestAnimationFrame(() => renderHints(hints, solve.other));
+        if (fullBFDA || showHintsCheckBox.checked) {
+            window.requestAnimationFrame(() => renderHints(hints, solve.other));
+        } else {
+            window.requestAnimationFrame(() => renderHints([], []));
+            showMessage("Press the 'Analyse' button to see the solver's suggested move.");
+        }
 
         // show the next tile to be clicked if in replay mode
         if (analysisMode && replayMode) {
