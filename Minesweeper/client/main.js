@@ -3003,7 +3003,7 @@ function releaseAction(action) {
 
             let message;
 
-            const tile = hoverTile;
+            const tile = board.getTileXY(action.col, action.row);
 
             resetTileDisplay(tile, HIDDEN);
 
