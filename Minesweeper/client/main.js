@@ -821,20 +821,20 @@ function renderHints(hints, otherActions, drawOverlay) {
         const hint = hints[i];
 
         if (hint.action == ACTION_CHORD) {
-            ctxHints.fillStyle = "#00FF00";
+            ctxHints.fillStyle = theme == "light" ? "#00FF00" : "#007F00";
             firstGuess = 2;
         } else if (hint.prob == 0) {   // mine
-            ctxHints.fillStyle = "#FF0000";
+            ctxHints.fillStyle = theme == "light" ? "#FF0000" : "#7F0000";
         } else if (hint.prob == 1) {  // safe
-            ctxHints.fillStyle = "#00FF00";
+            ctxHints.fillStyle = theme == "light" ? "#00FF00" : "#007F00";
             firstGuess = 2;
         } else if (hint.dead) {  // uncertain but dead
-            ctxHints.fillStyle = "black";
+            ctxHints.fillStyle = theme == "light" ? "#000000" : "#BFBFBF";
             if (firstGuess == 0) {
                 firstGuess = 1;
             }
         } else {  //uncertain
-            ctxHints.fillStyle = "orange";
+            ctxHints.fillStyle = theme == "light" ? "#FFA500" : "#7F5200";
             if (firstGuess == 0) {
                 firstGuess = 1;
             }
@@ -845,7 +845,8 @@ function renderHints(hints, otherActions, drawOverlay) {
         //console.log("Hint X=" + hint.x + " Y=" + hint.y);
         ctxHints.fillRect(hint.x * TILE_SIZE, hint.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
         if (firstGuess == 1) {
-            ctxHints.fillStyle = "#00FF00";
+            ctxHints.globalAlpha = 1;
+            ctxHints.fillStyle = theme == "light" ? "#00FF00" : "#007F00";
             ctxHints.fillRect((hint.x + 0.25) * TILE_SIZE, (hint.y + 0.25) * TILE_SIZE, 0.5 * TILE_SIZE, 0.5 * TILE_SIZE);
             firstGuess = 2;
         }
@@ -859,7 +860,7 @@ function renderHints(hints, otherActions, drawOverlay) {
         ctxHints.font = `${fontSize}px serif`;
 
         ctxHints.globalAlpha = 1;
-        ctxHints.fillStyle = "black";
+        ctxHints.fillStyle = theme == "light" ? "#000000" : "#BFBFBF";
         for (let tile of board.tiles) {
             if (tile.getHasHint() && tile.isCovered() && !tile.isFlagged() && tile.probability != null) {
                 if (hints.length == 0 || (tile.probability != 1 && tile.probability != 0)) {  // show the percentage unless we've already colour coded it
@@ -900,9 +901,9 @@ function renderHints(hints, otherActions, drawOverlay) {
     // these are from the efficiency play style and are the known moves which haven't been made
     for (let action of otherActions) {
         if (action.action == ACTION_CLEAR) {
-            ctxHints.fillStyle = "#00FF00";
+            ctxHints.fillStyle = theme == "light" ? "#00FF00" : "#007F00";
         } else {
-            ctxHints.fillStyle = "#FF0000";
+            ctxHints.fillStyle = theme == "light" ? "#FF0000" : "#7F0000";
         }
         ctxHints.fillRect((action.x + 0.35) * TILE_SIZE, (action.y + 0.35) * TILE_SIZE, 0.3 * TILE_SIZE, 0.3 * TILE_SIZE);
     }

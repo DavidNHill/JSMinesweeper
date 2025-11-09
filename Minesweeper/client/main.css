@@ -24,7 +24,7 @@ body {
 
 body.dark-mode {
     background: #333333;
-    color: #ffffff;
+    color: #dfdfdf;
     border-color: #555555;
 }
 
@@ -264,7 +264,7 @@ body.dark-mode input, body.dark-mode select {
 body.dark-mode .checkboxes label span,
 body.dark-mode select,
 body.dark-mode button {
-    color: #ffffff;
+    color: #dfdfdf;
 }
 
 a {
@@ -309,7 +309,7 @@ body.dark-mode a:visited {
 
 body.dark-mode .tooltip .tooltiptext {
     background-color: rgba(51, 51, 51, 0.5);
-    color: #ffffff;
+    color: #dfdfdf;
 }
 
 @media (hover: hover) and (pointer: fine) {
