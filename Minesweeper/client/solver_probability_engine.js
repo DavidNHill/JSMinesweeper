@@ -183,7 +183,7 @@ class ProbabilityEngine {
         for (let i = 0; i < this.prunedWitnesses.length; i++) {
             const witness = this.prunedWitnesses[i];
 
-            if (witness.minesToFind == 1 && witness.tiles.length >= 2) {
+            if (witness.minesToFind > 0 && witness.minesToFind < witness.tiles.length && witness.tiles.length > 1) {
 
                 //console.log("Witness " + witness.tile.asText() + " is a possible unavoidable guess witness");
                 let unavoidable = true;
@@ -241,7 +241,7 @@ class ProbabilityEngine {
         for (let i = 0; i < this.prunedWitnesses.length; i++) {
             const witness = this.prunedWitnesses[i];
 
-            if (witness.minesToFind == 1 && witness.tiles.length >= 2) {
+            if (witness.minesToFind > 0 && witness.minesToFind < witness.tiles.length && witness.tiles.length > 1) {
 
                 // create a new link
                 const link = new Link();
@@ -295,7 +295,7 @@ class ProbabilityEngine {
                     return this.notDead(witness.tiles);
                 }
 
-                if (witness.tiles.length == 2) {
+                if (witness.minesToFind == 1 && witness.tiles.length == 2) {
                     links.push(link);
                 }
             }
@@ -414,7 +414,7 @@ class ProbabilityEngine {
         for (let i = 0; i < this.prunedWitnesses.length; i++) {
             const witness = this.prunedWitnesses[i];
 
-            if (witness.minesToFind == 1 && witness.tiles.length >= 2) {
+            if (witness.minesToFind > 0 && witness.minesToFind < witness.tiles.length && witness.tiles.length > 1) {
 
                 // create a new link
                 const link = new Link();
@@ -468,17 +468,19 @@ class ProbabilityEngine {
                     return this.notDead(witness.tiles);
                 }
 
-                if (witness.tiles.length == 2) {
-                    links.push(link);
-                } else {
-                    const rooted = this.findRootedLinks(witness);
-                    if (rooted.length == 0) {
-                        //this.writeToConsole("Witness " + witness.tile.asText() + " is a possible pseudo connection");
+                if (witness.minesToFind == 1) {
+                    if (witness.tiles.length == 2) {
+                        links.push(link);
+                    } else {
+                        const rooted = this.findRootedLinks(witness);
+                        if (rooted.length == 0) {
+                            //this.writeToConsole("Witness " + witness.tile.asText() + " is a possible pseudo connection");
 
-                        pseudoLinks.push(witness);
+                            pseudoLinks.push(witness);
+                        }
+
+                        links.push(...rooted);
                     }
-
-                    links.push(...rooted);
                 }
             }
         }
