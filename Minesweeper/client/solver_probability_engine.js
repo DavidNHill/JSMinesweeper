@@ -338,7 +338,7 @@ class ProbabilityEngine {
                                 // accumulate the potential breaker tiles as we progress;
                                 link.breaker.push(...extension.breaker);
 
-                                if (openTile2 == null || !extension.tile1.isEqual(openTile2)) {
+                                if (openTile2 == null || !extension.tile2.isEqual(openTile2)) {
                                     extensions++;
                                     area5050.push(extension.tile2);   // tile2 is the new tile
                                 }
