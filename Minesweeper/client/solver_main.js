@@ -462,7 +462,7 @@ async function solver(board, options) {
 
             if (!options.noGuessingMode) {
                 // See if there are any unavoidable 2 tile 50/50 guesses 
-                if (SolverGlobal.EARLY_FIFTY_FIFTY_CHECKING && !options.hardcore && minesLeft > 1) {
+                if (SolverGlobal.EARLY_FIFTY_FIFTY_CHECKING && !options.hardcore && minesLeft > 0) {
                     //const unavoidable5050a = pe.checkForUnavoidable5050();
                     let unavoidable5050a;
                     if (options.playStyle == PLAY_STYLE_EFFICIENCY || options.playStyle == PLAY_STYLE_NOFLAGS_EFFICIENCY) {
@@ -557,7 +557,7 @@ async function solver(board, options) {
 
         /*
         // See if there are any unavoidable 2 tile 50/50 guesses 
-        if (pe.bestOnEdgeProbability != 1 && minesLeft > 1) {
+        if (pe.bestOnEdgeProbability != 1 && minesLeft > 0) {
             //const unavoidable5050a = pe.checkForUnavoidable5050();
             const unavoidable5050a = pe.checkForUnavoidable5050OrPseudo();
             if (unavoidable5050a != null) {
