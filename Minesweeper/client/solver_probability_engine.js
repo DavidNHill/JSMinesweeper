@@ -183,7 +183,7 @@ class ProbabilityEngine {
         for (let i = 0; i < this.prunedWitnesses.length; i++) {
             const witness = this.prunedWitnesses[i];
 
-            if (witness.minesToFind == 1 && witness.tiles.length == 2) {
+            if (witness.minesToFind > 0 && witness.minesToFind < witness.tiles.length && witness.tiles.length > 1) {
 
                 //console.log("Witness " + witness.tile.asText() + " is a possible unavoidable guess witness");
                 let unavoidable = true;
@@ -223,7 +223,7 @@ class ProbabilityEngine {
                 }
                 if (unavoidable) {
                     this.writeToConsole("Tile " + witness.tile.asText() + " is an unavoidable guess");
-                    return witness.tiles[0];
+                    return this.notDead(witness.tiles);
                 } 
             }
         }
@@ -241,7 +241,7 @@ class ProbabilityEngine {
         for (let i = 0; i < this.prunedWitnesses.length; i++) {
             const witness = this.prunedWitnesses[i];
 
-            if (witness.minesToFind == 1 && witness.tiles.length == 2) {
+            if (witness.minesToFind > 0 && witness.minesToFind < witness.tiles.length && witness.tiles.length > 1) {
 
                 // create a new link
                 const link = new Link();
@@ -249,7 +249,6 @@ class ProbabilityEngine {
                 link.tile2 = witness.tiles[1];
 
                 //console.log("Witness " + witness.tile.asText() + " is a possible unavoidable guess witness");
-                let unavoidable = true;
                 // if every monitoring tile also monitors all the other tiles then it can't provide any information
                 for (let j = 0; j < witness.tiles.length; j++) {
                     const tile = witness.tiles[j];
@@ -284,19 +283,21 @@ class ProbabilityEngine {
                                         link.closed2 = false;
                                     }
 
-                                    unavoidable = false;
+                                    link.unavoidable = false;
                                     //break check;
                                 }
                             }
                         }
                     }
                 }
-                if (unavoidable) {
-                    this.writeToConsole("Tile " + link.tile1.asText() + " is an unavoidable 50/50 guess");
-                    return this.notDead([link.tile1, link.tile2]);
+                if (link.unavoidable) {
+                    this.writeToConsole("Tile " + witness.tile.asText() + " is an unavoidable guess");
+                    return this.notDead(witness.tiles);
                 }
 
-                links.push(link);
+                if (witness.minesToFind == 1 && witness.tiles.length == 2) {
+                    links.push(link);
+                }
             }
         }
 
@@ -337,7 +338,7 @@ class ProbabilityEngine {
                                 // accumulate the potential breaker tiles as we progress;
                                 link.breaker.push(...extension.breaker);
 
-                                if (openTile2 == null || !extension.tile1.isEqual(openTile2)) {
+                                if (openTile2 == null || !extension.tile2.isEqual(openTile2)) {
                                     extensions++;
                                     area5050.push(extension.tile2);   // tile2 is the new tile
                                 }
@@ -413,30 +414,73 @@ class ProbabilityEngine {
         for (let i = 0; i < this.prunedWitnesses.length; i++) {
             const witness = this.prunedWitnesses[i];
 
-            if (witness.minesToFind == 1) {
+            if (witness.minesToFind > 0 && witness.minesToFind < witness.tiles.length && witness.tiles.length > 1) {
 
                 // create a new link
                 const link = new Link();
-                link.witness = witness;
+                link.tile1 = witness.tiles[0];
+                link.tile2 = witness.tiles[1];
 
-                if (witness.tiles.length == 2) {
-                    link.tile1 = witness.tiles[0];
-                    link.tile2 = witness.tiles[1];
+                //console.log("Witness " + witness.tile.asText() + " is a possible unavoidable guess witness");
+                // if every monitoring tile also monitors all the other tiles then it can't provide any information
+                for (let j = 0; j < witness.tiles.length; j++) {
+                    const tile = witness.tiles[j];
 
-                    //this.writeToConsole("Tiles " + link.tile1.asText() + " and " + link.tile2.asText() + " form a simple link");
+                    // get the witnesses monitoring this tile
+                    for (let adjTile of this.board.getAdjacent(tile)) {
 
-                    this.assessLink(link);
-                    links.push(link);
+                        // ignore tiles which are mines
+                        if (adjTile.isSolverFoundBomb()) {
+                            continue;
+                        }
 
-                } else {
-                    const rooted = this.findRootedLinks(witness);
-                    if (rooted.length == 0) {
-                        //this.writeToConsole("Witness " + witness.tile.asText() + " is a possible pseudo connection");
+                        // are we one of the tiles other tiles, if so then no need to check
+                        let toCheck = true;
+                        for (let otherTile of witness.tiles) {
+                            if (otherTile.isEqual(adjTile)) {
+                                toCheck = false;
+                                break;
+                            }
+                        }
 
-                        pseudoLinks.push(witness);
+                        // if we are monitoring and not a mine then see if we are also monitoring all the other mines
+                        if (toCheck) {
+                            for (let otherTile of witness.tiles) {
+                                if (!adjTile.isAdjacent(otherTile)) {
+
+                                    //console.log("Tile " + adjTile.asText() + " is not monitoring all the other witnessed tiles");
+                                    link.breaker.push(adjTile);
+                                    if (tile.isEqual(link.tile1)) {
+                                        link.closed1 = false;
+                                    } else {
+                                        link.closed2 = false;
+                                    }
+
+                                    link.unavoidable = false;
+                                    //break check;
+                                }
+                            }
+                        }
                     }
+                }
+                if (link.unavoidable) {
+                    this.writeToConsole("Tile " + witness.tile.asText() + " is an unavoidable guess");
+                    return this.notDead(witness.tiles);
+                }
 
-                    links.push(...rooted);
+                if (witness.minesToFind == 1) {
+                    if (witness.tiles.length == 2) {
+                        links.push(link);
+                    } else {
+                        const rooted = this.findRootedLinks(witness);
+                        if (rooted.length == 0) {
+                            //this.writeToConsole("Witness " + witness.tile.asText() + " is a possible pseudo connection");
+
+                            pseudoLinks.push(witness);
+                        }
+
+                        links.push(...rooted);
+                    }
                 }
             }
         }
