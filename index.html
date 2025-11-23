@@ -13,17 +13,27 @@
 
     <!-- Title at the top -->
     <h1 id="headerPanel" style="position: absolute; left: 0px; top: 0px; height: 50px; right: 0px; overflow-y: auto;">
-        <img src="resources/images/bomb.png" style="width: 48px; vertical-align: middle;" onclick="propertiesOpen()"/>
+        <img src="resources/images/bomb.png" style="width: 48px; vertical-align: middle;" onclick="propertiesOpen()" />
         <!-- button type="button" style="zoom: 0.9; vertical-align: middle;" id="settingsButton" onclick="propertiesOpen()"><img src="resources/images/bomb.png" style="width: 30px;" /></button -->
-        <button type="button" style="zoom: 1; vertical-align: middle; top: 5px;" id="switchButton" onclick="setAnalysis()">Switch to Analyser</button>
+        <button class="hidden" type="button" style="zoom: 1; vertical-align: middle; top: 5px;" id="switchButton" onclick="setAnalysis()">Switch to Analyser</button>
         <label id="title" style="font-size: 36px; vertical-align: middle;">Minesweeper player</label>
         <label style="float: right; padding-right: 10px;">
             <a href="https://github.com/DavidNHill/JSMinesweeper#readme" target="_blank"><i>help</i></a>
         </label>
     </h1>
 
+    <div class="" id="buttonBar" style="position: absolute; top: 65px; left: 0px; right: 0px; height: 30px;">
+        <div style="display:flex; flex-direction: row; justify-content: flex-start; ">
+            <button type="button" style="height: 30px; margin-right: 10px;" onclick="propertiesOpen()">Settings...</button>
+            <button id="selectPlayer" class="selected" type="button" style="height: 30px; margin-right: 10px;" onclick="setAnalysis(false)">Player</button>
+            <button id="selectAnalyser" type="button" style="height: 30px; margin-right: 10px;" onclick="setAnalysis(true)">Analyser</button>
+            <button id="exportToPtta" class="hidden" type="button" style="height: 30px; margin-right: 10px;" onclick="sendToPtta()">Send to Ptta Zini</button>
+            <button id="exportToLlama" class="hidden" type="button" style="height: 30px; margin-right: 10px;" onclick="sendToLlama()">Send to Llama Zini</button>
+        </div>
+    </div>
+
     <!-- control panel on the left -->
-    <nav id="controls" style="zoom: 0.9; position: absolute; left: 0px; top: 65px; bottom: 0px; width: 175px; overflow-y: auto">
+    <nav id="controls" style="zoom: 0.9; position: absolute; left: 0px; top: 110px; bottom: 0px; width: 175px; overflow-y: auto">
 
         <div id="play0" style="margin-top: 0px;">
             <div class="checkboxes">
@@ -72,7 +82,7 @@
 
         <button type="button" style="margin-top: 5px;" id="NewGame" onclick="apply()">New game</button>
 
-        <button type="button" style="margin-top: 5px;" id="repeatGame" onclick="playAgain()">Play again</button>
+        <button type="button" style="margin-top: 5px; height: 30px;" id="repeatGame" onclick="playAgain()">Play again</button>
 
         <div style="margin-top: 10px;">
             <label>Style:</label>
@@ -140,7 +150,7 @@
     <!--
     style="display: block; position: absolute; left: 170px; right: 0px; top: 60px; bottom: 60px;"
     -->
-    <div id="wholeboard" style="display: flex; flex-direction: column; position: absolute; left: 170px; right: 0px; top: 60px; bottom: 60px;">
+    <div id="wholeboard" style="display: flex; flex-direction: column; position: absolute; left: 170px; right: 0px; top: 100px; bottom: 60px;">
         <div class="tooltip" id="canvas" style="position: absolute; left: 0px; top: 0px; bottom: 0px; right: 0px;">
 
             <!-- the board header with mine count and some buttons -->
@@ -163,7 +173,7 @@
 
             <span id="tooltip" class="tooltiptext" style="pointer-events: none;"></span>
 
-            <!-- message line at the bottom -->
+            <!-- message line when the screen is minimal -->
             <div id="messageBar" class="hidden">
                 <div style="display:flex; flex-direction: column; justify-content: flex-end; position: relative; bottom: 0px; left: 0px; right: 0px; height: 28px;">
                     <label id="messageLine" style="font-size: 18px; overflow-y: auto; padding-left: 0px"></label>
@@ -185,12 +195,19 @@
         </div>
     </div>
 
+    <!-- message line when the screen is maximal -->
     <div id="messageBarBottom">
         <div class="raised" style="display:flex; flex-direction: column; justify-content: flex-end; position: absolute; bottom: 0px; left: 170px; right: 0px; height: 28px;">
             <label id="messageLineBottom" style="font-size: 18px; overflow-y: auto; padding-left: 0px"></label>
         </div>
     </div>
 
+    <div id="exportBarBottom" class="hidden">
+        <div style="display:flex; flex-direction: row-reverse; justify-content: flex-end; position: absolute; bottom: 40px; left: 170px; right: 0px; height: 28px;">
+            <button type="button" style="height: 30px; margin-right: 10px;" onclick="sendToLlama()">Llama zini</button>
+            <button type="button" style="height: 30px; margin-right: 10px;" onclick="sendToPtta()">Ptta zini</button>
+        </div>
+    </div>
 
     <!-- Local storage popup -->
     <div id="localStorage" class="modal">
@@ -209,7 +226,7 @@
     </div>
 
     <!-- Properties popup -->
-    <div id="properties" class="modal" style="display: none;" >
+    <div id="properties" class="modal" style="display: none;">
         <!-- Modal content -->
         <div id="propertiesBox" class="modal-content" style="position: absolute; top: 100px; left: 100px; width: 300px; height: 400px;">
 
@@ -376,33 +393,18 @@
 
         }
 
-        function setAnalysis() {
+        function setAnalysis(gotoAnalysis) {
 
             // can't switch modes while the solver is working
             if (canvasLocked) {
                 return;
             }
 
-            if (!analysisMode) {
-                //document.getElementById("play0").style.display = "none";
-                //document.getElementById("play1").style.display = "none";
-                //document.getElementById("analysis0").style.display = "block";
-                //document.getElementById("analysis1").style.display = "block";
-                //document.getElementById("repeatGame").style.display = "none";
-                //document.getElementById("NewGame").innerHTML = "Reset board";
-
+            if (!analysisMode && gotoAnalysis) {
                 switchToAnalysis(true);
-            } else {
-                //document.getElementById("play0").style.display = "";
-                //document.getElementById("play1").style.display = "";
-                //document.getElementById("analysis0").style.display = "none";
-                //document.getElementById("analysis1").style.display = "none";
-                //document.getElementById("repeatGame").style.display = "";
-                //document.getElementById("NewGame").innerHTML = "New game";
-
+            } else if (analysisMode && !gotoAnalysis) {
                 switchToAnalysis(false);
             }
-
 
         }
 

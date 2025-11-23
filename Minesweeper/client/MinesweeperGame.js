@@ -290,6 +290,8 @@ async function handleActions(message) {
 
 		reply.header.value3BV = game.value3BV;
 		reply.header.solved3BV = game.cleared3BV;
+		reply.header.mineString = game.getMinesString();
+		reply.header.boardDescriptor = game.getBoardDescriptor();
 
 		for (let i = 0; i < game.tiles.length; i++) {
 
@@ -313,6 +315,9 @@ async function handleActions(message) {
 
 		reply.header.value3BV = game.value3BV;
 		reply.header.solved3BV = game.cleared3BV;
+		reply.header.mineString = game.getMinesString();
+		reply.header.boardDescriptor = game.getBoardDescriptor();
+
         game.cleanUp = true;  // mark for housekeeping
     }
 
@@ -1224,6 +1229,43 @@ class ServerGame {
 		//console.log(url);
 
 		return mbf;
+
+	}
+
+	// represent the mine positions by a string of base-32 characters, each character holds data for 5 tiles. 
+    getMinesString() {
+		let result = '';
+
+		for (var i = 0; i < this.tiles.length; i += 5) {
+			var tempN = 0;
+			for (var j = i; j < i + 5; j++) {
+				if (j >= this.tiles.length)  // beyond the board
+					tempN *= 2;
+				else if (!this.tiles[j].isBomb())  // not a mine
+					tempN *= 2;
+				else {                         // is a mine
+					tempN *= 2;
+					tempN++;
+				}
+			}
+			result += tempN.toString(32);
+		}
+		return result;
+    }
+
+	getBoardDescriptor() {
+
+		if (this.width == 9 && this.height == 9 && this.num_bombs == 10) {
+			return "1";
+		} else if (this.width == 16 && this.height == 16 && this.num_bombs == 40) {
+			return "2";
+		} else if (this.width == 30 && this.height == 16 && this.num_bombs == 99) {
+			return "3";
+		} else {
+			const max_length = this.width.toString().length;
+			const b = this.width.toString().padStart(max_length, "0") + this.height.toString().padStart(max_length, "0");
+			return b;
+		}
 
 	}
 

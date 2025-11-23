@@ -67,7 +67,17 @@ div.raised {
     border-width: 5px;
 }
 
-div.hidden {
+div.sunk {
+    margin-top: 0px;
+    margin-right: 0px;
+    margin-bottom: 0px;
+    background: #ccc;
+    padding: 0px;
+    border-style: inset;
+    border-width: 5px;
+}
+
+.hidden {
     display: none;
 }
 
@@ -122,6 +132,10 @@ button {
 button.small {
     width: 40px;
     height: 40px;
+}
+
+button.selected {
+    border-color: green;
 }
 
 button:hover {

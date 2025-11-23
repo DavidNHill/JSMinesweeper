@@ -1381,7 +1381,15 @@ async function solver(board, options) {
 
             } else {
                 if (box.tiles.length > 1) {
-                    dominated = true;
+
+                    // if the tile wasn't safe before then it is dominated
+                    for (let boxTile of box.tiles) {
+                        if (pe.getProbability(boxTile) != 1) {
+                            dominated = true;
+                            break;
+                        }
+                    }
+                    
                 } else {
                     const targetTile = box.tiles[0];
                     let isDeadTile = false;

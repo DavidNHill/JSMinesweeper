@@ -81,6 +81,9 @@ const messageBar = document.getElementById("messageBar");
 const messageLine = document.getElementById("messageLine");
 const messageBarBottom = document.getElementById("messageBarBottom");
 const messageLineBottom = document.getElementById("messageLineBottom");
+const buttonBar = document.getElementById("buttonBar");
+const exportToPtta = document.getElementById("exportToPtta");
+const exportToLlama = document.getElementById("exportToLlama");
 const downloadBar = document.getElementById("downloadBar");
 const title = document.getElementById("title");
 const lockMineCount = document.getElementById("lockMineCount");
@@ -153,6 +156,8 @@ let analysing = false;  // try and prevent the analyser running twice if pressed
 let guessAnalysisPruning = true;
 
 let lastFileHandle = null;
+
+let exportParms = null;
 
 const urlParams = new URLSearchParams(window.location.search);
 
@@ -247,9 +252,7 @@ async function startup() {
             width = Math.min(width, MAX_WIDTH);
             height = Math.min(height, MAX_HEIGHT);
             mines = Math.min(mines, width * height - 1);
-
         }
-
     }
 
     docMinesLeft.width = DIGIT_WIDTH * DIGITS;
@@ -290,11 +293,29 @@ async function startup() {
     // read the url string before it gets over written by the new game processing
     const analysis = urlParams.get('analysis');
 
+    const queryB = urlParams.get('b');
+    const queryM = urlParams.get('m');
+
     // initialise the solver for newGame
     await solver();
 
     // create the playable game;
-    await newGame(width, height, mines, seed, analysis == null && start == null);
+    //await newGame(width, height, mines, seed, analysis == null && start == null);
+    //gameBoard = board;
+
+    // create the playable game;
+    if (queryB != null && queryM != null) {
+        try {
+            const arrays = interpretBMParms(queryB, queryM);
+            newGameFromArray(arrays);
+        } catch (e) {
+            console.error(e);
+            await newGame(width, height, mines, seed, analysis == null && start == null);
+        }
+ 
+    } else {
+        await newGame(width, height, mines, seed, analysis == null && start == null);
+    }
     gameBoard = board;
 
     if (analysis != null) {
@@ -737,22 +758,30 @@ async function switchToAnalysis(doAnalysis) {
     }
 
      if (doAnalysis) {
-        document.getElementById("play0").style.display = "none";
-        document.getElementById("play1").style.display = "none";
-        document.getElementById("analysis0").style.display = "block";
-        document.getElementById("analysis1").style.display = "block";
-        document.getElementById("repeatGame").style.display = "none";
-        document.getElementById("NewGame").innerHTML = "Reset board";
+         document.getElementById("play0").style.display = "none";
+         document.getElementById("play1").style.display = "none";
+         document.getElementById("analysis0").style.display = "block";
+         document.getElementById("analysis1").style.display = "block";
+         document.getElementById("repeatGame").style.display = "none";
+         document.getElementById("NewGame").innerHTML = "Reset board";
+
+         document.getElementById("selectAnalyser").className = "selected";
+         document.getElementById("selectPlayer").className = "";
 
      } else {
-        document.getElementById("play0").style.display = "";
-        document.getElementById("play1").style.display = "";
-        document.getElementById("analysis0").style.display = "none";
-        document.getElementById("analysis1").style.display = "none";
-        document.getElementById("repeatGame").style.display = "";
-        document.getElementById("NewGame").innerHTML = "New game";
+         document.getElementById("play0").style.display = "";
+         document.getElementById("play1").style.display = "";
+         document.getElementById("analysis0").style.display = "none";
+         document.getElementById("analysis1").style.display = "none";
+         document.getElementById("repeatGame").style.display = "";
+         document.getElementById("NewGame").innerHTML = "New game";
+
+         document.getElementById("selectAnalyser").className = "";
+         document.getElementById("selectPlayer").className = "selected";
 
     }
+
+    showExportButtons(false);
 
     if (doAnalysis) {
         gameBoard = board;
@@ -765,7 +794,9 @@ async function switchToAnalysis(doAnalysis) {
         analysisBoard = board;
         board = gameBoard;
 
-        //showDownloadLink(false, "")  // hide the hyperlink (we don't have the url until we play a move - this could be improved)
+        if (exportParms != null) {
+            showExportButtons(true);
+        }
 
         switchButton.innerHTML = "Switch to Analyser";
     }
@@ -1920,9 +1951,14 @@ async function newGame(width, height, mines, seed, analyse) {
         } else {
             board = new Board(id, width, height, mines, seed, gameType);
         }
+
     } else {
+        exportParms = null;
         board = new Board(id, width, height, mines, seed, gameType);
     }
+    
+    // no longer valid to export the board
+    showExportButtons(false);
 
     document.getElementById("canvas").style.cursor = "default";
     canvasLocked = false;  // just in case it was still locked (after an error for example)
@@ -2003,9 +2039,10 @@ function doToggleScreen() {
         document.getElementById("toggleScreen").innerHTML = "+";
         messageBarBottom.className = "";
         messageBar.className = "hidden";
+        buttonBar.className = "";
         downloadBar.className = "";
 
-        isExpanded = false;
+         isExpanded = false;
     } else {
         originalLeftBoard = document.getElementById("wholeboard").style.left;
         originalLeftMessage = document.getElementById("messageBar").style.left;
@@ -2021,12 +2058,27 @@ function doToggleScreen() {
 
         messageBarBottom.className = "hidden";
         downloadBar.className = "hidden";
+        buttonBar.className = "hidden";
         messageBar.className = "";
+
         isExpanded = true;
     }
 
     browserResized();
 
+}
+
+
+
+function showExportButtons(show) {
+    if (show) {
+        exportToLlama.className = "";
+        exportToPtta.className = "";
+    } else {
+        exportToLlama.className = "hidden";
+        exportToPtta.className = "hidden";
+    }
+    
 }
 
 // make the canvases large enough to fit the game
@@ -3679,6 +3731,13 @@ async function sendActionsMessage(message) {
 
     if (board.isGameover()) {
         console.log("Game is over according to the server");
+        console.log("https://llamasweeper.com/#/game/zini-explorer?b=" + reply.header.boardDescriptor + "&m=" + reply.header.mineString);
+        console.log("https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/?b=" + reply.header.boardDescriptor + "&m=" + reply.header.mineString);
+
+        exportParms = "?b=" + reply.header.boardDescriptor + "&m=" + reply.header.mineString;
+
+        showExportButtons(true);
+
         canvasLocked = false;
         window.requestAnimationFrame(() => renderHints([], []));  // clear the hints overlay
 
@@ -3750,9 +3809,6 @@ async function handleSolver(solverStart, headerId) {
             const solve = await solver(board, options);  // look for solutions
             hints = solve.actions;
             other = solve.other;
-
-
-
         }
 
         const solverDuration = Date.now() - solverStart;
@@ -3947,6 +4003,82 @@ function load_images() {
 
 }
 
+// Convert the b and m url parameters into an array holding the board definition
+function interpretBMParms(b, m) {
+
+    let mines = [];
+    let flags = [];
+    let revealed = [];
+
+    let w;
+    let h;
+
+    switch (b) {
+        case '1':
+            w = 9;
+            h = 9;
+            break;
+        case '2':
+            w = 16;
+            h = 16;
+            break;
+        case '3':
+            w = 30;
+            h = 16;
+            break;
+        default:
+            w = parseInt(b.substring(0, b.length / 2));
+            h = parseInt(b.substring(b.length / 2, b.length));
+            break;
+    }
+
+    mines.push(w);
+    mines.push(h);
+    mines.push(0);  // this should be the mine count, but we don't know it yet
+
+    let x = 0;
+    let y = 0;
+    let mc = 0;
+
+    allDone: for (let i = 0; i < m.length; i++) {
+
+        const value = parseInt(m.charAt(i), 32);
+
+        let mask = 16;
+        // this value holds info about the next 5 tiles
+        for (let j = 0; j < 5; j++) {
+
+            if (value & mask) {
+                mines.push(x);
+                mines.push(y);
+                mc++;
+            }
+
+            mask = mask >> 1;  // right shift 1 bit
+
+            x++;
+            if (x >= w) {
+                x = 0;
+                y++;
+            }
+            if (y >= h) {
+                break allDone;
+            }
+        }
+
+    }
+
+    // now populate the mine count
+    mines[2] = mc;
+
+    console.log(mines);
+    console.log(flags);
+    console.log(revealed);
+
+    return [mines, flags, revealed];
+    
+}
+
 function setURLParms(parm, value) {
 
     if (value == null || value == "") {
@@ -3956,6 +4088,27 @@ function setURLParms(parm, value) {
     }
    
     window.history.replaceState(null, null, "index.html?" + urlParams.toString());
+}
+
+function sendToLlama() {
+
+    if (exportParms == null) {
+        return;
+    }
+    const url = "https://llamasweeper.com/#/game/zini-explorer" + exportParms;
+
+    window.open(url, "_blank");
+
+}
+
+function sendToPtta() {
+
+    if (exportParms == null) {
+        return;
+    }
+    const url = "https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/" + exportParms;
+
+    window.open(url, "_blank");
 }
 
 function showMessage(text) {
