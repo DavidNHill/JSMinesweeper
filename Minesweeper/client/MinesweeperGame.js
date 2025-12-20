@@ -373,7 +373,7 @@ async function createNoGuessGame(header, index) {
 	let won = false;
 	let loopCheck = 0;
 	let minTilesLeft = Number.MAX_SAFE_INTEGER;
-	let maxLoops = 100000;
+	let maxLoops = 1000000;
 	ngCancel = false;
 
 	const options = {};
@@ -437,6 +437,9 @@ async function createNoGuessGame(header, index) {
 				console.log("tiles left " + game.tilesLeft);
 			} else {
 				actions = reply.actions;
+				if (actions.length == 0) {
+					//console.log("No Fillers and No Actions !!");
+				}
             }
 
 			for (let i = 0; i < actions.length; i++) {
@@ -452,6 +455,7 @@ async function createNoGuessGame(header, index) {
 				} else {   // otherwise we're trying to clear
 
 					if (action.prob != 1) {  // do no more actions after a guess
+						console.log("Made a guess: (" + action.x + "," + action.y + ") with safety " + action.prob);
 						guessed = true;
 						break;
 					}
@@ -484,6 +488,7 @@ async function createNoGuessGame(header, index) {
 			break;
         }
 
+		//break;
     }
 
 	console.log(revealedTiles.header.status);

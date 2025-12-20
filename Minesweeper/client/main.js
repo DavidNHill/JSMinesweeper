@@ -267,7 +267,7 @@ async function startup() {
     //window.addEventListener("beforeunload", (event) => exiting(event));
 
     // add a listener for mouse clicks on the canvas
-    canvas.addEventListener("mousedown", (event) => on_click(event));
+    canvas.addEventListener("mousedown", (event) => mouseDownEvent(event));
     canvas.addEventListener("mouseup", (event) => mouseUpEvent(event));
     canvas.addEventListener('mousemove', (event) => followCursor(event));
     canvas.addEventListener('wheel', (event) => followCursor(event));
@@ -3204,7 +3204,7 @@ function on_mouseLeave(e) {
 }
 
 // mouse button clicked on the board
-function on_click(event) {
+function mouseDownEvent(event) {
 
     //console.log("Click event at X=" + event.offsetX + ", Y=" + event.offsetY);
 
@@ -3305,10 +3305,10 @@ function clickAction(action) {
 
         if (button == 1 && !leftClickFlag) {   // left mouse button and not left click flag
 
-            if (tile.isFlagged()) {  // no point clicking on an tile with a flag on it
-                console.log("Tile has a flag on it - no action to take");
-                return;
-            }
+            //if (tile.isFlagged()) {  // no point clicking on an tile with a flag on it
+            //    console.log("Tile has a flag on it - no action to take");
+            //    return;
+            //}
 
             // allow for dragging and remember the tile we just changed
             dragging = true;
@@ -3733,6 +3733,7 @@ async function sendActionsMessage(message) {
         console.log("Game is over according to the server");
         console.log("https://llamasweeper.com/#/game/zini-explorer?b=" + reply.header.boardDescriptor + "&m=" + reply.header.mineString);
         console.log("https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/?b=" + reply.header.boardDescriptor + "&m=" + reply.header.mineString);
+        console.log("https://davidnhill.github.io/JSMinesweeper/index.html?b=" + reply.header.boardDescriptor + "&m=" + reply.header.mineString);
 
         exportParms = "?b=" + reply.header.boardDescriptor + "&m=" + reply.header.mineString;
 

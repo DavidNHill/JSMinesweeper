@@ -80,12 +80,13 @@ class ProbabilityEngine {
 
         if (binomialCache.getMaxN() < this.TilesOffEdge) {
             this.validWeb = false;
-            this.writeToConsole("Too many floating tiles to calculate the Binomial Coefficient, max permitted is " + binomialCache.getMaxN());
+            this.writeToConsole("Too many floating tiles to calculate the Binomial Coefficient, max permitted is " + binomialCache.getMaxN(), true);
             return;
         }
 
         // can't have less than zero mines
         if (minesLeft < 0) {
+            this.writeToConsole("Mines Left=" + minesLeft, true);
             this.validWeb = false;
             return;
         }
@@ -99,6 +100,7 @@ class ProbabilityEngine {
 
             // can't have too many or too few mines 
             if (boxWit.minesToFind < 0 || boxWit.minesToFind > boxWit.tiles.length) {
+                this.writeToConsole("Too Many or too few mines: " + boxWit.minesToFind, true);
                 this.validWeb = false;
             }
 

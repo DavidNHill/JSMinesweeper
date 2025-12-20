@@ -154,6 +154,10 @@ async function solver(board, options) {
             }
         }
 
+        // don't worry about there being a clear for generating an NG board
+        if (options.noGuessingMode) {
+            clearReturned = true;
+        }
     }
 
     const reply = {};
@@ -325,6 +329,7 @@ async function solver(board, options) {
             pe.process();
 
         } else {
+            writeToConsole("The probability engine is unable to run.", true);
             showMessage("The probability engine is unable to run.");
             return result;
         }
@@ -332,6 +337,7 @@ async function solver(board, options) {
         writeToConsole("Probability Engine took " + pe.duration + " milliseconds to complete");
 
         if (pe.finalSolutionCount == 0) {
+            writeToConsole("The board is in an illegal state", true);
             showMessage("The board is in an illegal state");
             return result;
         }
@@ -529,13 +535,17 @@ async function solver(board, options) {
         // if we've found some mines but not any safe tiles then return what we know
         if (pe.bestProbability < 1 && pe.minesFound.length > 0) {
             writeToConsole("Returning mines only result");
+            for (let tile of pe.minesFound) {   // place each found flag
+                tile.setProbability(0);
+                tile.setFoundBomb();
+            }
             return addDeadTiles(result, pe.deadTiles, pe.minesFound);
         }
 
         // this is part of the no-guessing board creation logic
         if (pe.bestProbability < 1 && options.noGuessingMode) {
             if (pe.bestOnEdgeProbability >= pe.offEdgeProbability) {
-                result.push(pe.getBestCandidates(1));  // get best options
+                result.push(pe.getBestCandidates(pe.bestOnEdgeProbability));  // get best options
             } else {
                 writeToConsole("Floating tiles are safest, off edge safety = " + pe.offEdgeProbability + ", on edge safety = " + pe.bestOnEdgeProbability, true);
                 const bestGuessTile = offEdgeGuess(board, witnessed);
@@ -545,8 +555,10 @@ async function solver(board, options) {
             // find some witnesses which can be adjusted to remove the guessing
             findBalancingCorrections(pe);
 
-            return addDeadTiles(result, pe.getDeadTiles(), pe.minesFound);
+            return addDeadTiles(result, [], pe.minesFound);
         }
+
+
 
         // if we aren't allowing advanced guessing then stop here
         if (!options.advancedGuessing) {
@@ -1802,7 +1814,7 @@ async function solver(board, options) {
             const boxWitness = adders[i];
 
             if (findBalance(boxWitness, adders)) {
-                writeToConsole("*** Balanced ***", true);
+                //writeToConsole("*** Balanced ***", true);
                 balanced = true;
                 break;
             }
@@ -1819,11 +1831,13 @@ async function solver(board, options) {
 
     function findBalance(boxWitness, adders) {
 
-        // these are the adjustments which will all the tile to be trivially solved
+        // these are the adjustments which will allow the tile to be trivially solved
         const toRemove = boxWitness.minesToFind;
         const toAdd = boxWitness.tiles.length - toRemove;
 
         writeToConsole("trying to balance " + boxWitness.tile.asText() + " to Remove=" + toRemove + ", or to Add=" + toAdd, true);
+
+        let phase2 = [];
 
         top: for (let balanceBox of adders) {
             if (balanceBox.tile.isEqual(boxWitness.tile)) {
@@ -1856,7 +1870,92 @@ async function solver(board, options) {
                 return true;
             }
 
+            // not overlapping and not the current box
+            phase2.push(balanceBox);
+
         }
+
+        // need at least 2 tiles for this to work
+        if (phase2.length < 2) {
+            return false;
+        }
+
+        // try and find 2 witnesses which can balance
+        writeToConsole("trying phase 2 with " + phase2.length + " tiles", true);
+        for (let box1 of phase2) {
+
+            const toRemove1 = box1.minesToFind;
+            const toAdd1 = box1.tiles.length - toRemove1;
+
+            top: for (let box2 of phase2) {
+
+                if (box2.tile.isEqual(box1)) {
+                    continue;
+                }
+
+                // ensure the balancing witness doesn't overlap with this one
+                for (let adjTile of board.getAdjacent(box2.tile)) {
+                    if (adjTile.isCovered() && !adjTile.isSolverFoundBomb()) {
+                        if (adjTile.isAdjacent(box1.tile)) {
+                            continue top;
+                        }
+                    }
+                }
+
+                const toRemove2 = box2.minesToFind;
+                const toAdd2 = box2.tiles.length - toRemove2;
+
+                if (toAdd1 + toAdd2 == toRemove) {
+                    writeToConsole("found balance " + box1.tile.asText() + " Add=" + toAdd1 + " and " + box2.tile.asText() + " Add=" + + toAdd2, true);
+                    addFillings(boxWitness, false); // remove from here
+                    addFillings(box1, true); // add to here
+                    addFillings(box2, true); // add to here
+                    return true;
+                }
+
+                if (toAdd1 == toRemove + toRemove2) {
+                    writeToConsole("found balance " + box1.tile.asText() + " Add=" + toAdd1 + " and " + box2.tile.asText() + " Remove=" + + toRemove2, true);
+                    addFillings(boxWitness, false); // remove from here
+                    addFillings(box1, true); // add to here
+                    addFillings(box2, false); // remove to here
+                    return true;
+                }
+
+                if (toAdd2 == toRemove + toRemove1) {
+                    writeToConsole("found balance " + box1.tile.asText() + " Remove=" + toRemove1 + " and " + box2.tile.asText() + " Add=" + + toAdd2, true);
+                    addFillings(boxWitness, false); // remove from here
+                    addFillings(box1, false); // remove to here
+                    addFillings(box2, true); // add to here
+                    return true;
+                }
+
+                if (toRemove1 == toAdd + toAdd2) {
+                    writeToConsole("found balance " + box1.tile.asText() + " to Remove=" + toRemove1 + " and " + box2.tile.asText() + " to Add=" + toAdd2, true);
+                    addFillings(boxWitness, true); // add to here
+                    addFillings(box1, false); // remove from here
+                    addFillings(box2, true); // add from here
+                    return true;
+                }
+
+                if (toRemove2 == toAdd + toAdd1) {
+                    writeToConsole("found balance " + box1.tile.asText() + " to Add=" + toAdd1 + " and " + box2.tile.asText() + " to Remove=" + toRemove2, true);
+                    addFillings(boxWitness, true); // add to here
+                    addFillings(box1, true); // add from here
+                    addFillings(box2, false); // remove from here
+                    return true;
+
+                }
+                if (toRemove1 + toRemove2 == toAdd) {
+                    writeToConsole("found balance " + box1.tile.asText() + " to Remove=" + toRemove1 + " and " + box2.tile.asText() + " to Remove="  + toRemove2, true);
+                    addFillings(boxWitness, true); // add to here
+                    addFillings(box1, false); // remove from here
+                    addFillings(box2, false); // remove from here
+                    return true;
+                }
+
+            }
+        }
+ 
 
         return false;
 
@@ -1881,7 +1980,7 @@ async function solver(board, options) {
 
     function adderSort(a, b) {
 
-        // tiels with smallest area first
+        // tiles with smallest area first
         let c = a.tiles.length - b.tiles.length;
 
         // then by the number of mines to find
