@@ -318,6 +318,8 @@ async function startup() {
     }
     gameBoard = board;
 
+    urlQueryString.checked = true;
+
     if (analysis != null) {
         const compressor = new Compressor();
 
@@ -346,10 +348,7 @@ async function startup() {
             // and switch the display board back to the game board
             board = gameBoard;
 
-            urlQueryString.checked = true;
-
          }
-
     }
 
     //await newGame(width, height, mines, seed); // default to a new expert game
@@ -374,7 +373,7 @@ async function startup() {
     }
 
     //bulkRun(21, 12500, false);  // seed '21' Played 12500 won 5192
-    //bulkRun(321, 10000, false);  // seed 321 played 10000 won 4122   22/2/25
+    //bulkRun(321, 10000, false);  // seed 321 played 10000 won 4131   28/2/26
     //bulkRun(0, 1000, false);  // classic: seed '0' Won 424/1000 (42.40%)
     //bulkRun(0, 1000, true);  // modern: seed '0' Won 546/1000 (54.60%)
 

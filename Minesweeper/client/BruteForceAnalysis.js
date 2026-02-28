@@ -75,6 +75,8 @@ class BruteForceAnalysis {
 
         let best = 0;
 
+        let linesArray = new Array(BruteForceGlobal.allTiles.length);
+
         for (let i = 0; i < top.getLivingLocations().length; i++) {
 
             if (this.verbose) {
@@ -83,9 +85,14 @@ class BruteForceAnalysis {
             }
  
             const move = top.getLivingLocations()[i];  // move is class 'Livinglocation'
+
             const tile = BruteForceGlobal.allTiles[move.index];
 
-            const winningLines = top.getWinningLinesStart(move);  // calculate the number of winning lines if this move is played
+            let winningLines = 0;   // calculate the number of winning lines if this move is played
+            if (!move.linked) {
+                winningLines = top.getWinningLinesStart(move);
+                linesArray[move.index] = winningLines;
+            }
 
             // if the move wasn't pruned is it a better move
             if (!move.pruned) {
@@ -115,6 +122,27 @@ class BruteForceAnalysis {
             }
 
         }
+
+        // find the winning lines for linked tiles
+        for (let i = 0; i < top.getLivingLocations().length; i++) {
+            const move = top.getLivingLocations()[i];  // move is class 'Livinglocation'
+            if (move.linked) {
+                const tile = BruteForceGlobal.allTiles[move.index];
+
+                // find the tile we are linked to 
+                for (let j = 0; j < top.getLivingLocations().length; j++) {
+                    const checkMove = top.getLivingLocations()[j];
+
+                    if (move.linkedHash == checkMove.linkedHash) {
+                        tile.setWinRate(linesArray[checkMove.index] / BruteForceGlobal.allSolutions.size());
+                        this.writeToConsole(BruteForceGlobal.allTiles[move.index].asText() + " is linked to " + BruteForceGlobal.allTiles[checkMove.index].asText() +
+                            ", winning solutions " + linesArray[checkMove.index]);
+                        break;
+                    }
+                }
+            }
+        }
+
 
         top.winningLines = best;
 
@@ -191,45 +219,57 @@ class BruteForceAnalysis {
             let value;
 
             const valueCount = new Array(9).fill(0);
-            let mines = 0;
+            let mineCount = 0;
             let maxSolutions = 0;
-            let count = 0;
+            let distinctValues = 0;
             let minValue = 0;
             let maxValue = 0;
+            let hashValue = 0;
 
             for (let j = 0; j < result.getSolutionSize(); j++) {
                 if (solutionTable.get(j)[i] != BOMB) {
                     value = solutionTable.get(j)[i];
                     valueCount[value]++;
+                    hashValue += solutionTable.getHash(j);
                 } else {
-                    mines++;
+                    mineCount++;
+                    hashValue -= solutionTable.getHash(j);
                 }
             }
 
             for (let j = 0; j < valueCount.length; j++) {
                 if (valueCount[j] > 0) {
-                    if (count == 0) {
+                    if (distinctValues == 0) {
                         minValue = j;
                     }
                     maxValue = j;
-                    count++;
+                    distinctValues++;
                     if (maxSolutions < valueCount[j]) {
                         maxSolutions = valueCount[j];
                     }
                 }
             }
-            if (count > 1 || BruteForceGlobal.INCLUDE_DEAD_TOP_TILES) {
+            if (distinctValues > 1 || BruteForceGlobal.INCLUDE_DEAD_TOP_TILES) {
                 const alive = new LivingLocation(i);   // alive is class 'LivingLocation'
-                alive.mineCount = mines;
-                alive.count = count;
+                alive.mineCount = mineCount;
+                alive.count = distinctValues;
                 alive.minValue = minValue;
                 alive.maxValue = maxValue;
                 alive.maxSolutions = maxSolutions;
                 alive.zeroSolutions = valueCount[0];
+                alive.linkedHash = hashValue;
+                for (let ll of living) {
+                    if (ll.linkedHash == alive.linkedHash) {
+                        this.writeToConsole(BruteForceGlobal.allTiles[alive.index].asText() + " is linked to " + BruteForceGlobal.allTiles[ll.index].asText());
+                        alive.linked = true;
+                        alive.pruned = true;
+                    }
+                }
+
                 living.push(alive);
             }
 
-            if (count == 1) {
+            if (distinctValues == 1) {
                 this.writeToConsole(BruteForceGlobal.allTiles[i].asText() + " is dead with value " + minValue);
                 this.deadTiles.push(BruteForceGlobal.allTiles[i]);   // store the dead tiles
             }
@@ -353,7 +393,6 @@ class Position {
         this.hash = 0;
         this.mod = BigInt(Number.MAX_SAFE_INTEGER);
 
-
         if (p == null) {
             this.position = new Array(BruteForceGlobal.allTiles.length).fill(15);
         } else {
@@ -394,10 +433,13 @@ class LivingLocation {
         this.zeroSolutions = 0;    // the number of solutions that have a '0' value here
         this.maxValue = -1;
         this.minValue = -1;
-        this.count;  // number of possible values at this location
+        this.count = 0;  // number of possible values at this location
+        this.linkedHash = 0;
+        this.linked = false;
 
-        this.children;  // children is an array of class 'Node'
+        this.children = [];  // children is an array of class 'Node'
 
+        Object.seal(this) // prevent new properties being created
     }
 
     /**
@@ -476,6 +518,18 @@ class LivingLocation {
         if (test != 0) {
             return test;
         }
+
+        // linked tiles come after the non-linked tiles
+        if (this.linked) {
+            if (!o.linked) {
+                return 1;
+            }
+        } else {
+            if (o.linked) {
+                return -1;
+            }
+        }
+
 
         // then the location most likely to have a zero
         test = o.zeroSolutions - this.zeroSolutions;
@@ -620,6 +674,11 @@ class Node {
 
                         const childMove = child.getLivingLocations()[j];  // childmove is class 'LivingLocation'
 
+                        // don't need to analysed a linked tile
+                        if (childMove.linked) {
+                            continue; 
+                        }
+
                         // if the number of safe solutions <= the best winning lines then we can't do any better, so skip the rest
                         if (child.getSolutionSize() - childMove.mineCount <= child.winningLines) {
                             break;
@@ -702,13 +761,17 @@ class Node {
             let count = 0;
             let minValue = 0;
             let maxValue = 0;
+            let hashValue = 0;
+
 
             for (let j = this.startLocation; j < this.endLocation; j++) {
                 value = BruteForceGlobal.allSolutions.get(j)[live.index];
                 if (value != BOMB) {
-                     valueCount[value]++;
+                    valueCount[value]++;
+                    hashValue += BruteForceGlobal.allSolutions.getHash(j);
                 } else {
                     mines++;
+                    hashValue -= BruteForceGlobal.allSolutions.getHash(j);
                 }
             }
 
@@ -733,6 +796,16 @@ class Node {
                 alive.maxValue = maxValue;
                 alive.maxSolutions = maxSolutions;
                 alive.zeroSolutions = valueCount[0];
+                alive.linkedHash = hashValue;
+
+                // see if this tile is linked to another
+                for (let ll of living) {
+                    if (ll.linkedHash == alive.linkedHash) {
+                        alive.linked = true;
+                        alive.pruned = true;
+                    }
+                }
+
                 living.push(alive);
             }
 
@@ -751,10 +824,18 @@ class SolutionTable {
 
     constructor(solutions) {
         this.solutions = solutions;
+        this.hash = new Array(solutions.length);
+        for (let i = 0; i < solutions.length; i++) {
+            this.hash[i] = Math.floor(Math.random() * 4294967296);  // 32 bit random number
+        }
     }
 
     get(index) {
         return this.solutions[index];
+    }
+
+    getHash(index) {
+        return this.hash[index];
     }
 
     size() {
