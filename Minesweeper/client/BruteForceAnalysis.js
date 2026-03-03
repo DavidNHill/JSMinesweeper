@@ -134,9 +134,15 @@ class BruteForceAnalysis {
                     const checkMove = top.getLivingLocations()[j];
 
                     if (move.linkedHash == checkMove.linkedHash) {
-                        tile.setWinRate(linesArray[checkMove.index] / BruteForceGlobal.allSolutions.size());
-                        this.writeToConsole(BruteForceGlobal.allTiles[move.index].asText() + " is linked to " + BruteForceGlobal.allTiles[checkMove.index].asText() +
-                            ", winning solutions " + linesArray[checkMove.index]);
+                        if (checkMove.pruned) {
+                            this.writeToConsole(BruteForceGlobal.allTiles[move.index].asText() + " is linked to " + BruteForceGlobal.allTiles[checkMove.index].asText() +
+                                " with max winning solutions " + linesArray[checkMove.index] + " (pruned)");
+                        } else {
+                            tile.setWinRate(linesArray[checkMove.index] / BruteForceGlobal.allSolutions.size());
+                            this.writeToConsole(BruteForceGlobal.allTiles[move.index].asText() + " is linked to " + BruteForceGlobal.allTiles[checkMove.index].asText() +
+                                " with winning solutions " + linesArray[checkMove.index]);
+                        }
+
                         break;
                     }
                 }
