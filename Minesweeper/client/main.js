@@ -469,6 +469,8 @@ async function propertiesClose() {
 
     ALWAYS_LOCK_MINE_COUNTER = document.getElementById("defaultLockMineCounter").checked;
 
+    SolverGlobal.REUSE_BRUTE_FORCE_ANALYSIS = document.getElementById("reuseBruteForce").checked;
+
     if (document.getElementById("saveSettings").checked) {
         saveSettings();
     } else {
@@ -500,6 +502,8 @@ function propertiesOpen() {
     document.getElementById("bruteForceMaxSolutions").value = value;
 
     document.getElementById("defaultLockMineCounter").checked = ALWAYS_LOCK_MINE_COUNTER;
+
+    document.getElementById("reuseBruteForce").checked = SolverGlobal.REUSE_BRUTE_FORCE_ANALYSIS;
  
     propertiesPanel.style.display = "block";
 }
@@ -519,7 +523,8 @@ function saveSettings() {
 
     settings.maxAnalysisBfSolutions = BruteForceGlobal.ANALYSIS_BFDA_THRESHOLD;
     settings.alwaysLockMineCounter = ALWAYS_LOCK_MINE_COUNTER;
-
+    settings.reuseBruteForce = SolverGlobal.REUSE_BRUTE_FORCE_ANALYSIS;
+ 
     localStorage.setItem("settings", JSON.stringify(settings));
 
 }
@@ -562,6 +567,10 @@ function loadSettings() {
 
     if (settings.alwaysLockMineCounter != null) {
         ALWAYS_LOCK_MINE_COUNTER = settings.alwaysLockMineCounter;
+    }
+
+    if (settings.reuseBruteForce != null) {
+        SolverGlobal.REUSE_BRUTE_FORCE_ANALYSIS = settings.reuseBruteForce;
     }
 }
 
@@ -2869,6 +2878,15 @@ async function checkBoard() {
         } else {
             logicText = "There are no safe tiles. ";
         }
+
+        /*
+        if (board.bestTree != null) {
+            const bestTile = board.bestTree.getBestMove();
+            if (bestTile != null) {
+                console.log("Best tile is " + bestTile.asText());
+            }
+        }
+        */
 
         showMessage("The board is valid. " + board.getFlagsPlaced() + " Mines placed. " + logicText + formatSolutions(solutionCounter.finalSolutionsCount));
         

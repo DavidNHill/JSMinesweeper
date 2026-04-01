@@ -31,6 +31,7 @@ class Board {
 
 		this.compressor = new Compressor();
 
+		this.bestTree = null;
 		//console.log("... board created");
 
 		Object.seal(this) // prevent new properties being created

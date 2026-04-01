@@ -22,7 +22,7 @@ class SolverGlobal {
     static PRUNE_GUESSES = true;                      // Determines whether calculations continue after the tile can no longer be the best
     static EARLY_FIFTY_FIFTY_CHECKING = true;         // Determines whether 50/50 checking is done when there are safe tiles
     static CALCULATE_LONG_TERM_SAFETY = true;         // Switches 50/50 influence processing on or off, also most pseudo-50/50 detection
-
+    static REUSE_BRUTE_FORCE_ANALYSIS = false;        // Keeps track of the best path to victory and follows it rather than doing a full recalculation
 }
 
 // solver entry point
@@ -402,6 +402,34 @@ async function solver(board, options) {
 
         }
 
+        // if we have already got a brute force then follow that path
+        if (board.bestTree != null) {
+            if (SolverGlobal.REUSE_BRUTE_FORCE_ANALYSIS) {
+                const bestTile = board.bestTree.getBestMove(pe.finalSolutionsCount);
+                if (bestTile != null) {
+                    console.log("Best tile is " + bestTile.asText());
+                    showMessage("Best follow up move is " + bestTile.asText() + " with " + (bestTile.winRate * 100).toFixed(2) + "% win rate." + formatSolutions(pe.finalSolutionsCount));
+
+                    let safety = pe.getProbability(bestTile);
+                    const action = new Action(bestTile.getX(), bestTile.getY(), safety, ACTION_CLEAR);
+                    result.push(action);
+
+                    // return each found flag
+                    for (let tile of pe.minesFound) {   
+                        tile.setProbability(0);
+                        const action = new Action(tile.getX(), tile.getY(), 0, ACTION_FLAG);
+                        result.push(action);
+                    }
+
+                    return addDeadTiles(result, pe.deadTiles, pe.minesFound);
+                } else {
+                    writeToConsole("No entry found in the Brute force analysis winning tree");
+                }
+            } else {
+                writeToConsole("REUSE_BRUTE_FORCE_ANALYSIS is set to false, winning path is not being re-used");
+            }
+        }
+
         // if the tiles off the edge are definitely safe then clear them all
         let offEdgeAllSafe = false;
         let offEdgeSafeCount = 0;
@@ -705,6 +733,9 @@ async function solver(board, options) {
                     deadTiles = bfda.deadTiles;
                     const winChanceText = (bfda.winChance * 100).toFixed(2);
                     showMessage("The solver has calculated tile " + nextmove.asText() + " has a " + winChanceText + "% chance to win the game." + formatSolutions(pe.finalSolutionsCount));
+
+                    board.bestTree = bfda.getBestTree();
+                    writeToConsole("Storing winning path with " + board.bestTree.nodes.size + " nodes");
 
                 } else {
                     showMessage("The solver has calculated that all the remaining tiles are dead, try tile " + bfda.bestTile.asText() + "?" + formatSolutions(pe.finalSolutionsCount));

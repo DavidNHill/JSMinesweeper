@@ -11,7 +11,8 @@ class BruteForceGlobal {
     static BRUTE_FORCE_CYCLES_THRESHOLD = 75000000;      // Max number of cycles used to try and find the remaining solutions 
     static PRUNE_BF_ANALYSIS = true;                     // Performance. Change to false to see the exact win rate for every living tile. Only stops prunning at the top node.
     static INCLUDE_DEAD_TOP_TILES = false;               // Performance. Include top tiles which are dead.  Dead tiles at non-top locations in the tree are still ignored.
-    static BRUTE_FORCE_ANALYSIS_TREE_DEPTH = 4;          // Depth of tree kept and displayed in the console after a successful brute force
+    static BRUTE_FORCE_ANALYSIS_TREE_DEPTH = 6;          // Depth of tree kept and navigated in subsequent moves after a successful brute force
+    static BRUTE_FORCE_ANALYSIS_DISPLAY_DEPTH = 4;       // Depth of tree kept and displayed in the console after a successful brute force
 
     static INDENT = "................................................................................";
 
@@ -331,7 +332,10 @@ class BruteForceAnalysis {
 	getBestLocation(node) {
         return node.bestLiving;
     }
-	
+
+    getBestTree() {
+        return new BestTree(BruteForceGlobal.allTiles, this.currentNode);
+    }
 	
 	showTree(depth, value, node) {
 
@@ -359,7 +363,7 @@ class BruteForceAnalysis {
 
         for (let val = 0; val < node.bestLiving.children.length; val++) {
             const nextNode = node.bestLiving.children[val];
-            if (nextNode != null) {
+            if (nextNode != null && depth < BruteForceGlobal.BRUTE_FORCE_ANALYSIS_DISPLAY_DEPTH) {
                 this.showTree(depth + 1, val, nextNode);
             }
         }
@@ -571,17 +575,18 @@ class Node {
             this.position = position;
         }
 
-        this.livingLocations;       // these are the locations which need to be analysed
+        this.livingLocations = null;       // these are the locations which need to be analysed
 
         this.winningLines = 0;      // this is the number of winning lines below this position in the tree
         this.work = 0;              // this is a measure of how much work was needed to calculate WinningLines value
         this.fromCache = false;     // indicates whether this position came from the cache
 
-        this.startLocation;         // the first solution in the solution array that applies to this position
-        this.endLocation;           // the last + 1 solution in the solution array that applies to this position
+        this.startLocation = 0;         // the first solution in the solution array that applies to this position
+        this.endLocation = 0;           // the last + 1 solution in the solution array that applies to this position
 
-        this.bestLiving;            // after analysis this is the location that represents best play
+        this.bestLiving = null;            // after analysis this is the location that represents best play
 
+        Object.seal(this) // prevent new properties being created
     }
 
     getLivingLocations() {
@@ -734,6 +739,7 @@ class Node {
             // if the max possible winning lines is less than the current cutoff then no point doing the analysis
             if (result + notMines <= cutoff) {
                 move.pruned = true;
+                move.children = null;
                 return result + notMines;
             }
 
@@ -823,6 +829,90 @@ class Node {
 
     }
 
+}
+
+// This class holds all the positins in the best tree
+// It is used to pick the best guess once a full brute force has been performed
+//   based on an arbitrary position in the tree
+class BestTree {
+
+    constructor(tiles, topNode) {
+
+        this.mod = BigInt(Number.MAX_SAFE_INTEGER);
+
+        this.tiles = tiles;
+        this.topNode = topNode;
+        this.nodes = new Map();
+
+        this.navigateTree(topNode);
+
+        Object.seal(this) // prevent new properties being created
+
+    }
+
+    navigateTree(node) {
+
+        let bestLiving = node.bestLiving;
+
+        if (bestLiving == null) {
+            return;
+        }
+
+        this.nodes.set(node.position.hashCode(), node);
+
+        for (let val = 0; val < bestLiving.children.length; val++) {
+            const childNode = bestLiving.children[val];
+            if (childNode != null) {
+                //this.nodes.set(childNode.position.hashCode(), childNode);
+                //console.log(childNode.position.hashCode());
+                this.navigateTree(childNode);
+            }
+        }
+    }
+
+    getBestMove(solutionCount) {
+        let hash = this.buildHashCode();
+
+        //console.log("Checking " + hash);
+        const node = this.nodes.get(hash);  // node is class 'Node'
+
+        if (node == null || node.bestLiving == null) {
+            return null;
+        }
+
+        // A sanity check that the solution sizes are the same.
+        // Hash isn't 100% reliable.
+        if (node.getSolutionSize() != solutionCount) {
+            console.log("Solution sizes disagree");
+            return null;
+        }
+
+        const tile = this.tiles[node.bestLiving.index];
+
+        tile.setWinRate(node.winningLines / node.getSolutionSize());
+
+        return tile;
+
+    }
+
+    // this hash code has to be identical to that in the Position class
+    buildHashCode() {
+        let h = BigInt(0);
+
+        for (let i = 0; i < this.tiles.length; i++) {
+            let tile = this.tiles[i];
+            if (tile.isCovered()) {
+                //console.log(tile.asText() + " ==> Covered ");
+                h = (BigInt(31) * h + BigInt(15)) % this.mod;
+            } else {
+                //console.log(tile.asText() + " ==> " + tile.getValue());
+                h = (BigInt(31) * h + BigInt(50 + tile.getValue())) % this.mod;
+            }
+            
+        }
+
+        return Number(h);  // convert back to a number
+    }
 }
 
 // used to hold all the solutions left in the game
