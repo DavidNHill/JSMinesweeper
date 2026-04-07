@@ -80,14 +80,19 @@ class BruteForceAnalysis {
 
         for (let i = 0; i < top.getLivingLocations().length; i++) {
 
+            const move = top.getLivingLocations()[i];  // move is class 'Livinglocation'
+            const tile = BruteForceGlobal.allTiles[move.index];
+
             if (this.verbose) {
-                showMessage("Analysing Brute Force Deep Analysis line " + i + " of " + top.getLivingLocations().length);
+                let bestString = "";
+                if (top.bestLiving != null) {
+                    let winPerc = 100 * best / BruteForceGlobal.allSolutions.size();
+                    bestString = " Current best is " + BruteForceGlobal.allTiles[top.bestLiving.index].asText() + " with " + winPerc.toFixed(2) + "% solve rate.";
+                }
+
+                showMessage("Brute force step " + (i+1) + " of " + top.getLivingLocations().length + "  considering tile " + tile.asText() + "." + bestString);
                 await sleep(1);
             }
- 
-            const move = top.getLivingLocations()[i];  // move is class 'Livinglocation'
-
-            const tile = BruteForceGlobal.allTiles[move.index];
 
             let winningLines = 0;   // calculate the number of winning lines if this move is played
             if (!move.linked) {

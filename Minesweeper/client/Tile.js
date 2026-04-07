@@ -12,7 +12,11 @@ class Tile {
 		this.is_flagged = false;
 		this.foundBomb = false
         this.is_bomb = null;   // this gets set when the game is lost
-        this.exploded = false;  // this gets set if this tile was the one clicked
+		this.exploded = false;  // this gets set if this tile was the one clicked
+
+		this.isSafe = false;
+		this.isNextMove = false;   // set when this tile is one the next moves to be played
+
 		this.index = index;
 		this.is_start = false;
 
@@ -137,6 +141,8 @@ class Tile {
 		this.winRate = 0;
 		this.winRateText = "";
 		this.zeroPoison = false;
+		this.isNextMove = false;
+		this.isSafe = false;
     }
 
 	setOnEdge() {

@@ -4,19 +4,19 @@
 "use strict";
 
 class Board {
-	
+
 	constructor(id, width, height, num_bombs, seed, gameType) {
-		
+
 		//console.log("Creating a new board with id=" + id + " ...");
 
 		this.MAX = 4294967295;
 
-        this.id = id;
-        this.gameType = gameType;
+		this.id = id;
+		this.gameType = gameType;
 		this.width = width;
 		this.height = height;
-        this.num_bombs = num_bombs;
-        this.seed = seed;
+		this.num_bombs = num_bombs;
+		this.seed = seed;
 
 		this.tiles = [];
 		this.started = false;
@@ -31,10 +31,27 @@ class Board {
 
 		this.compressor = new Compressor();
 
-		this.bestTree = null;
-		//console.log("... board created");
+
+		// information calculated within the solver
+		this.nextMoves = [];       // Action
+		this.safeTiles = [];       // Tile  
+		this.unflaggedMines = [];  // Tile
+		this.deadTiles = [];       // Tile
+		this.considered = [];      // Tile
+
+		this.bestTree = null;      // BestTree
 
 		Object.seal(this) // prevent new properties being created
+	}
+
+	reset() {
+
+		this.nextMoves = [];
+		this.safeTiles = [];
+		this.unflaggedMines = [];
+		this.deadTiles = [];
+		this.considered = [];
+
 	}
 
 	isStarted() {
@@ -688,14 +705,14 @@ class Board {
 		}
 
 		// get a compressor class
-		const compressor = new Compressor();
+		//const compressor = new Compressor();
 
 		// compress the data to base 62
-		let cWidth = compressor.compressNumber(width, 2);
-		let cHeight = compressor.compressNumber(height, 2);
-		let cMines = compressor.compressNumber(mines, 4);
+		let cWidth = this.compressor.compressNumber(width, 2);
+		let cHeight = this.compressor.compressNumber(height, 2);
+		let cMines = this.compressor.compressNumber(mines, 4);
 
-		let cBoard = compressor.compress(data);
+		let cBoard = this.compressor.compress(data);
 
 		let output = cWidth + cHeight + cMines + cBoard;
 
