@@ -230,6 +230,16 @@ async function startup() {
 
     const boardSize = urlParams.get('board');
 
+    // see whether hard code mode has been requested
+    const mode = urlParams.get('mode');
+    if (mode == 'hardcore') {
+        console.log("Hard core mode requested");
+        autoPlayCheckBox.checked = false;
+        docHardcore.checked = true;
+        showHintsCheckBox.checked = false;
+        docOverlay.value = "none";
+    }
+
     let width = 30;
     let height = 16;
     let mines = 99;
@@ -308,6 +318,7 @@ async function startup() {
         try {
             const arrays = interpretBMParms(queryB, queryM);
             newGameFromArray(arrays);
+            urlQueryString.checked = false;
         } catch (e) {
             console.error(e);
             await newGame(width, height, mines, seed, analysis == null && start == null);
@@ -318,9 +329,13 @@ async function startup() {
     }
     gameBoard = board;
 
-    urlQueryString.checked = true;
+    
 
+    // if we have an analysis query string then decompress it and set it up
     if (analysis != null) {
+
+        urlQueryString.checked = true;
+
         const compressor = new Compressor();
 
         width = compressor.decompressNumber(analysis.substring(0, 2));
@@ -351,8 +366,6 @@ async function startup() {
          }
     }
 
-    //await newGame(width, height, mines, seed); // default to a new expert game
-
     // create an initial analysis board if we haven't already done so
     if (analysisBoard == null) {
         analysisBoard = new Board(1, 30, 16, 0, seed, "");
@@ -365,11 +378,16 @@ async function startup() {
     setInterval(checkBoard, 1000);
 
     if (start != null) {
-        showHintsCheckBox.checked = false;
+        //showHintsCheckBox.checked = false;
         const tile = board.getTile(start);
-        const message = buildMessageFromActions([new Action(tile.x, tile.y, 1, ACTION_CLEAR)], true);
-        await sendActionsMessage(message);
-        board.setStarted();
+        if (tile != null) {
+            tile.is_start = true;
+            draw(tile.x, tile.y, START)
+        }
+        //const message = buildMessageFromActions([new Action(tile.x, tile.y, 1, ACTION_CLEAR)], true);
+        //await sendActionsMessage(message);
+        //board.setStarted();
+
     }
 
     //bulkRun(21, 12500, false);  // seed '21' Played 12500 won 5192

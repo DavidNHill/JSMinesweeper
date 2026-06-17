@@ -227,7 +227,7 @@ async function solver(board, options) {
                 squaresLeft++;
                 allCoveredTiles.push(tile);
                 if (tile.is_start) {
-                    startTile = tile;
+                    //startTile = tile;
                 }
                 continue;  // if the tile hasn't been revealed yet then nothing to consider
             }
@@ -368,8 +368,8 @@ async function solver(board, options) {
         writeToConsole("Probability Engine took " + pe.duration + " milliseconds to complete");
 
         if (pe.finalSolutionCount == 0) {
-            writeToConsole("The board is in an illegal state", true);
-            showMessage("The board is in an illegal state");
+            writeToConsole("The board is in an invalid state", true);
+            showMessage("The board is in an invalid state");
             return result;
         }
 

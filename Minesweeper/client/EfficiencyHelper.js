@@ -411,6 +411,11 @@ class EfficiencyHelper {
             return 0;
         }
 
+        //let secondBenefit = 0;
+        //if (chordClick != 0) {
+        //   secondBenefit = adjChord2Only - needsFlag - chordClick;  // tiles cleared - flags placed - the chord click (which isn't needed if a zero is expected)
+        //}
+
         const secondBenefit = adjChord2Only - needsFlag - chordClick;  // tiles cleared - flags placed - the chord click (which isn't needed if a zero is expected)
 
         const score = BigInt(failedBenefit) * total + BigInt(secondBenefit) * occurs;

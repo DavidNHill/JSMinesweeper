@@ -813,6 +813,12 @@ class ServerGame {
 			if (tile.isCovered() && !tile.isFlagged()) {    // make sure the tile is clickable
 				this.actions++;
 
+				// if this is the fist click then remember the tile
+				if (!this.started) {
+					this.startIndex = tile.getIndex();
+					this.started = true;
+				}
+
 				const tilesToReveal = [];
 				tilesToReveal.push(tile);
 				return this.reveal(tilesToReveal);
