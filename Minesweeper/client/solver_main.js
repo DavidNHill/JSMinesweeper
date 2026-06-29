@@ -1381,7 +1381,7 @@ async function solver(board, options) {
         let probThisTileLeft = action.prob;  // this is used to calculate when we can prune this action
 
         // this is used to hold the tiles which are clears for all the possible values
-        const commonClears = null;
+        let commonClears = null;
 
         for (let value = adjFlags; value <= adjCovered + adjFlags; value++) {
 

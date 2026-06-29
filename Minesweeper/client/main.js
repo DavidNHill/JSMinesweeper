@@ -46,6 +46,12 @@ class KeyBind {
     static NEW_GAME = ' ';                       // Pressing this key in play mode when the game is completed starts a new game
 }
 
+class Palette {
+    static SAFE = "#00FF00";
+    static MINE = "#FF0000";
+    static GUESS = "orange";
+}
+
 const canvas = document.getElementById('myCanvas');
 const ctx = canvas.getContext('2d');
 
@@ -864,36 +870,33 @@ function renderHints(drawHints, drawOverlay) {
     ctxHints.clearRect(0, 0, canvasHints.width, canvasHints.height);
     // ctxHints.reset(); // this is broken on Safari
 
+    let bestHint = null;
+
     if (drawHints) {
         let firstGuess = 0;  // used to identify the first (best) guess, subsequent guesses are just for info 
         for (const hint of board.nextMoves) {
-
-            //const hint = hints[i];
 
             // mark that the tile is one of the next moves
             const tile = board.getTileXY(hint.x, hint.y);
             tile.isNextMove = true;
 
             if (hint.action == ACTION_CHORD) {
-                ctxHints.fillStyle = "#00FF00";
+                ctxHints.fillStyle = Palette.SAFE;
                 firstGuess = 2;
+
             } else if (hint.prob == 0) {   // mine
-                ctxHints.fillStyle = "#FF0000";
+                ctxHints.fillStyle = Palette.MINE;
+
             } else if (hint.prob == 1) {  // safe
-                ctxHints.fillStyle = "#00FF00";
+                ctxHints.fillStyle = Palette.SAFE;
                 firstGuess = 2;
-                //} else if (hint.dead) {  // uncertain but dead
-                //    ctxHints.fillStyle = "black";
-                //    if (firstGuess == 0) {
-                //        firstGuess = 1;
-                //    }
+
             } else {  //uncertain
-                //ctxHints.fillStyle = "orange";
                 if (firstGuess == 0) {
                     if (hint.dead) {
                         ctxHints.fillStyle = "black";
                     } else {
-                        ctxHints.fillStyle = "orange";
+                        ctxHints.fillStyle = Palette.GUESS;
                     }
 
                     firstGuess = 1;
@@ -907,7 +910,9 @@ function renderHints(drawHints, drawOverlay) {
             //console.log("Hint X=" + hint.x + " Y=" + hint.y);
             ctxHints.fillRect(hint.x * TILE_SIZE, hint.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
             if (firstGuess == 1) {
-                ctxHints.fillStyle = "#00FF00";
+                bestHint = hint;
+
+                ctxHints.fillStyle = Palette.SAFE;
                 //ctxHints.fillRect((hint.x + 0.25) * TILE_SIZE, (hint.y + 0.25) * TILE_SIZE, 0.5 * TILE_SIZE, 0.5 * TILE_SIZE);
                 ctxHints.fillRect((hint.x + 0.2) * TILE_SIZE, (hint.y + 0.2) * TILE_SIZE, 0.6 * TILE_SIZE, 0.6 * TILE_SIZE);
                 firstGuess = 2;
@@ -922,7 +927,7 @@ function renderHints(drawHints, drawOverlay) {
             ctxHints.globalAlpha = 0.7;
             for (let safeTile of board.safeTiles) {
                 if (!safeTile.isNextMove && safeTile.isCovered()) {
-                    ctxHints.fillStyle = "#00FF00";
+                    ctxHints.fillStyle = Palette.SAFE;
                     ctxHints.fillRect((safeTile.x + 0.35) * TILE_SIZE, (safeTile.y + 0.35) * TILE_SIZE, 0.3 * TILE_SIZE, 0.3 * TILE_SIZE);
                 }
             }
@@ -931,7 +936,7 @@ function renderHints(drawHints, drawOverlay) {
             ctxHints.globalAlpha = 0.7;
             for (let flagTile of board.unflaggedMines) {
                 if (!flagTile.isNextMove && !flagTile.isFlagged() && !flagTile.isBomb()) {  // when the game is won or lost the flags and bombs are place on the display elsewhere
-                    ctxHints.fillStyle = "#FF0000";
+                    ctxHints.fillStyle = Palette.MINE;
                     ctxHints.fillRect((flagTile.x + 0.35) * TILE_SIZE, (flagTile.y + 0.35) * TILE_SIZE, 0.3 * TILE_SIZE, 0.3 * TILE_SIZE);
                 }
             }
@@ -940,7 +945,7 @@ function renderHints(drawHints, drawOverlay) {
             ctxHints.globalAlpha = 0.5;
             for (let consideredTile of board.considered) {
                 if (!consideredTile.isNextMove && !consideredTile.isFlagged() && !consideredTile.isBomb()) {  // when the game is won or lost the flags and bombs are place on the display elsewhere
-                    ctxHints.fillStyle = "orange";
+                    ctxHints.fillStyle = Palette.GUESS;
                     ctxHints.fillRect(consideredTile.x * TILE_SIZE, consideredTile.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                 }
             }
@@ -956,11 +961,16 @@ function renderHints(drawHints, drawOverlay) {
         }
     }
 
+    if (bestHint != null && !drawOverlay) {
+        renderBorder([bestHint], false);
+    }
+
     // put percentage over the tile 
     if (drawOverlay) {
 
         const fontSize = Math.max(6, Math.floor(TILE_SIZE * 0.6));
-        ctxHints.font = `${fontSize}px serif`;
+        let font = fontSize + "px serif";
+        ctxHints.font = fontSize + "px serif";
 
         // when we aren't showing hints, or the option is turned off then show tuiles which are mines or safe
         const doShowCertainties = !drawHints || !showHintsCheckBox.checked;
@@ -990,6 +1000,12 @@ function renderHints(drawHints, drawOverlay) {
                     }
 
                     const offsetX = (TILE_SIZE - ctxHints.measureText(value1).width) / 2;
+
+                    if (bestHint != null && bestHint.x == tile.x && bestHint.y == tile.y) {
+                        ctxHints.font = "bold " + font;
+                    } else {
+                        ctxHints.font = font;
+                    }
 
                     ctxHints.fillText(value1, tile.x * TILE_SIZE + offsetX, (tile.y + 0.7) * TILE_SIZE, TILE_SIZE);
 
