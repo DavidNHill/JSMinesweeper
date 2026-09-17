@@ -397,7 +397,7 @@ async function startup() {
     }
 
     //bulkRun(21, 12500, false);  // seed '21' Played 12500 won 5192
-    //bulkRun(321, 10000, false);  // seed 321 played 10000 won 4131   28/2/26
+    //bulkRun(321, 10000, false);  // seed 321 played 10000 won 4121   05/08/26
     //bulkRun(0, 1000, false);  // classic: seed '0' Won 424/1000 (42.40%)
     //bulkRun(0, 1000, true);  // modern: seed '0' Won 546/1000 (54.60%)
 
@@ -1142,6 +1142,7 @@ async function bulkRun(runSeed, size, modern) {
     options.advancedGuessing = true;
     options.fullProbability = true;
     options.hardcore = false;
+    options.guessPruning = true;
 
     const startTime = Date.now();
 

@@ -6,7 +6,11 @@
 const OFFSETS = [[2, 0], [-2, 0], [0, 2], [0, -2]];
 const OFFSETS_ALL = [[2, -2], [2, -1], [2, 0], [2, 1], [2, 2], [-2, -2], [-2, -1], [-2, 0], [-2, 1], [-2, 2], [-1, 2], [0, 2], [1, 2], [-1, -2], [0, -2], [1, -2]];
 
-const HARD_CUT_OFF = 0.90;        // cutoff for considering on edge possibilities below the best probability
+//const HARD_CUT_OFF = 0.90;        // cutoff for considering on edge possibilities below the best probability
+
+const SELECTION_THRESHOLD1 = 0.1;
+const SELECTION_THRESHOLD2 = 0.2;
+
 const OFF_EDGE_THRESHOLD = 0.95;  // when to include possibilities off the edge
 const PROGRESS_CONTRIBUTION = 0.2;  // how much progress counts towards the final score
 
@@ -60,7 +64,7 @@ async function solver(board, options) {
     if (options.guessPruning == null) {
         options.guessPruning = SolverGlobal.PRUNE_GUESSES;
     } else {
-        options.guessPruning = options.guessPruning && SolverGlobal.PRUNE_GUESSES;
+        options.guessPruning = options.guessPruning || SolverGlobal.PRUNE_GUESSES;
     }
 
     // this is used when using the solver to create a no-guessing board
@@ -166,6 +170,7 @@ async function solver(board, options) {
     let bestSafety = 0;
     for (const action of cleanActions) {
         bestSafety = action.prob;
+        break;
     }
 
     // if we are flagging then add the flags into the next playable actions
@@ -401,44 +406,6 @@ async function solver(board, options) {
                 }
             }
 
-           /*
-            // Set the probability for each tile on the edge 
-            for (let i = 0; i < pe.boxes.length; i++) {
-                let safety = pe.boxProb[i];
-                for (let j = 0; j < pe.boxes[i].tiles.length; j++) {
-                    let tile = pe.boxes[i].tiles[j];
-                    tile.setProbability(safety);
-                    if (safety == 0) {
-                        if (!tile.isFlagged()) {
-                            board.unflaggedMines.push(tile);
-                        }
-                    } else if (safety == 1) {
-                        board.safeTiles.push(tile);
-                        tile.isSafe = true;
-                    }
-                }
-            }
-
-            // set all off edge probabilities
-            for (let i = 0; i < board.tiles.length; i++) {
-
-                const tile = board.getTile(i);
-
-                if (tile.isSolverFoundBomb()) {
-                    //if (!tile.isFlagged()) {
-                    //    tile.setProbability(0);
-                    //    board.unflaggedMines.push(tile);
-                    //}
-                } else if (tile.isCovered() && !tile.onEdge) {
-                    tile.setProbability(pe.offEdgeProbability);
-                    if (pe.offEdgeProbability == 1) {
-                        board.safeTiles.push(tile);
-                        tile.isSafe = true;
-                    }
-                }
-            }
-            */
-
             // all tiles are either dead or mines. At least one tile should not be a mine, or the game is finished.  
             if (pe.bestProbability == 0) {
 
@@ -475,7 +442,7 @@ async function solver(board, options) {
             if (SolverGlobal.REUSE_BRUTE_FORCE_ANALYSIS) {
                 const bestTile = board.bestTree.getBestMove(pe.finalSolutionsCount);
                 if (bestTile != null) {
-                    console.log("Best tile is " + bestTile.asText());
+                    writeToConsole("Best tile is " + bestTile.asText());
                     showMessage("Best follow up move is " + bestTile.asText() + " with " + (bestTile.winRate * 100).toFixed(2) + "% win rate." + formatSolutions(pe.finalSolutionsCount));
 
                     let safety = pe.getProbability(bestTile);
@@ -645,7 +612,8 @@ async function solver(board, options) {
         // this is part of the no-guessing board creation logic
         if (pe.bestProbability < 1 && options.noGuessingMode) {
             if (pe.bestOnEdgeProbability >= pe.offEdgeProbability) {
-                result.push(pe.getBestCandidates(pe.bestOnEdgeProbability));  // get best options
+                //result.push(...pe.getBestCandidates(pe.bestOnEdgeProbability));  // get best options
+                result.push(...pe.getBestCandidates(SELECTION_THRESHOLD1, SELECTION_THRESHOLD2));  // get best options
             } else {
                 writeToConsole("Floating tiles are safest, off edge safety = " + pe.offEdgeProbability + ", on edge safety = " + pe.bestOnEdgeProbability, true);
                 const bestGuessTile = offEdgeGuess(board, witnessed);
@@ -909,7 +877,7 @@ async function solver(board, options) {
 
         // ... otherwise we will use the probability engines results
 
-        result.push(...pe.getBestCandidates(HARD_CUT_OFF));  // get best options within this ratio of the best value
+        result.push(...pe.getBestCandidates(SELECTION_THRESHOLD1, SELECTION_THRESHOLD2));  // get best options within this ratio of the best value
 
         // if the off edge tiles are within tolerance then add them to the candidates to consider as long as we don't have certain clears
         if (pe.bestOnEdgeProbability != 1 && pe.offEdgeProbability > pe.bestOnEdgeProbability * OFF_EDGE_THRESHOLD) {
@@ -1038,8 +1006,9 @@ async function solver(board, options) {
             for (let action of actions) {
                 alreadyIncluded.add(board.getTileXY(action.x, action.y));
             }
-
-            const extraTiles = ltr.getInfluencedTiles(pe.bestProbability * 0.9);
+ 
+            //const extraTiles = ltr.getInfluencedTiles(pe.bestProbability * 0.9);
+            const extraTiles = ltr.getInfluencedTiles(pe.bestProbability - SELECTION_THRESHOLD1);
             for (let tile of extraTiles) {
                 if (alreadyIncluded.has(tile)) {
                     writeToConsole(tile.asText() + " is already in the list of candidates to be analysed");

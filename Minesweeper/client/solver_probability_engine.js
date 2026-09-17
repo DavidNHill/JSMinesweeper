@@ -42,7 +42,7 @@ class ProbabilityEngine {
 
         this.emptyBoxes = [];  // boxes which never contain mines - i.e. the set of safe tiles by Box
 
-        this.boxProb = [];  // the probabilities end up here
+        //this.boxProb = [];  // the probabilities end up here
 		this.workingProbs = []; 
         this.heldProbs = [];
         this.bestProbability = 0;  // best probability of being safe
@@ -175,8 +175,6 @@ class ProbabilityEngine {
         //    var boxWit = this.boxWitnesses[i];
         //      console.log("Witness " + boxWit.tile.asText() + " is adjacent to " + boxWit.boxes.length + " boxes and has " + boxWit.minesToFind + " mines to find");
         //}
-
- 
 
  	}
 
@@ -1852,10 +1850,10 @@ class ProbabilityEngine {
     // sum them together to create a definitive probability for each box
     calculateBoxProbabilities() {
 
-        const tally = [];
-        for (let i = 0; i < this.boxes.length; i++) {
-            tally[i] = BigInt(0);
-        }
+        //const tally = [];
+        //for (let i = 0; i < this.boxes.length; i++) {
+        //    tally[i] = BigInt(0);
+        //}
 
         // total game tally
         let totalTally = BigInt(0);
@@ -1884,9 +1882,13 @@ class ProbabilityEngine {
                 // this is all the possible ways the mines can be placed across the whole game
                 totalTally = totalTally + newSolutions;
 
-                for (let j = 0; j < tally.length; j++) {
+                for (let j = 0; j < this.boxes.length; j++) {
+
+                    let box = this.boxes[j];
+
                     //console.log("mineBoxCount " + j + " is " + pl.mineBoxCount[j]);
-                    tally[j] = tally[j] + (mult * pl.mineBoxCount[j]) / BigInt(this.boxes[j].tiles.length);
+                    //tally[j] = tally[j] + (mult * pl.mineBoxCount[j]) / BigInt(this.boxes[j].tiles.length);
+                    box.mineTally = box.mineTally + (mult * pl.mineBoxCount[j]) / BigInt(box.tiles.length);
                 }
             }
 
@@ -1896,49 +1898,63 @@ class ProbabilityEngine {
         // for each box calculate a probability
         for (let i = 0; i < this.boxes.length; i++) {
 
-            if (totalTally != 0) {
-                if (tally[i] == totalTally) {  // a mine
-                    //console.log("Box " + i + " contains mines");
-                    this.boxProb[i] = 0;
+            const box = this.boxes[i];
 
-                } else if (tally[i] == 0) {  // safe
-                    this.boxProb[i] = 1;
-                    this.emptyBoxes.push(this.boxes[i]);
+            if (totalTally != 0) {
+                if (box.mineTally == totalTally) {  // a mine
+                    //console.log("Box " + i + " contains mines");
+                    box.safety = 0;
+                    //this.boxProb[i] = 0;
+
+                } else if (box.mineTally == 0) {  // safe
+                    box.safety = 1;
+                    //this.boxProb[i] = 1;
+                    this.emptyBoxes.push(box);
 
                 } else {  // neither mine nor safe, but need to be careful of rounding down to zero, or up to one.
-                    const safety = 1 - divideBigInt(tally[i], totalTally, 8);
+                    const safety = 1 - divideBigInt(box.mineTally, totalTally, 8);
                     if (safety == 0) {
-                        this.boxProb[i] = ProbabilityEngine.LOW_SAFETY;
+                        box.safety = ProbabilityEngine.LOW_SAFETY;
+                        //this.boxProb[i] = ProbabilityEngine.LOW_SAFETY;
+
                     } else if (safety == 1) {
-                        this.boxProb[i] = ProbabilityEngine.HIGH_SAFETY;
+                        box.safety = ProbabilityEngine.HIGH_SAFETY;
+                        //this.boxProb[i] = ProbabilityEngine.HIGH_SAFETY;
                     } else {
-                        this.boxProb[i] = safety;
+                        box.safety = safety;
+                        //this.boxProb[i] = safety;
+                    }
+                }
+                 
+                // Boxes with zero safety contain mines
+                if (box.safety == 0) {
+                    for (let j = 0; j < box.tiles.length; j++) {
+                        this.minesFound.push(box.tiles[j]);
                     }
                 }
 
-                this.boxes[i].mineTally = tally[i]; 
             } else {
-                this.boxProb[i] = 0;
+                //this.boxProb[i] = 0;
+                box.safety = 0;
                 this.boxes[i].mineTally = 0; 
 
             }
 
             //console.log("Box " + i + " has probabality " + this.boxProb[i]);
 
-            // for each tile in the box allocate a probability to it
-            for (let j = 0; j < this.boxes[i].tiles.length; j++) {
-                if (this.boxProb[i] == 0) {
-                    this.minesFound.push(this.boxes[i].tiles[j]);
-                }
-            }
+
 
         }
+
+        // sort the boxes in to safety order, safest first
+        this.boxes.sort(function (a, b) { return b.safety - a.safety});
+
 
         // see if the lonely tiles are dead
         for (let i = 0; i < this.lonelyTiles.length; i++) {
             const dc = this.lonelyTiles[i];
-            //if (this.boxProb[dc.myBox.uid] != 0 && this.boxProb[dc.myBox.uid] != 1) {   // a lonely tile is dead if not a definite mine or safe
-            if (this.boxProb[dc.myBox.uid] != 0) {
+            // a lonely tile is dead if not a definite mine 
+            if (dc.myBox.safety != 0) {
                 this.writeToConsole("PE found Lonely tile " + dc.candidate.asText() + " is dead with value +" + dc.total);
                 this.deadTiles.push(dc.candidate);
             }
@@ -1947,8 +1963,8 @@ class ProbabilityEngine {
         // add the dead locations we found
         for (let i = 0; i < this.deadCandidates.length; i++) {
             const dc = this.deadCandidates[i];
-            //if (!dc.isAlive && this.boxProb[dc.myBox.uid] != 0 && this.boxProb[dc.myBox.uid] != 1) {   // if it is dead and not a definite mine or safe
-            if (!dc.isAlive && this.boxProb[dc.myBox.uid] != 0) {
+            // if it is dead and not a definite mine
+            if (!dc.isAlive && dc.myBox.safety != 0) {
                 this.writeToConsole("PE found " + dc.candidate.asText() + " to be dead with value +" + dc.total);
                 this.deadTiles.push(dc.candidate);
             }
@@ -1973,7 +1989,7 @@ class ProbabilityEngine {
 
                 let box = this.boxes[i];
 
-                if (tally[i] == 0) {
+                if (box.mineTally == 0) {
                     this.clearCount = this.clearCount + this.boxes[i].tiles.length;
                     this.localClears.push(...box.tiles);
 
@@ -2007,7 +2023,7 @@ class ProbabilityEngine {
         for (let i = 0; i < this.boxes.length; i++) {
 
             const b = this.boxes[i];
-            var prob = this.boxProb[b.uid];
+            //var prob = b.safety;
 
             let boxLiving = false;
 
@@ -2025,21 +2041,21 @@ class ProbabilityEngine {
                 if (tileLiving) {
                     boxLiving = true;
 
-                    if (prob > bestSafety2) {
-                        if (prob > bestSafety1) {
+                    if (b.safety > bestSafety2) {
+                        if (b.safety > bestSafety1) {
                             bestSafety2 = bestSafety1;
-                            bestSafety1 = prob;
+                            bestSafety1 = b.safety;
                             bestTile = tile;
                         } else {
-                            bestSafety2 = prob;
+                            bestSafety2 = b.safety;
                         }
                     }
                 }
             }
  
-            if (boxLiving || prob == 1) {   // if living or 100% safe then consider this probability
-                if (hwm < prob) {
-                     hwm = prob;
+            if (boxLiving || b.safety == 1) {   // if living or 100% safe then consider this probability
+                if (hwm < b.safety) {
+                     hwm = b.safety;
                 }
             }
         }
@@ -2072,26 +2088,35 @@ class ProbabilityEngine {
  
     }
 
-    getBestCandidates(freshhold) {
+    getBestCandidates(threshold1, threshold2) {
 
         var best = [];
 
         //solver.display("Squares left " + this.squaresLeft + " squares analysed " + web.getSquares().size());
 
         // if the outside probability is the best then return an empty list
-        let test;
+        let test1;
+        let test2;
         if (this.bestProbability == 1) {  // if we have a probability of one then don't allow lesser probs to get a look in
-            test = this.bestProbability;
+            test1 = 1;
+            test2 = 1;
         } else {
-            test = this.bestProbability * freshhold;
+            test1 = this.bestLivingSafety - threshold1;
+            test2 = this.bestLivingSafety - threshold2;
         }
 
-        this.writeToConsole("Best probability is " + this.bestProbability + " freshhold is " + test);
+        this.writeToConsole("Best safety is " + this.bestProbability + ", best living safety is " + this.bestLivingSafety + ", threshold is " + test1);
 
-        for (let i = 0; i < this.boxProb.length; i++) {
-            if (this.boxProb[i] >= test) {
-                for (let j = 0; j < this.boxes[i].tiles.length; j++) {
-                    const squ = this.boxes[i].tiles[j];
+        for (let i = 0; i < this.boxes.length; i++) {
+            const box = this.boxes[i];
+
+            if (box.safety >= test1 || best.length < 2 && box.safety >= test2) {
+
+            	// if we are getting tiles below the cut off then make sure we get all with the lower value
+				test1 = Math.min(test1, box.safety);
+
+                for (let j = 0; j < box.tiles.length; j++) {
+                    const squ = box.tiles[j];
 
                     //  exclude dead tiles 
                     let dead = false;
@@ -2101,13 +2126,15 @@ class ProbabilityEngine {
                             break;
                         }
                     }
-                    if (!dead || this.boxProb[i] == 1) {   // if not dead or 100% safe then use the tile
-                        best.push(new Action(squ.x, squ.y, this.boxProb[i], ACTION_CLEAR));
+                    if (!dead || box.safety == 1) {   // if not dead or 100% safe then use the tile
+                        best.push(new Action(squ.x, squ.y, box.safety, ACTION_CLEAR));
                     } else {
                         this.writeToConsole("Tile " + squ.asText() + " is ignored because it is dead");
                     }
  
                 }
+            } else {
+                break;
             }
         }
 
@@ -2139,7 +2166,7 @@ class ProbabilityEngine {
 
         for (const b of this.boxes) {
             if (b.contains(l)) {
-                return this.boxProb[b.uid];
+                return b.safety;
             }
         }
 
@@ -2150,8 +2177,8 @@ class ProbabilityEngine {
 
         const picks = [];
 
-        for (let i = 0; i < this.boxProb.length; i++) {
-            if (this.boxProb[i] == 0.5) {
+        for (let i = 0; i < this.boxes.length; i++) {
+            if (this.boxes[i].safety == 0.5) {
                 picks.push(...this.boxes[i].tiles);
             }
         }
@@ -2299,6 +2326,8 @@ class BoxWitness {
                 this.tiles.push(adjTile[i]);
             }
         }		
+
+        Object.seal(this) // prevent new properties being created
  	}
 
     overlap(boxWitness) {
@@ -2391,8 +2420,8 @@ class Box {
         this.processed = false;
 
 		this.uid = uid;
-        this.minMines;
-        this.maxMines;
+        this.minMines = 0;
+        this.maxMines = 0;
 
         this.tiles = [tile];
 
@@ -2402,6 +2431,7 @@ class Box {
 		this.boxWitnesses = [];
 
         this.mineTally = BigInt(0);
+        this.safety = 0;
 
 		for (let i=0; i < boxWitnesses.length; i++) {
 			if (tile.isAdjacent(boxWitnesses[i].tile)) {
@@ -2413,6 +2443,7 @@ class Box {
 		
 		//console.log("Box created for tile " + tile.asText() + " with " + this.boxWitnesses.length + " witnesses");
 
+        Object.seal(this) // prevent new properties being created
 	}
 	
 	// if the tiles surrounding witnesses equal the boxes then it fits

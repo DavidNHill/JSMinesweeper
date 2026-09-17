@@ -381,6 +381,7 @@ async function createNoGuessGame(header, index) {
 	options.verbose = false;
 	options.advancedGuessing = false;
 	options.noGuessingMode = true;
+	options.guessPruning = true;
 
 	const startTime = Date.now();
 
@@ -450,7 +451,7 @@ async function createNoGuessGame(header, index) {
 					console.log("Got a chord request!");
 
 				} else if (action.action == ACTION_FLAG) {   // zero safe probability == mine
-					console.log("Got a flag request!");
+					//console.log("Got a flag request!");
 
 				} else {   // otherwise we're trying to clear
 
