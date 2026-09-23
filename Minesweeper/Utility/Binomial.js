@@ -124,6 +124,10 @@ class Binomial {
 
 		this.ps = new PrimeSieve(this.max);
 
+		const donePrimes = Date.now();
+		console.log("Prime numbers up to " + this.max + " calculated in " + (donePrimes - start) + " milliseconds");
+
+
 		if (lookup < 10) {
 			lookup = 10;
 		}
@@ -135,15 +139,28 @@ class Binomial {
 
 		for (let total = 1; total <= lookup; total++) {
 
-			this.binomialLookup[total] = Array(lookup2 + 1);
+			let row = Array(lookup2 + 1);
+			row[0] = BigInt(1);
+			let prevRow = this.binomialLookup[total - 1];
 
-			for (let choose = 0; choose <= total / 2; choose++) {
-				this.binomialLookup[total][choose] = this.generate(choose, total);
+			this.binomialLookup[total] = row;
+
+			for (let choose = 1; choose <= total / 2; choose++) {
+				
+				//this.binomialLookup[total][choose] = this.generate(choose, total);
+
+				let bico = prevRow[choose - 1] + (prevRow[choose] ?? prevRow[choose - 1] ?? BigInt(0));
+				row[choose] = bico;
+
+				//if (this.binomialLookup[total][choose] != bico) {
+				//	console.log(this.binomialLookup[total][choose] + " != " + bico);
+				//}
+
 			}
 		}
 
-		console.log("Binomial coefficients look-up generated up to " + lookup + ", on demand up to " + max);
-		console.log("Processing took " + (Date.now() - start) + " milliseconds");
+		console.log("Binomial coefficients look-up generated up to " + lookup + ", on demand up to " + this.max + " took " + (Date.now() - donePrimes) + " milliseconds");
+		//console.log("Processing took " + (Date.now() - donePrimes) + " milliseconds");
 	}
 
 

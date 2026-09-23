@@ -275,9 +275,8 @@ async function startup() {
     docMinesLeft.height = DIGIT_HEIGHT;
 
     //const BINOMIAL = new Binomial(MAX_WIDTH * MAX_HEIGHT + 10, 500);
-    const BINOMIAL = new Binomial(MAX_BINOMIAL_N, 500);
-    binomialCache = new BinomialCache(5000, 500, BINOMIAL);
-
+    const BINOMIAL = new Binomial(MAX_BINOMIAL_N, 1000);
+    binomialCache = new BinomialCache(5000, 1000, BINOMIAL);
     console.log("Binomials calculated");
 
     //window.addEventListener("beforeunload", (event) => exiting(event));
@@ -991,8 +990,11 @@ function renderHints(drawHints, drawOverlay) {
                     }
 
                     let value1;
-                    if (value > 0 && value < 1) {
-                        value1 = "1";
+                    if (value > 0 && value <= 0.1) {
+                        value1 = "0.1";
+                    } else if (value > 0.1 && value < 9.95) {
+                        value1 = value.toFixed(1);
+                        //value1 = "1";
                     } else if (value > 99 && value < 100) {
                         value1 = "99";
                     } else {

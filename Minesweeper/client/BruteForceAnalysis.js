@@ -21,11 +21,15 @@ class BruteForceGlobal {
     static allSolutions;       // this is class 'SolutionTable'
     static allTiles;           // this is an array of the tiles being analysed 
 
+    // hash controller
+    static hashController = null;
+    static transpositionTable;
+
     // cache details
-    static cache = new Map();
+    //static cache = new Map();
     static cacheHit = 0;
     static cacheWinningLines = 0;
-    static cacheWork = 0;
+    //static cacheWork = 0;
 
 }
 
@@ -53,11 +57,19 @@ class BruteForceAnalysis {
 
         // reset the globals
         BruteForceGlobal.allSolutions = new SolutionTable(solutions);
-        BruteForceGlobal.cache.clear();  //clear the cache
-        BruteForceGlobal.cacheHit = 0;
+         BruteForceGlobal.cacheHit = 0;
         BruteForceGlobal.cacheWinningLines = 0;
         BruteForceGlobal.cacheWork = 0;
         BruteForceGlobal.processCount = 0;
+
+        BruteForceGlobal.hashController = new HashController(tiles.length);
+
+        if (BruteForceGlobal.transpositionTable == null) {
+            BruteForceGlobal.transpositionTable = new TranspositionTable(32);  //  32 mega buckets
+        } else {
+            BruteForceGlobal.transpositionTable.clear();
+        }
+        
     }
 
     async process() {
@@ -187,12 +199,12 @@ class BruteForceAnalysis {
         }
 
         const end = performance.now();;
-        this.writeToConsole("Total nodes in cache = " + BruteForceGlobal.cache.size + ", total cache hits = " + BruteForceGlobal.cacheHit + ", total processing saved = " + BruteForceGlobal.cacheWork);
+        this.writeToConsole("Total nodes in cache: " + "(TBD)" + ", total cache hits: " + BruteForceGlobal.cacheHit + ", lines saved: " + BruteForceGlobal.cacheWinningLines);
         this.writeToConsole("process took " + (end - start).toFixed(2) + " milliseconds and explored " + BruteForceGlobal.processCount + " nodes");
         this.writeToConsole("----- Brute Force Deep Analysis finished ----");
 
         // clear down the cache
-        BruteForceGlobal.cache.clear();
+        //BruteForceGlobal.cache.clear();
 
     }
 
@@ -396,6 +408,68 @@ class BruteForceAnalysis {
 
 }
 
+class HashController {
+
+    constructor(numOfLocations) {
+        this.zHash = new BigUint64Array(numOfLocations * 9);
+
+        window.crypto.getRandomValues(this.zHash);
+
+        Object.seal(this) // prevent new properties being created
+    }
+
+    newValue(oldHash, index, value) {
+        return oldHash ^ this.zHash[index * 9 + value];
+    }
+
+    rootValue() {
+        return 0n;
+    }
+
+}
+
+class TranspositionTable {
+
+    constructor(megaBuckets) {
+
+        // this is how many buckets we are supporting. Each bucket (hash, depth and score) requires two entries in the array.
+        this.sizeBuckets = 1024 * 1024 * megaBuckets;
+        this.table = new BigUint64Array(this.sizeBuckets * 2);
+
+        this.bigSizeBuckets = BigInt(this.sizeBuckets - 1);
+
+    }
+
+    store(hash, depth, score) {
+
+        let index = Number(hash & (this.bigSizeBuckets)) * 2;
+
+        //let existingHash = this.table[index];
+        //let existingData = this.table[index + 1];
+
+        this.table[index] = hash;
+        this.table[index + 1] = BigInt(score);
+    }
+
+    probe(hash) {
+
+        let index = Number(hash & (this.bigSizeBuckets)) * 2;
+
+        let storedHash = this.table[index];
+
+        if (storedHash != hash) {
+            return null;
+        }
+
+        return Number(this.table[index + 1]);
+    }
+
+    clear() {
+        this.table.fill(0n);
+
+        //this.table = new BigUint64Array(this.sizeBuckets * 2);
+    }
+}
 
 /**
  * A key to uniquely identify a position
@@ -404,17 +478,16 @@ class Position {
 
     constructor(p, index, value) {
 
-        this.position;
-        this.hash = 0;
-        this.mod = BigInt(Number.MAX_SAFE_INTEGER);
+        this.zobristHash;
+        this.depth;
 
         if (p == null) {
-            this.position = new Array(BruteForceGlobal.allTiles.length).fill(15);
+            this.zobristHash = BruteForceGlobal.hashController.rootValue();
+            this.depth = 0;
         } else {
-            // copy and update to reflect the new position
-            this.position = p.position.slice(); 
-            //this.position.push(...p.position); 
-            this.position[index] = value + 50;
+            // Xor the old value with the new Positions extra value
+            this.zobristHash = BruteForceGlobal.hashController.newValue(p.zobristHash, index, value);
+            this.depth = p.depth + 1;
         }
 
     }
@@ -422,14 +495,7 @@ class Position {
  
     // copied from String hash
     hashCode() {
-        let h = BigInt(this.hash);
-        if (h == 0 && this.position.length > 0) {
-            for (let i = 0; i < this.position.length; i++) {
-                h = (BigInt(31) * h + BigInt(this.position[i])) % this.mod;
-            }
-            this.hash = Number(h);  // convert back to a number
-        }
-        return this.hash;
+        return this.zobristHash;
     }
 
 }
@@ -473,31 +539,17 @@ class LivingLocation {
              // if the node is in the cache then use it
             const pos = new Position(parent.position, this.index, i);
 
-            const temp1 = BruteForceGlobal.cache.get(pos.hashCode());  // temp1 is class 'Node'
+            const temp = new Node(pos);
 
-            if (temp1 == null) {
-
-                const temp = new Node(pos);
-
-                temp.startLocation = index;
-                // find all solutions for this values at this location
-                while (index < parent.endLocation && BruteForceGlobal.allSolutions.get(index)[this.index] == i) {
-                    index++;
-                }
-                temp.endLocation = index;
-
-                work[i] = temp;
-
-            } else {
-                work[i] = temp1;
-                BruteForceGlobal.cacheHit++;
-                BruteForceGlobal.cacheWinningLines = BruteForceGlobal.cacheWinningLines + temp1.winningLines;
-                BruteForceGlobal.cacheWork = BruteForceGlobal.cacheWork + temp1.work;
-                // skip past these details in the array
-                while (index < parent.endLocation && BruteForceGlobal.allSolutions.get(index)[this.index] <= i) {
-                    index++;
-                }
+            temp.startLocation = index;
+            // find all solutions for this values at this location
+            while (index < parent.endLocation && BruteForceGlobal.allSolutions.get(index)[this.index] == i) {
+                index++;
             }
+            temp.endLocation = index;
+
+            work[i] = temp;
+
         }
 
         // skip over the mines
@@ -573,7 +625,6 @@ class Node {
     constructor (position) {
 
         this.position;   // representation of the position we are analysing / have reached
-
         if (position == null) {
             this.position = new Position();
         } else {
@@ -583,7 +634,7 @@ class Node {
         this.livingLocations = null;       // these are the locations which need to be analysed
 
         this.winningLines = 0;      // this is the number of winning lines below this position in the tree
-        this.work = 0;              // this is a measure of how much work was needed to calculate WinningLines value
+        //this.work = 0;              // this is a measure of how much work was needed to calculate WinningLines value
         this.fromCache = false;     // indicates whether this position came from the cache
 
         this.startLocation = 0;         // the first solution in the solution array that applies to this position
@@ -673,12 +724,25 @@ class Node {
                 continue;  // continue the loop but ignore this entry
             }
 
+            if (child.getSolutionSize() > 10) {
+                const temp1 = BruteForceGlobal.transpositionTable.probe(child.position.hashCode());
+                if (temp1 != null) {
+                    child.winningLines = temp1;
+                    child.fromCache = true;
+
+                    BruteForceGlobal.cacheHit++;
+                    BruteForceGlobal.cacheWinningLines = BruteForceGlobal.cacheWinningLines + temp1;
+                    //BruteForceGlobal.cacheWork = BruteForceGlobal.cacheWork + temp1.work;
+                }
+            }
+
+
             if (child.fromCache) {  // nothing more to do, since we did it before
-                this.work++;
+                //this.work++;
             } else {
 
                 child.determineLivingLocations(this.livingLocations, move.index);
-                this.work++;
+                //this.work++;
 
                 if (child.getLivingLocations().length == 0) {  // no further information ==> all solution indistinguishable ==> 1 winning line
 
@@ -719,13 +783,15 @@ class Node {
                     child.livingLocations = null;
 
                     //add the child to the cache if it didn't come from there and takes took an amount of work to create
-                    if (child.work > 10) {
+                    if (child.getSolutionSize() > 10) {
                         //console.log("Entry placed in cache with key " + child.position.hashCode());
                         //child.work = 0;
                         child.fromCache = true;
-                        BruteForceGlobal.cache.set(child.position.hashCode(), child);
+                        //BruteForceGlobal.cache.set(child.position.hashCode(), child);
+
+                        BruteForceGlobal.transpositionTable.store(child.position.hashCode(), child.position.depth, child.winningLines);
                     } else {
-                        this.work = this.work + child.work;
+                        //this.work = this.work + child.work;
                     }
 
                 }
