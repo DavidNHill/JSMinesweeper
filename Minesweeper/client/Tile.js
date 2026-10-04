@@ -36,6 +36,8 @@ class Tile {
 		this.zeroProbability = 0;
 		this.zeroPoison = false;
 
+		this.valueProbability = Array(9).fill(0);
+
 		// is there an mine adjacent to this tile?  Set as part of the No flag efficiency logic
 		this.adjacentMine = false;
 

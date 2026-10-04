@@ -36,6 +36,8 @@ async function solver(board, options) {
     if (board == null) {
         console.log("Solver Initialisation request received");
         solver.countSolutions = countSolutions;
+        solver.runProbabilityEngine = runProbabilityEngine;
+        solver.calculateValueProbability = calculateValueProbability;
         return;
     }
 
@@ -1504,7 +1506,7 @@ async function solver(board, options) {
 
         const tile = board.getTileXY(action.x, action.y);
 
-        const safePe = runProbabilityEngine(board, [tile]);
+        const safePe = runProbabilityEngine(board, [tile], false);
         let linkedTilesCount = 0;
 
         let dominated = false;  // if tile 'a' being safe ==> tile 'b' & 'c' are safe and 'b' and 'c' are in the same box ==> 'b' is safer then 'a' 
@@ -1608,7 +1610,7 @@ async function solver(board, options) {
 
             tile.setValue(value);
 
-            const work = runProbabilityEngine(board, null);
+            const work = runProbabilityEngine(board, null, false);
 
             const clearCount = work.livingClearTile;
 
@@ -1708,9 +1710,9 @@ async function solver(board, options) {
         if (pe != null) {
             base = pe;
         } else {
-            base = runProbabilityEngine(board, null);
+            base = runProbabilityEngine(board, null, true);
             if (base.finalSolutionCount == 0) {
-                console.log("Board is in an invalid state");
+                //console.log("Board is in an invalid state");
                 return;
             }
         }
@@ -1721,7 +1723,11 @@ async function solver(board, options) {
         for (let i = 0; i < board.tiles.length; i++) {
             const tile = board.getTile(i);
 
-            tile.zeroProbability = 0;
+            if (value == 0) {
+               tile.zeroProbability = 0;
+            }
+
+            tile.valueProbability[value] = 0;
 
             // no need to analyse a bomb
             if (tile.isSolverFoundBomb()) {
@@ -1735,32 +1741,46 @@ async function solver(board, options) {
                 continue;
             }
 
-            tile.hasHint = true;
+            //tile.hasHint = true;
 
             // if the number of mines adjacent is > 0 then this can't be a zero
             const adjMines = board.adjacentFoundMineCount(tile);
-            if (adjMines > 0) {
-                //console.log(tile.asText() + " is adjacent to a mine");
+            if (adjMines > value) {
+                //console.log(tile.asText() + " is adjacent to " + adjMines + mines which is more than value " + value);
+                continue;
+            }
+
+            const adjCovered = board.adjacentCoveredCount(tile);
+            if (adjMines + adjCovered < value) {
+                //console.log(tile.asText() + " does not have enough covered tiles to reach value " + value);
                 continue;
             }
 
             const floating = evaluateTileForValue(board, tile, base);
             if (floating != -1 && simple[floating] != -1) {
-                tile.zeroProbability = simple[floating];
+                if (value == 0) {
+                   tile.zeroProbability = simple[floating];
+                }
+
+                tile.valueProbability[value] = simple[floating];
                 //console.log(tile.asText() + " has " + tile.zeroProbability + " probability being a '" + value + "' (simple)");
 
             } else {
                 // do the work
                 tile.setValue(value);
-                const work = runProbabilityEngine(board, null);
+                const work = runProbabilityEngine(board, null, false);
                 tile.setCovered(true);
 
                 // if this is a valid board state
                 if (work.finalSolutionsCount > 0) {
-                    const valueProbability = divideBigInt(work.finalSolutionsCount, base.finalSolutionsCount, 6);
-                    tile.zeroProbability = valueProbability;
+                    const valueProbability = divideBigInt(work.finalSolutionsCount, base.finalSolutionsCount, 8);
+                    if (value == 0) {
+                       tile.zeroProbability = valueProbability;
+                    }
+ 
+                    tile.valueProbability[value] = valueProbability;
 
-                    //console.log(tile.asText() + " has " + tile.zeroProbability + " probability being a '" + value + "'");
+                    //console.log(tile.asText() + " has " + valueProbability + " probability being a '" + value + "'");
 
                     if (floating != -1) {
                         simple[floating] = valueProbability;
@@ -1773,7 +1793,7 @@ async function solver(board, options) {
  
         }
 
-        console.log("Evaluating Zero probabilities took " + (Date.now() - start) + " milliseconds");
+        console.log("Evaluating value '" + value + "' probabilities took " + (Date.now() - start) + " milliseconds");
 
     }
 
@@ -1813,7 +1833,7 @@ async function solver(board, options) {
         return floating;
     }
 
-    function runProbabilityEngine(board, notMines) {
+    function runProbabilityEngine(board, notMines, updateOnEdge) {
 
         // find all the tiles which are revealed and have un-revealed / un-flagged adjacent squares
         const allCoveredTiles = [];
@@ -1862,7 +1882,9 @@ async function solver(board, options) {
         // generate an array of tiles from the map
         for (let index of work) {
             const tile = board.getTile(index);
-            //tile.setOnEdge(true);
+            if (updateOnEdge) {
+               tile.setOnEdge(true);
+            }
             witnessed.push(tile);
         }
 

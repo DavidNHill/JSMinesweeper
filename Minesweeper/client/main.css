@@ -285,4 +285,39 @@ button:hover {
     border-right-width: 0px;
 }
 
+#xRayPanelHeader {
+    padding: 10px;
+    cursor: move;
+    z-index: 10;
+    border-color: #eee;
+    border-style: ridge;
+    border-top-width: 0px;
+    border-left-width: 0px;
+    border-bottom-width: 5px;
+    border-right-width: 0px;
+}
 
+
+/* styling for table */
+table {
+  width: 100%;
+  border-collapse: collapse; /* Merges double borders into a single crisp line */
+  font-family: sans-serif;
+  font-size: 14px;
+}
+
+th, td {
+  border: 1px solid #dddddd; /* Adds a light gray border around cells */
+  padding: 2px;              /* Adds breathing room inside cells */
+  text-align: center;        /* Aligns all text centrally */
+}
+
+th {
+  background-color: #f2f2f2; /* Gives headers a distinct gray background */
+  font-weight: bold;
+}
+
+/* Optional: Zebra striping for easier reading */
+tr:nth-child(even) {
+  background-color: #f9f9f9;
+}

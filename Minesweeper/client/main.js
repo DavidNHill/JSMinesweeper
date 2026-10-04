@@ -159,7 +159,18 @@ let dragButton;         // the button being pressed which dragging
 let hoverTile;         // tile the mouse last moved over
 let analysing = false;  // try and prevent the analyser running twice if pressed more than once
 
-let guessAnalysisPruning = true;
+//let guessAnalysisPruning = true;
+
+// Probability X-Ray variables
+const XRAY_TITLE = "Probability X-Ray"
+let doProbabilityXRay = false;
+const xRayPanel = document.getElementById("xRayPanel");
+const xRayLaunchButton = document.getElementById("xRayLaunchButton");
+const xRayPanelHeader = document.getElementById("xRayPanelHeader");
+let xRayHash = 0;   // hash when the x-ray was taken, if the current board is different don't show the values
+let xRayBoardUID = 0;
+let xRayLabel = document.getElementById("xRayLabel");
+let xRayPe = null;
 
 let lastFileHandle = null;
 
@@ -200,6 +211,11 @@ async function startup() {
     } else {
         console.log("Device does not supports touch screen");
         document.getElementById("leftClickFlag").style.display = "none"; 
+    }
+
+    // does the device have a hover capability. If not then don't show the X-Ray button
+    if (!window.matchMedia('(hover: hover)').matches) {
+        xRayLaunchButton.style.display = "none";
     }
 
     try {
@@ -300,7 +316,7 @@ async function startup() {
 
     // make the properties div draggable
     dragElement(propertiesPanel);
-    //propertiesClose();
+    dragElement(xRayPanel);
 
     // set the board details
     setBoardSizeOnGUI(width, height, mines);
@@ -476,6 +492,133 @@ function loadLocalStorage() {
 function fetchLocalStorage() {
 
 
+}
+
+function clickedProbabilityXRay() {
+    
+    if (doProbabilityXRay) {
+         xRayLaunchButton.className = ""; 
+         xRayPanel.style.display = "none";
+    } else {
+         xRayLaunchButton.className = "selected";
+         xRayPanel.style.display = "block";
+    }
+
+    doProbabilityXRay = !doProbabilityXRay;
+}
+
+async function runProbabilityXRay() {
+
+    if (board.getHashValue() == xRayHash && board.uid == xRayBoardUID) {
+        return;
+    }
+
+    if (canvasLocked) {
+        console.log("The canvas is logically locked - this happens while the previous click is being processed");
+        return;
+    } 
+
+    canvasLocked = true;
+    xRayHash = board.getHashValue();
+    xRayBoardUID = board.uid;
+
+    //updateLabel(xRayLabel, "Processing...");
+    xRayLabel.innerHTML = "Processing";
+    await sleep(1);
+
+    console.log("Performing probability x-ray for board with hash " + xRayHash);
+
+    const pe = solver.runProbabilityEngine(board, [], true);
+    if (pe.finalSolutionCount == 0) {
+        console.log("Board is in an invalid state");
+        return;
+    }
+
+    // remember the probabilities
+    xRayPe = pe;
+
+    // identify each discovered mine to help the efficiency processing
+    for (let tile of pe.minesFound) {   
+        tile.setProbability(0);
+        tile.setFoundBomb();
+        console.log(tile.asText() + " is a mine");
+    }
+    console.log("Probability Engine took " + pe.duration + " milliseconds to complete");
+
+    solver.calculateValueProbability(board, 0, pe);
+    solver.calculateValueProbability(board, 1, pe);
+    solver.calculateValueProbability(board, 2, pe);
+    solver.calculateValueProbability(board, 3, pe);
+    solver.calculateValueProbability(board, 4, pe);
+    solver.calculateValueProbability(board, 5, pe);
+    solver.calculateValueProbability(board, 6, pe);
+    solver.calculateValueProbability(board, 7, pe);
+    solver.calculateValueProbability(board, 8, pe);
+
+    xRayLabel.innerHTML = "Data is fresh";
+
+    canvasLocked = false;
+}
+
+async function updateLabel(label, text) {
+    label.innerHTML = text;
+    await sleep(1);
+}
+
+function populateXRayTable(tile) {
+
+    const table = document.getElementById("xRayTable");
+    while (table.rows.length > 1) {
+        table.deleteRow(-1);
+    }
+
+    if (board.getHashValue() == xRayHash && board.uid == xRayBoardUID) {
+        xRayLabel.innerHTML = "Data is fresh";
+    } else {
+        xRayLabel.innerHTML = "Data is stale";
+        xRayPanelHeader.innerHTML = XRAY_TITLE
+        return;
+    }
+
+    if (!tile.isCovered()) {
+        return;
+    }
+
+    if (xRayPe == null) {
+        return;
+    }
+
+    xRayPanelHeader.innerHTML = XRAY_TITLE + " " + tile.asText();
+
+    let mineProb;
+    if (tile.isSolverFoundBomb()) {
+        mineProb = 1;
+    } else {
+         mineProb = 1 - xRayPe.getProbability(tile);
+    }
+    if (mineProb != 0) {
+        addRowToXRayTable(table, "Mine", mineProb);
+    }
+
+    for (let value=0; value < 9; value++) {
+        const probability = tile.valueProbability[value]
+        if (probability != 0) {
+            addRowToXRayTable(table, value, probability)
+        }
+    
+    }
+
+}
+
+function addRowToXRayTable(table, value, probability) {
+     const row = table.insertRow();
+     addCellToXRayRow(row, value);
+     addCellToXRayRow(row, (probability * 100).toFixed(4)  + "%");
+     //addCellToXRayRow(row, "");
+}
+
+function addCellToXRayRow(row, text) {
+     row.insertCell().textContent = text;
 }
 
 async function propertiesClose() {
@@ -2860,7 +3003,7 @@ async function doAnalysis(fullBFDA) {
         } 
 
         options.fullProbability = true;
-        options.guessPruning = guessAnalysisPruning;
+        //options.guessPruning = guessAnalysisPruning;
         options.fullBFDA = fullBFDA;
         options.hardcore = docHardcore.checked;
 
@@ -3034,7 +3177,15 @@ function followCursor(e) {
     // get the tile we're over
     const row = Math.floor(e.offsetY / TILE_SIZE);
     const col = Math.floor(e.offsetX / TILE_SIZE);
-    hoverTile = board.getTileXY(col, row);
+    const currentTile = board.getTileXY(col, row);
+    
+    if (hoverTile == null || !hoverTile.isEqual(currentTile)) {
+        hoverTile = currentTile;
+    } else {
+        alignToolTip(e);
+        return;
+    }
+   
 
     //console.log("Following cursor at X=" + e.offsetX + ", Y=" + e.offsetY);
 
@@ -3095,6 +3246,43 @@ function followCursor(e) {
         }
         tooltip.style.display = "inline-block";
     }
+
+    // if we are showing x-rays then populate the x-ray table
+    if (doProbabilityXRay) {
+        populateXRayTable(hoverTile);
+    }
+ 
+    alignToolTip(e);
+
+    /*
+    const screenWidth = window.innerWidth;
+    const tooltipWidth = tooltip.offsetWidth;
+
+    if (tooltipOnLeft) {
+        tooltipOnLeft = e.clientX - 2 * TILE_SIZE - tooltipWidth >= 0;
+    } else {
+        tooltipOnLeft = e.clientX + 2 * TILE_SIZE + tooltipWidth >= screenWidth;
+    }
+
+    if (isExpanded) {
+        if (tooltipOnLeft) {
+            tooltip.style.left = (e.clientX - 2 * TILE_SIZE - 12 - tooltipWidth) + 'px';
+        } else {
+            tooltip.style.left = (e.clientX + 2 * TILE_SIZE - 12) + 'px';
+        }
+        tooltip.style.top = (e.clientY - tooltip.offsetHeight / 2 - 5) + 'px';
+    } else {
+        if (tooltipOnLeft) {
+            tooltip.style.left = (e.clientX - 2 * TILE_SIZE - 182 - tooltipWidth) + 'px';
+        } else {
+            tooltip.style.left = (e.clientX + 2 * TILE_SIZE - 182) + 'px';
+        }
+        tooltip.style.top = (e.clientY - tooltip.offsetHeight / 2 - 70) + 'px';
+    }
+    */
+}
+
+function alignToolTip(e) {
 
     const screenWidth = window.innerWidth;
     const tooltipWidth = tooltip.offsetWidth;
@@ -3258,13 +3446,13 @@ function on_mouseEnter(e) {
     // get the tile we're over
     const row = Math.floor(e.offsetY / TILE_SIZE);
     const col = Math.floor(e.offsetX / TILE_SIZE);
-    hoverTile = board.getTileXY(col, row);
+    //hoverTile = board.getTileXY(col, row);
 
     if (!analysisMode && e.which == 1) {
         // allow for dragging and remember the tile we just changed
         dragging = true;
-        dragTile = hoverTile;
-        
+        dragTile = board.getTileXY(col, row);
+
         resetTileDisplay(hoverTile, 0);
 
     }
@@ -4034,6 +4222,14 @@ function dragElement(elmnt) {
 
     function closeDragElement() {
         // stop moving when mouse button is released:
+
+        //console.log("Top=" + box.style.top + ", offsetTop=" + box.offsetTop + ", DeltaX=" + deltaX + ", DeltaY=" + deltaY);
+        if (box.offsetTop < 0) {
+            box.style.top = "0px";
+        }
+        if (box.offsetLeft < 0) {
+            box.style.left = "0px";
+        }
         document.onmouseup = null;
         document.onmousemove = null;
     }

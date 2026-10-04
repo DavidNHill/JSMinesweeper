@@ -31,6 +31,7 @@ class Board {
 
 		this.compressor = new Compressor();
 
+		this.uid = Math.random(this.MAX);
 
 		// information calculated within the solver
 		this.nextMoves = [];       // Action

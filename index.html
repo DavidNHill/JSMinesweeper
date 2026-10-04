@@ -25,6 +25,7 @@
     <div class="" id="buttonBar" style="position: absolute; top: 65px; left: 0px; right: 0px; height: 30px;">
         <div style="display:flex; flex-direction: row; justify-content: flex-start; ">
             <button type="button" style="height: 30px; margin-right: 10px;" onclick="propertiesOpen()">Settings...</button>
+            <button id="xRayLaunchButton" type="button" style="height: 30px; margin-right: 10px;" onclick="clickedProbabilityXRay()">X-Ray...</button>
             <button id="selectPlayer" class="selected" type="button" style="height: 30px; margin-right: 10px;" onclick="setAnalysis(false)">Player</button>
             <button id="selectAnalyser" type="button" style="height: 30px; margin-right: 10px;" onclick="setAnalysis(true)">Analyser</button>
             <button id="exportToPtta" class="hidden" type="button" style="height: 30px; margin-right: 10px;" onclick="sendToPtta()">Send to Ptta Zini</button>
@@ -222,6 +223,22 @@
             <button style="position: absolute; bottom: 50px; Right: 5px" id="localStorageLoad" onclick="loadLocalStorage()">Fetch</button>
 
             <button style="position: absolute; bottom: 5px; right: 5px" id="localStorageCancel" onclick="closeLocalStorage()">Cancel</button>
+        </div>
+    </div>
+
+    <!-- X-ray panel -->
+    <div id="xRayPanel" style="position: absolute; z-index: 1; top: 0px; right: 0px; display: none; width: 100%; height: 5px">
+        <!-- Modal content -->
+        <div id="xRayPanelBox" class="modal-content" style="position: absolute; top: 100px; right: 50px; width: 240px; height: 400px">
+            <div id="xRayPanelHeader" style="font-size: 20px; height: 24px; padding: 0px;">Probability X-Ray</div>
+            <table id="xRayTable">
+                <tr>
+                    <th style="width: 100">Value</th>
+                    <th>Percentage</th>
+                </tr>
+            </table>
+            <label id="xRayLabel" style="position: absolute; font-size: 16px; left: 2px; bottom: 8px; width: 50; height: 20px"></label>
+            <button style="position: absolute; bottom: 5px; right: 0px; height: 30px;" id="runXRay" onclick="runProbabilityXRay()">Run X-Ray</button>
         </div>
     </div>
 
