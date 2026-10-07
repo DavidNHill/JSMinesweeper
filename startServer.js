@@ -15,6 +15,23 @@ const server = express();
 server.use(express.static(path.join(__dirname, '')));
 server.use(express.json());
 
+// CSRF protection for state-changing requests: verify the request originates
+// from this same server (OWASP CSRF Cheat Sheet - "Verifying Origin with
+// Standard Headers"). Cross-site forged requests will carry a different
+// Origin/Referer host (or none at all for non-browser tooling), so they are
+// rejected before reaching any state-changing route handler.
+function csrfOriginCheck(req, res, next) {
+    if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
+        return next();
+    }
+    const source = req.headers.origin || req.headers.referer;
+    if (!source || new URL(source).host !== req.headers.host) {
+        return res.status(403).json({ error: 'CSRF validation failed' });
+    }
+    next();
+}
+server.use(csrfOriginCheck);
+
 // setup the heart beat logic to run regularily (interval in milliseconds)
 setInterval(minesweeperLogic.heartbeat, 60000);
 
