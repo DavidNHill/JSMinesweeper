@@ -111,6 +111,8 @@ const docWidth = document.getElementById("width");
 const docHeight = document.getElementById("height");
 const docMines = document.getElementById("mines");
 
+const copyToPlayerButton = document.getElementById("copyToPlayer");
+
 // define the save buttons and assign their event functions
 const downloadMBF = document.getElementById('savembf');
 const downloadPosition = document.getElementById('saveposition');
@@ -470,27 +472,24 @@ function openLocalStorage() {
 
 }
 
-function closeLocalStorage() {
+function copyToPlayer() {
 
-    localStorageModal.style.display = "none";
+    console.log("Copying analysis board to the Player");
 
-}
+    const boardAsString = board.getPositionData();
 
-function saveLocalStorage() {
-
-    const key = localStorageSelection.value;
-
-    console.log("Saving board position to local storage key '" + key + "'");
-
-}
-
-function loadLocalStorage() {
-
-
-}
-
-function fetchLocalStorage() {
-
+    const arrays = stringToArray(boardAsString);
+    if (arrays == null) {
+        showMessage("The analysis board doesn't contain data for a complete game");
+        return;
+    } else {
+        //exportParms = null;
+        //showExportButtons(false);  // efficiency export buttons
+        switchToAnalysis(false)  // got to PLayer mode
+        newGameFromArray(arrays);  // create the new game
+        showMessage("Game " + board.width + "x" + board.height + "/" + board.num_bombs + " created on the Player.");
+    }
+    
 
 }
 
@@ -941,6 +940,8 @@ async function switchToAnalysis(doAnalysis) {
 
          document.getElementById("selectAnalyser").className = "selected";
          document.getElementById("selectPlayer").className = "";
+         
+         copyToPlayerButton.className = "";
 
      } else {
          document.getElementById("play0").style.display = "";
@@ -953,6 +954,7 @@ async function switchToAnalysis(doAnalysis) {
          document.getElementById("selectAnalyser").className = "";
          document.getElementById("selectPlayer").className = "selected";
 
+         copyToPlayerButton.className = "hidden";
     }
 
     showExportButtons(false);
@@ -1194,7 +1196,10 @@ function renderTiles(tiles) {
         const tile = tiles[i];
         let tileType = HIDDEN;
 
-        if (tile.isBomb()) {
+        if (tile.analysisBomb) {
+            tileType = BOMB;
+        
+        } else if (tile.isBomb()) {
             if (tile.exploded) {
                 tileType = EXPLODED;
             } else {
@@ -1821,6 +1826,7 @@ async function newGameFromArray(arrays) {
     }
 
     board = new Board(id, width, height, mineCount, "", gameType);
+    gameBoard = board;
 
     let index = 0;
 
@@ -1850,10 +1856,18 @@ async function newGameFromArray(arrays) {
         index = index + 3;
     }
 
+    if (revealed.length > 0) {
+        board.setStarted();
+    }
+
     setPageTitle();
 
     document.getElementById("canvas").style.cursor = "default";
     canvasLocked = false;  // just in case it was still locked (after an error for example)
+
+    // remove the efficiency export buttons
+    exportParms = null;
+    showExportButtons(false);  // efficiency export buttons
 
     await changeTileSize(true);
 
@@ -2010,6 +2024,11 @@ async function newBoardFromString(data, inflate, analyse) {
                 tile.toggleFlag();
                 newBoard.bombs_left--;
                 tile.inflate = true;
+            } else if (char == "M") {
+                tile.toggleFlag();
+                tile.analysisBomb = true;
+                newBoard.bombs_left--;
+                tile.inflate = false;
             } else if (char == "0") {
                 tile.setValue(0);
             } else if (char == "1") {
@@ -2441,9 +2460,13 @@ function onKeyDownEvent(e) {
             window.requestAnimationFrame(() => renderTiles([tile]));
         } else if (e.key == 'f') {
             const tile = hoverTile;
-            const tilesToUpdate = analysis_toggle_flag(tile);
+            const tilesToUpdate = analysis_toggle_flag(tile, false);   // flag
             window.requestAnimationFrame(() => renderTiles(tilesToUpdate));
-        } else if (e.key == 'v' && e.ctrlKey) {
+        } else if (e.key == 'm') {
+            const tile = hoverTile;
+            const tilesToUpdate = analysis_toggle_flag(tile, true);   // mine
+            window.requestAnimationFrame(() => renderTiles(tilesToUpdate));
+        }else if (e.key == 'v' && e.ctrlKey) {
             //console.log("Control-V pressed");
             navigator.clipboard.readText().then(
                 clipText => newBoardFromString(clipText, false, true));
@@ -2466,6 +2489,12 @@ function onKeyDownEvent(e) {
         } else if (e.key == 'ArrowUp') {
             if (replayMode) {
                 replayInterrupt = true;
+            } else {
+                changeMineCount(1);
+            }
+        } else if (e.key == 'ArrowDown') {
+            if (!replayMode) {
+                changeMineCount(-1);
             }
         }
     } else {  // play mode
@@ -2485,7 +2514,7 @@ function onKeyDownEvent(e) {
                     action.which = 1;
                 }
 
-                clickAction(action);
+                clickAction(action, false);
             }
 
 
@@ -2962,21 +2991,6 @@ async function doAnalysis(fullBFDA) {
         canvasLocked = true;
     }
 
-    /*
-    //console.log(docAnalysisParm.value);
-    let compressed = "";
-    if (docAnalysisParm.value == "full") {
-        compressed = board.getCompressedData(false);
-    } else if (docAnalysisParm.value == "reduced") {
-        compressed = board.getCompressedData(true);
-    }
-    //new Compressor().decompress(compressed.substr(8));
- 
-    if (compressed.length < 2000) {
-        setURLParms("analysis", compressed);
-    }
-    */
-
     // put out a message and wait long enough for the ui to update
     showMessage("Analysing...");
     await sleep(1);
@@ -3086,6 +3100,7 @@ async function checkBoard() {
 
     if (solutionCounter.finalSolutionsCount != 0) {
         analysisButton.disabled = false;
+        copyToPlayerButton.disabled = false;
         //showMessage("The board has" + solutionCounter.finalSolutionsCount + " possible solutions");
         let logicText;
         if (solutionCounter.clearCount != 0) {
@@ -3111,6 +3126,7 @@ async function checkBoard() {
             msg = solutionCounter.invalidReasons[0];
         }
         analysisButton.disabled = true;
+        copyToPlayerButton.disabled = true;
         //showMessage("The board is in an invalid state. " + msg + " " + board.getFlagsPlaced() + " Mines placed. ");
         showMessage("The board is in an invalid state. " + msg);
     }
@@ -3148,7 +3164,7 @@ function draw(x, y, tileType) {
 }
 
 function resetTileDisplay(tile, tileType) {
-    if (board.isGameover() || canvasLocked) {
+    if (board.isGameover() || canvasLocked || tile == null) {
         return;
     }
 
@@ -3210,7 +3226,7 @@ function followCursor(e) {
                 render = [tile];
 
             } else if (dragButton == 3) {  // right button
-                render = analysis_toggle_flag(tile);
+                render = analysis_toggle_flag(tile, e.shiftKey);
             }
 
             // update the graphical board
@@ -3452,9 +3468,7 @@ function on_mouseEnter(e) {
         // allow for dragging and remember the tile we just changed
         dragging = true;
         dragTile = board.getTileXY(col, row);
-
-        resetTileDisplay(hoverTile, 0);
-
+        resetTileDisplay(dragTile, 0);
     }
  
 }
@@ -3486,12 +3500,12 @@ function mouseDownEvent(event) {
     action.col = Math.floor(event.offsetX / TILE_SIZE);
     action.which = event.which;
 
-    clickAction(action);
+    clickAction(action, event.shiftKey);
 
 }
 
 // stuff to do when we click on the board
-function clickAction(action) {
+function clickAction(action, shifted) {
 
     if (board.isGameover()) {
         console.log("The game is over - no action to take");
@@ -3555,7 +3569,7 @@ function clickAction(action) {
         } else if (button == 3) {  // right mouse button
 
             // toggle the flag and return the tiles which need to be redisplayed
-            tiles = analysis_toggle_flag(tile);
+            tiles = analysis_toggle_flag(tile, shifted);
 
             dragging = true;
             dragTile = tile;
@@ -3634,7 +3648,7 @@ function clickAction(action) {
  * toggle the flag and update any adjacent tiles
  * Return the tiles which need to be redisplayed
  */
-function analysis_toggle_flag(tile) {
+function analysis_toggle_flag(tile, shifted) {
 
     const tiles = [];
 
@@ -3643,20 +3657,39 @@ function analysis_toggle_flag(tile) {
     //}
 
     let delta;
-    if (tile.isFlagged()) {
+    if (tile.analysisBomb) {
+        if (!shifted) {
+            return tiles;
+        }
         delta = -1;
         tile.foundBomb = false;
+        tile.analysisBomb = false;
+
+    } else if (tile.isFlagged()) {
+        if (shifted) { // can't place a mine on a flag'
+            return tiles; 
+        }
+        delta = -1;
+        tile.foundBomb = false;
+
     } else {
+        if (lockMineCount.checked && board.bombs_left == 0) {
+            showMessage("Can't reduce mines to find to below zero when the mine count is locked");
+            return tiles;
+        }
         delta = 1;
-        tile.foundBomb = document.getElementById("flagIsMine").checked;;  // in analysis mode we believe the flags are mines
+        tile.foundBomb = shifted || document.getElementById("flagIsMine").checked;  // in analysis mode we believe the flags are mines
+        if (shifted) {
+           tile.analysisBomb = true;  // this means the display shows a mine not a flag
+        }
     }
 
     // if we have locked the mine count then adjust the bombs left 
     if (lockMineCount.checked) {
-        if (delta == 1 && board.bombs_left == 0) {
-            showMessage("Can't reduce mines to find to below zero when the mine count is locked");
-            return tiles;
-        }
+        //if (delta == 1 && board.bombs_left == 0) {
+        //    showMessage("Can't reduce mines to find to below zero when the mine count is locked");
+        //    return tiles;
+        //}
         board.bombs_left = board.bombs_left - delta;
         window.requestAnimationFrame(() => updateMineCount(board.bombs_left));
 
@@ -3692,7 +3725,10 @@ function analysis_toggle_flag(tile) {
         }
     }
 
-    tile.toggleFlag();
+    //if (!shifted) {
+       tile.toggleFlag();
+    //}
+
     tiles.push(tile);
 
     return tiles;
@@ -3766,23 +3802,48 @@ function on_mouseWheel_minesLeft(event) {
 
     //console.log("Mousewheel event at X=" + event.offsetX + ", Y=" + event.offsetY);
 
-    const delta = Math.sign(event.deltaY);
+    let delta = Math.sign(event.deltaY);
 
     const digit = Math.floor(event.offsetX / DIGIT_WIDTH);
 
     //console.log("Mousewheel event at X=" + event.offsetX + ", Y=" + event.offsetY + ", digit=" + digit);
 
-    let newCount = board.bombs_left;
+    //let newCount = board.bombs_left;
 
-    const digits = getDigitCount(newCount);
+    const digits = getDigitCount(board.bombs_left);
 
     if (digit == digits - 1) {
-        newCount = newCount + delta; 
+         
     } else if (digit == digits - 2) {
-        newCount = newCount + delta * 10;
+        delta = delta * 10;
     } else {
-        newCount = newCount + delta * 10;
+        delta = delta * 10;
     }
+
+    changeMineCount(delta);
+    
+    /*
+    const flagsPlaced = board.getFlagsPlaced();
+
+    if (newCount < 0) {
+        board.bombs_left = 0;
+        board.num_bombs = flagsPlaced;
+    } else if (newCount > 9999) {
+        board.bombs_left = 9999;
+        board.num_bombs = 9999 + flagsPlaced;
+    } else {
+        board.bombs_left = newCount;
+        board.num_bombs = newCount + flagsPlaced;
+    }
+
+    window.requestAnimationFrame(() => updateMineCount(board.bombs_left));
+    */
+
+}
+
+function changeMineCount(delta) {
+
+    let newCount = board.bombs_left + delta;
 
     const flagsPlaced = board.getFlagsPlaced();
 
@@ -3798,7 +3859,6 @@ function on_mouseWheel_minesLeft(event) {
     }
 
     window.requestAnimationFrame(() => updateMineCount(board.bombs_left));
-
 }
 
 // reads a file dropped onto the top of the minesweeper board

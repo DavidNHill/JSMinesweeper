@@ -543,7 +543,10 @@ class Board {
 		for (let y = 0; y < this.height; y++) {
 			for (let x = 0; x < this.width; x++) {
 				const tile = this.getTileXY(x, y);
-				if (tile.isFlagged()) {
+				if (tile.analysisBomb) {
+					data = data + "M"; 
+				
+				} else if (tile.isFlagged()) {
 					data = data + "F";
 
 				} else if (tile.isCovered() && !tile.isBomb()) {

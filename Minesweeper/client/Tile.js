@@ -14,6 +14,8 @@ class Tile {
         this.is_bomb = null;   // this gets set when the game is lost
 		this.exploded = false;  // this gets set if this tile was the one clicked
 
+		this.analysisBomb = false // this is set when the board builder sets a tile as a mine
+
 		this.isSafe = false;
 		this.isNextMove = false;   // set when this tile is one the next moves to be played
 

@@ -685,7 +685,7 @@ async function solver(board, options) {
 
             const solutionCount = pe.isolatedEdgeBruteForce.crunch();
 
-            writeToConsole("Solutions found by brute force for isolated edge " + solutionCount);
+            writeToConsole("Solutions found by brute force for the forced guess " + solutionCount);
 
             const bfda = new BruteForceAnalysis(pe.isolatedEdgeBruteForce.allSolutions, pe.isolatedEdgeBruteForce.iterator.tiles, 1000, options.verbose);  // the tiles and the solutions need to be in sync
 
@@ -699,7 +699,7 @@ async function solver(board, options) {
                     result.push(nextmove);
 
                     var winChanceText = (bfda.winChance * 100).toFixed(2);
-                    showMessage("Tile " + nextmove.asText()  + " has a " + winChanceText + "% chance to solve the isolated edge." + formatSolutions(pe.finalSolutionsCount));
+                    showMessage("Tile " + nextmove.asText()  + " has a " + winChanceText + "% chance to solve the forced guess." + formatSolutions(pe.finalSolutionsCount));
 
                 } else {  // seed 6674107430895333
                     if (bfda.bestTile != null) {
@@ -707,7 +707,7 @@ async function solver(board, options) {
                         action.dead = true;
                         result.push(action);
 
-                        showMessage("All the tiles on an isolated edge are dead, try tile " + bfda.bestTile.asText() + "?" + formatSolutions(pe.finalSolutionsCount));
+                        showMessage("All the tiles in the forced guess are dead, try tile " + bfda.bestTile.asText() + "?" + formatSolutions(pe.finalSolutionsCount));
                     }
                 }
 
