@@ -1274,7 +1274,7 @@ class ServerGame {
 		} else if (this.width == 30 && this.height == 16 && this.num_bombs == 99) {
 			return "3";
 		} else {
-			const max_length = this.width.toString().length;
+			const max_length = Math.max(this.width.toString().length, this.height.toString().length);
 			const b = this.width.toString().padStart(max_length, "0") + this.height.toString().padStart(max_length, "0");
 			return b;
 		}
