@@ -1485,6 +1485,12 @@ class ProbabilityEngine {
     // check the candidate dead locations with the information we have - remove those that aren't dead
     checkCandidateDeadLocations(checkPossible) {
 
+        let unprocessedMinMines = 0;
+        for (const box of this.boxes) {
+            if (!this.mask[box.uid]) {
+                unprocessedMinMines += box.minMines;
+            }
+        }
         let completeScan;
         if (this.TilesOffEdge == 0) {
             completeScan = true;   // this indicates that every box has been considered in one sweep (only 1 independent edge)
@@ -1552,6 +1558,10 @@ class ProbabilityEngine {
                     continue line;
                 }
 
+                // ignore lines which can't fit the minimum mines required by the boxes not yet processed
+                if (pl.mineCount + unprocessedMinMines > this.minesLeft) {
+                    continue line;
+                }
                 // ignore probability lines where the candidate is a mine
                 if (pl.allocatedMines[dc.myBox.uid] == dc.myBox.tiles.length) {
                     mineCount++;
